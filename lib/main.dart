@@ -1,0 +1,26 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'app.dart';
+import 'features/projects/providers/project_provider.dart';
+import 'features/acts/providers/act_provider.dart';
+import 'features/characters/providers/character_provider.dart';
+import 'features/locations/providers/location_provider.dart';
+import 'features/scenes/providers/scene_provider.dart';
+import 'features/production/providers/production_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ChangeNotifierProvider(create: (_) => ActProvider()),
+        ChangeNotifierProvider(create: (_) => CharacterProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => SceneProvider()),
+        ChangeNotifierProvider(create: (_) => ProductionProvider()),
+      ],
+      child: const CineXApp(),
+    ),
+  );
+}
