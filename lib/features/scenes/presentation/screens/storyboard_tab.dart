@@ -23,13 +23,16 @@ class _StoryboardTabState extends State<StoryboardTab> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    // didChangeDependencies is synchronous — safe to use context here
-    final actProvider = context.read<ActProvider>();
-    final sceneProvider = context.read<SceneProvider>();
-    actProvider.loadActs(widget.projectId).then((_) {
-      for (final act in actProvider.acts) {
-        sceneProvider.loadScenesForAct(act.id!);
-      }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final actProvider = context.read<ActProvider>();
+      final sceneProvider = context.read<SceneProvider>();
+      actProvider.loadActs(widget.projectId).then((_) {
+        for (final act in actProvider.acts) {
+          sceneProvider.loadScenesForAct(act.id!);
+        }
+      });
     });
   }
 

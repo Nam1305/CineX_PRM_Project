@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,8 +12,11 @@ import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 class CharacterFormScreen extends StatefulWidget {
   final int projectId;
   final Character? character;
-  const CharacterFormScreen(
-      {super.key, required this.projectId, this.character});
+  const CharacterFormScreen({
+    super.key,
+    required this.projectId,
+    this.character,
+  });
 
   @override
   State<CharacterFormScreen> createState() => _CharacterFormScreenState();
@@ -45,46 +50,111 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Sửa nhân vật' : 'Nhân vật mới'),
+        title: const Text('CineX Production'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today_outlined),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            Text(
+              'Thêm Nhân Vật Mới',
+              style: theme.textTheme.headlineLarge,
+            ),
+            const SizedBox(height: 24),
+            _ImageUploadSection(
+              imagePath: _imagePath,
+              onTap: _pickImage,
+              theme: theme,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'TÊN NHÂN VẬT',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Tên nhân vật *'),
-              validator: (v) => AppValidators.required(v, field: 'Tên nhân vật'),
+              decoration: InputDecoration(
+                hintText: 'Nhập tên nhân vật...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF393939)),
+                ),
+              ),
+              validator: (v) =>
+                  AppValidators.required(v, field: 'Tên nhân vật'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            Text(
+              'VAI TRÒ',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             DropdownButtonFormField<RoleType>(
               initialValue: _roleType,
-              decoration: const InputDecoration(labelText: 'Vai trò'),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF393939)),
+                ),
+              ),
               items: RoleType.values
                   .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
                   .toList(),
               onChanged: (v) => setState(() => _roleType = v!),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            Text(
+              'MÔ TẢ CHI TIẾT',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _descCtrl,
-              decoration: const InputDecoration(labelText: 'Mô tả tâm lý'),
-              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Mô tả về tâm lý, nền tảng và các nét nhân vật...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF393939)),
+                ),
+              ),
+              maxLines: 5,
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(_imagePath == null ? 'Chọn ảnh' : 'Đổi ảnh'),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: const Icon(Icons.save),
+              label: Text(_isEditing ? 'Cập nhật' : 'Lưu nhân vật'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: theme.colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_isEditing ? 'Cập nhật' : 'Thêm nhân vật'),
-            ),
           ],
         ),
       ),
@@ -117,5 +187,90 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
       if (mounted) AppSnackbar.success(context, 'Đã thêm nhân vật');
     }
     if (mounted) Navigator.pop(context);
+  }
+}
+
+class _ImageUploadSection extends StatelessWidget {
+  final String? imagePath;
+  final VoidCallback onTap;
+  final ThemeData theme;
+
+  const _ImageUploadSection({
+    required this.imagePath,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 200,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: const Color(0xFF393939),
+            style: BorderStyle.solid,
+            strokeAlign: BorderSide.strokeAlignInside,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          color: theme.colorScheme.surface,
+        ),
+        child: imagePath != null
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.file(
+                    File(imagePath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _UploadPlaceholder(theme: theme),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: theme.colorScheme.primary,
+                      child: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : _UploadPlaceholder(theme: theme),
+      ),
+    );
+  }
+}
+
+class _UploadPlaceholder extends StatelessWidget {
+  final ThemeData theme;
+
+  const _UploadPlaceholder({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.camera_alt,
+          size: 48,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'TẢI ẢNH',
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 }

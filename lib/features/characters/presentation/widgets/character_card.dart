@@ -27,6 +27,15 @@ class CharacterCard extends StatelessWidget {
     }
   }
 
+  Widget _fallbackAvatar(ThemeData theme) => Container(
+    color: theme.colorScheme.surfaceContainerHighest,
+    child: Icon(
+      Icons.person,
+      size: 48,
+      color: theme.colorScheme.onSurfaceVariant,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -47,31 +56,37 @@ class CharacterCard extends StatelessWidget {
           children: [
             Expanded(
               child: character.imagePath != null
-                  ? Image.file(File(character.imagePath!), fit: BoxFit.cover)
-                  : Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Icon(Icons.person,
-                          size: 48,
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
+                  ? Image.file(
+                      File(character.imagePath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _fallbackAvatar(theme),
+                    )
+                  : _fallbackAvatar(theme),
             ),
             Padding(
               padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(character.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  Text(
+                    character.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Chip(
-                    label: Text(character.roleType.label,
-                        style: const TextStyle(fontSize: 11)),
-                    backgroundColor:
-                        _chipColor(character.roleType, theme.colorScheme)
-                            .withValues(alpha: 0.2),
+                    label: Text(
+                      character.roleType.label,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    backgroundColor: _chipColor(
+                      character.roleType,
+                      theme.colorScheme,
+                    ).withValues(alpha: 0.2),
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
                   ),

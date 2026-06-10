@@ -1,38 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
-import 'package:cinex_application/features/locations/data/repositories/location_repository.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final _repo = LocationRepository();
-
   List<Location> _locations = [];
-  int? _currentProjectId;
   bool _isLoading = false;
 
   List<Location> get locations => _locations;
   bool get isLoading => _isLoading;
 
   Future<void> loadLocations(int projectId) async {
-    _currentProjectId = projectId;
     _isLoading = true;
     notifyListeners();
-    _locations = await _repo.getByProject(projectId);
+    // Load mock data for now
+    _locations = MockData.locations.where((l) => l.projectId == projectId).toList();
+    await Future.delayed(const Duration(milliseconds: 500));
     _isLoading = false;
     notifyListeners();
   }
 
   Future<void> addLocation(Location location) async {
-    await _repo.insert(location);
-    if (_currentProjectId != null) await loadLocations(_currentProjectId!);
+    _locations.add(location.copyWith(
+      id: (_locations.isEmpty ? 0 : _locations.last.id ?? 0) + 1,
+    ));
+    notifyListeners();
   }
 
   Future<void> editLocation(Location location) async {
-    await _repo.update(location);
-    if (_currentProjectId != null) await loadLocations(_currentProjectId!);
+    final index = _locations.indexWhere((l) => l.id == location.id);
+    if (index >= 0) {
+      _locations[index] = location;
+      notifyListeners();
+    }
   }
 
   Future<void> removeLocation(int id) async {
-    await _repo.delete(id);
-    if (_currentProjectId != null) await loadLocations(_currentProjectId!);
+    _locations.removeWhere((l) => l.id == id);
+    notifyListeners();
+  }
+
+  Location? getLocationById(int id) {
+    try {
+      return _locations.firstWhere((l) => l.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 }

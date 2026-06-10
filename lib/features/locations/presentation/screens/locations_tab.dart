@@ -54,6 +54,7 @@ class _LocationsTabState extends State<LocationsTab> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'add_location_fab',
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add_location_outlined),
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'features/projects/presentation/screens/project_launcher_screen.dart';
+import 'features/main/presentation/screens/main_screen.dart';
 
 class CineXApp extends StatelessWidget {
   const CineXApp({super.key});
@@ -13,7 +13,7 @@ class CineXApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: const ProjectLauncherScreen(),
+      home: const MainScreen(),
     );
   }
 }

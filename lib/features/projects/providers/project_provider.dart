@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
-import 'package:cinex_application/features/projects/data/repositories/project_repository.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class ProjectProvider extends ChangeNotifier {
-  final _repo = ProjectRepository();
 
   List<Project> _projects = [];
   bool _isLoading = false;
@@ -14,24 +13,37 @@ class ProjectProvider extends ChangeNotifier {
   Future<void> loadProjects() async {
     _isLoading = true;
     notifyListeners();
-    _projects = await _repo.getAll();
+    // Load mock data for now
+    _projects = MockData.projects;
+    await Future.delayed(const Duration(milliseconds: 500));
     _isLoading = false;
     notifyListeners();
   }
 
   Future<int> addProject(Project project) async {
-    final id = await _repo.insert(project);
-    await loadProjects();
-    return id;
+    _projects.add(project.copyWith(id: (_projects.isEmpty ? 0 : _projects.last.id ?? 0) + 1));
+    notifyListeners();
+    return project.id ?? 0;
   }
 
   Future<void> editProject(Project project) async {
-    await _repo.update(project);
-    await loadProjects();
+    final index = _projects.indexWhere((p) => p.id == project.id);
+    if (index >= 0) {
+      _projects[index] = project;
+      notifyListeners();
+    }
   }
 
   Future<void> removeProject(int id) async {
-    await _repo.delete(id);
-    await loadProjects();
+    _projects.removeWhere((p) => p.id == id);
+    notifyListeners();
+  }
+
+  Project? getProjectById(int id) {
+    try {
+      return _projects.firstWhere((p) => p.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 }

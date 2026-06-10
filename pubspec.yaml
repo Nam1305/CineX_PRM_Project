@@ -12,6 +12,7 @@ dependencies:
 
   # Database
   sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.4
   path: ^1.9.0
   path_provider: ^2.1.4
 
@@ -40,12 +41,17 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Uncomment after placing NotoSans .ttf files in assets/fonts/
-  # fonts:
-  #   - family: NotoSans
-  #     fonts:
-  #       - asset: assets/fonts/NotoSans-Regular.ttf
-  #       - asset: assets/fonts/NotoSans-Bold.ttf
+#  fonts:
+#    - family: NotoSans
+#      fonts:
+#        - asset: assets/fonts/NotoSans-Regular.ttf
+#        - asset: assets/fonts/NotoSans-Bold.ttf
+#    - family: HankenGrotesk
+#      fonts:
+#        - asset: assets/fonts/HankenGrotesk-Regular.ttf
+#          weight: 400
+#        - asset: assets/fonts/HankenGrotesk-Bold.ttf
+#          weight: 700
 
   assets:
     - assets/images/
