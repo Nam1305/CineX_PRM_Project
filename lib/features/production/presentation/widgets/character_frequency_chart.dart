@@ -15,34 +15,64 @@ class CharacterFrequencyChart extends StatelessWidget {
       }
     }
     if (freq.isEmpty) {
-      return const SizedBox(
-        height: 180,
-        child: Center(child: Text('Chưa có dữ liệu')),
+      return Container(
+        height: 220,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF2C2C2C)),
+        ),
+        child: const Center(
+          child: Text('Chưa có dữ liệu nhân vật', style: TextStyle(color: Colors.grey)),
+        ),
       );
     }
+
     final sorted = freq.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final top = sorted.take(5).toList();
-    final primary = Theme.of(context).colorScheme.primary;
+    final top = sorted.take(6).toList();
 
-    return SizedBox(
-      height: 180,
+    return Container(
+      height: 260,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tần suất nhân vật',
-              style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tần suất Nhân vật',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text('XEM TẤT CẢ', style: TextStyle(color: Color(0xFFFF571A), fontSize: 10, fontFamily: 'JetBrains Mono')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: BarChart(
               BarChartData(
+                alignment: BarChartAlignment.spaceAround,
                 barGroups: top.asMap().entries.map((e) {
                   return BarChartGroupData(x: e.key, barRods: [
                     BarChartRodData(
                       toY: e.value.value.toDouble(),
-                      color: primary,
-                      width: 14,
-                      borderRadius: BorderRadius.circular(4),
+                      color: const Color(0xFFFF571A),
+                      width: 16,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: top.first.value.toDouble(),
+                        color: const Color(0xFF2A2A2A),
+                      ),
                     ),
                   ]);
                 }).toList(),
@@ -52,29 +82,42 @@ class CharacterFrequencyChart extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (v, _) {
                         final idx = v.toInt();
-                        if (idx < 0 || idx >= top.length) {
-                          return const SizedBox();
-                        }
+                        if (idx < 0 || idx >= top.length) return const SizedBox();
                         final name = top[idx].key;
-                        return Text(
-                          name.length > 6 ? '${name.substring(0, 6)}…' : name,
-                          style: const TextStyle(fontSize: 10),
+                        final shortName = name.split(' ').last; // Get last word (e.g. 'Nam')
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            shortName,
+                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
                         );
                       },
                     ),
                   ),
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => const Color(0xFF2A2A2A),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      return BarTooltipItem(
+                        '\${top[groupIndex].key}\n',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        children: [
+                          TextSpan(
+                            text: '\${rod.toY.toInt()} cảnh',
+                            style: const TextStyle(color: Color(0xFFFF571A), fontSize: 10),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),

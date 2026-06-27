@@ -159,7 +159,7 @@ class _FeaturedProjectCard extends StatelessWidget {
                   imageUrl: project.posterUrl,
                   onTap: onTap,
                   height: 200,
-                  heroTag: 'project_${project.id}',
+                  heroTag: 'featured_project_${project.id}',
                 ),
                 Positioned(
                   top: 12,
@@ -284,7 +284,7 @@ class _ProjectCard extends StatelessWidget {
                 child: ImageCard(
                   imageUrl: project.posterUrl,
                   onTap: onTap,
-                  heroTag: 'project_list_${project.id}',
+                  heroTag: 'thumb_project_${project.id}',
                 ),
               ),
               const SizedBox(width: 12),

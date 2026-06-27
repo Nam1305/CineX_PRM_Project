@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
-import 'package:cinex_application/features/scenes/data/repositories/scene_repository.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 
 class ProductionProvider extends ChangeNotifier {
-  final _repo = SceneRepository();
+  final _apiService = ApiService();
 
   List<Scene> _allScenes = [];
   List<Scene> _filtered = [];
@@ -31,7 +31,7 @@ class ProductionProvider extends ChangeNotifier {
   Future<void> loadForProject(int projectId) async {
     _isLoading = true;
     notifyListeners();
-    _allScenes = await _repo.getScenesForProject(projectId);
+    _allScenes = await _apiService.getScenesForProject(projectId);
     _applyFilters();
     _isLoading = false;
     notifyListeners();

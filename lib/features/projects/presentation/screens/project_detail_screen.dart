@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
+import 'package:cinex_application/features/acts/data/models/act.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/progress_widget.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/widgets/section_card.dart';
+import 'package:cinex_application/features/production/presentation/screens/project_production_screen.dart';
 
-class ProjectDetailScreen extends StatelessWidget {
+class ProjectDetailScreen extends StatefulWidget {
   final Project project;
 
   const ProjectDetailScreen({
@@ -14,8 +17,57 @@ class ProjectDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
+}
+
+class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+  final _api = ApiService();
+  List<Act> _acts = [];
+  bool _actsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActs();
+  }
+
+  /// Load danh sách Hồi từ API
+  Future<void> _loadActs() async {
+    if (widget.project.id == null) return;
+    final acts = await _api.getActsForProject(widget.project.id!);
+    if (mounted) {
+      setState(() {
+        _acts = acts;
+        _actsLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final project = widget.project;
+
+    // Xác định StatusType dựa trên status thực từ server
+    StatusType statusType;
+    String statusLabel;
+    switch (project.status) {
+      case 'SHOOTING':
+        statusType = StatusType.active;
+        statusLabel = 'ĐANG QUAY';
+        break;
+      case 'POST_PRODUCTION':
+        statusType = StatusType.completed;
+        statusLabel = 'HẬU KỲ';
+        break;
+      case 'COMPLETED':
+        statusType = StatusType.completed;
+        statusLabel = 'HOÀN TẤT';
+        break;
+      default:
+        statusType = StatusType.pending;
+        statusLabel = 'LẬP KẾ HOẠCH';
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -52,18 +104,7 @@ class ProjectDetailScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              StatusBadge(
-                                status: project.status == 'SHOOTING'
-                                    ? StatusType.active
-                                    : StatusType.completed,
-                                label: project.status == 'SHOOTING'
-                                    ? 'ĐANG QUAY'
-                                    : 'HOÀN TẤT',
-                              ),
-                            ],
-                          ),
+                          StatusBadge(status: statusType, label: statusLabel),
                           const SizedBox(height: 8),
                           Text(
                             project.title,
@@ -86,18 +127,19 @@ class ProjectDetailScreen extends StatelessWidget {
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
+                  childAspectRatio: 1.6,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _MetadataCard(
                       label: 'Ngày bắt đầu',
-                      value: project.startDate ?? 'TBD',
+                      value: _formatDate(project.startDate),
                       icon: Icons.calendar_today_outlined,
                     ),
                     _MetadataCard(
                       label: 'Ngày kết thúc',
-                      value: project.endDate ?? 'TBD',
-                      icon: Icons.calendar_today_outlined,
+                      value: _formatDate(project.endDate),
+                      icon: Icons.event_outlined,
                     ),
                     _MetadataCard(
                       label: 'Đạo diễn',
@@ -105,8 +147,10 @@ class ProjectDetailScreen extends StatelessWidget {
                       icon: Icons.person_outline,
                     ),
                     _MetadataCard(
-                      label: 'Crew',
-                      value: '${project.crewCount} người',
+                      label: 'Đoàn phim',
+                      value: project.crewCount > 0
+                          ? '${project.crewCount} người'
+                          : 'TBD',
                       icon: Icons.people_outline,
                     ),
                   ],
@@ -128,23 +172,51 @@ class ProjectDetailScreen extends StatelessWidget {
                   crossAxisCount: 3,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
+                  childAspectRatio: 1.1,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _ActionButton(
                       label: 'Lịch Quay',
                       icon: Icons.calendar_month_outlined,
-                      onTap: () {},
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectProductionScreen(
+                            projectId: project.id!,
+                            projectTitle: project.title,
+                            initialTab: 0,
+                          ),
+                        ),
+                      ),
                     ),
                     _ActionButton(
                       label: 'Phân Tích',
                       icon: Icons.analytics_outlined,
-                      onTap: () {},
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectProductionScreen(
+                            projectId: project.id!,
+                            projectTitle: project.title,
+                            initialTab: 1,
+                          ),
+                        ),
+                      ),
                     ),
                     _ActionButton(
                       label: 'Báo Cáo',
                       icon: Icons.description_outlined,
-                      onTap: () {},
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectProductionScreen(
+                            projectId: project.id!,
+                            projectTitle: project.title,
+                            initialTab: 1,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -153,33 +225,34 @@ class ProjectDetailScreen extends StatelessWidget {
                 // Act Progress
                 SectionCard(
                   title: 'Tiến độ các Hồi',
-                  child: Column(
-                    children: [
-                      _ActProgressItem(
-                        act: 'Hồi I',
-                        status: 'DONE',
-                        theme: theme,
-                      ),
-                      const SizedBox(height: 12),
-                      _ActProgressItem(
-                        act: 'Hồi II',
-                        status: 'IN_PROGRESS',
-                        theme: theme,
-                      ),
-                      const SizedBox(height: 12),
-                      _ActProgressItem(
-                        act: 'Hồi III',
-                        status: 'WAITING',
-                        theme: theme,
-                      ),
-                      const SizedBox(height: 12),
-                      _ActProgressItem(
-                        act: 'Hồi IV',
-                        status: 'WAITING',
-                        theme: theme,
-                      ),
-                    ],
-                  ),
+                  child: _actsLoading
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : _acts.isEmpty
+                          ? Text(
+                              'Chưa có hồi nào được tạo',
+                              style: theme.textTheme.bodySmall,
+                            )
+                          : Column(
+                              children: _acts.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final act = entry.value;
+                                return Column(
+                                  children: [
+                                    if (idx > 0) const SizedBox(height: 12),
+                                    _ActProgressItem(
+                                      act: act.title,
+                                      status: act.status,
+                                      theme: theme,
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                 ),
                 const SizedBox(height: 32),
               ]),
@@ -188,6 +261,17 @@ class ProjectDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Format date từ ISO string sang dạng dd/MM/yyyy
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'TBD';
+    try {
+      final dt = DateTime.parse(dateStr);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
   }
 }
 
@@ -215,10 +299,7 @@ class _MetadataCard extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: theme.colorScheme.primary),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall,
-            ),
+            Text(label, style: theme.textTheme.labelSmall),
             const SizedBox(height: 4),
             Text(
               value,
@@ -305,7 +386,7 @@ class _ActProgressItem extends StatelessWidget {
       case 'WAITING':
         return 'Chờ';
       default:
-        return '';
+        return status;
     }
   }
 
