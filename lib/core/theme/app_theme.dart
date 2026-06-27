@@ -5,7 +5,7 @@ class AppTheme {
   static const Color _darkBg = Color(0xFF131313);
   static const Color _surface = Color(0xFF1C1B1B);
   static const Color _border = Color(0xFF393939);
-  static const Color _actionOrange = Color(0xFFFF4D00);
+  static const Color _actionOrange = Color(0xFFFF571A);
 
   static ThemeData get darkTheme => ThemeData(
         useMaterial3: true,

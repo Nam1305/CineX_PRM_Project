@@ -27,19 +27,20 @@ class Project {
     this.createdAt,
   });
 
+  /// Parse từ JSON OData server (PascalCase) hoặc local map (snake_case)
   factory Project.fromMap(Map<String, dynamic> map) => Project(
-        id: map['id'] as int?,
-        title: map['title'] as String,
-        genre: map['genre'] as String?,
-        description: map['description'] as String?,
-        director: map['director'] as String?,
-        startDate: map['start_date'] as String?,
-        endDate: map['end_date'] as String?,
-        posterUrl: map['poster_url'] as String?,
-        progress: (map['progress'] as num?)?.toDouble() ?? 0.0,
-        status: map['status'] as String? ?? 'PLANNING',
-        crewCount: map['crew_count'] as int? ?? 0,
-        createdAt: map['created_at'] as String?,
+        id: map['Id'] as int? ?? map['id'] as int?,
+        title: (map['Title'] ?? map['title'] ?? '') as String,
+        genre: map['Genre'] as String? ?? map['genre'] as String?,
+        description: map['Description'] as String? ?? map['description'] as String?,
+        director: map['Director'] as String? ?? map['director'] as String?,
+        startDate: map['StartDate'] as String? ?? map['start_date'] as String?,
+        endDate: map['EndDate'] as String? ?? map['end_date'] as String?,
+        posterUrl: map['PosterUrl'] as String? ?? map['poster_url'] as String?,
+        progress: (map['Progress'] as num? ?? map['progress'] as num?)?.toDouble() ?? 0.0,
+        status: map['Status'] as String? ?? map['status'] as String? ?? 'PLANNING',
+        crewCount: map['CrewCount'] as int? ?? map['crew_count'] as int? ?? 0,
+        createdAt: map['CreatedAt'] as String? ?? map['created_at'] as String?,
       );
 
   Map<String, dynamic> toMap() => {

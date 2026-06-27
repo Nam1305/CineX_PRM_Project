@@ -193,11 +193,16 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       status: 'PLANNING',
     );
 
-    await context.read<ProjectProvider>().addProject(project);
+    final createdId = await context.read<ProjectProvider>().addProject(project);
 
     if (mounted) {
-      AppSnackbar.success(context, 'Dự án đã được tạo');
-      Navigator.pop(context);
+      setState(() => _saving = false);
+      if (createdId != null) {
+        AppSnackbar.success(context, 'Dự án đã được tạo');
+        Navigator.pop(context);
+      } else {
+        AppSnackbar.error(context, 'Tạo dự án thất bại. Vui lòng thử lại.');
+      }
     }
   }
 }
