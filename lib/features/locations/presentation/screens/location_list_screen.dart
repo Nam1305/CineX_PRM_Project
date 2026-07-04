@@ -23,7 +23,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations(1);
+      context.read<LocationProvider>().loadLocations();
     });
   }
 
@@ -132,6 +132,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'location_list_add_fab',
         onPressed: () {
           Navigator.push(
             context,

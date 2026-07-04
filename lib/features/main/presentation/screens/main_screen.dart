@@ -21,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     _screens = [
       const ProjectListScreen(),
       const LocationListScreen(),
-      const CharactersTab(projectId: 1),
+      const CharactersTab(),
       const _ProfilePlaceholder(),
     ];
   }

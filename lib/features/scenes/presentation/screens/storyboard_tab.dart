@@ -5,6 +5,7 @@ import 'package:cinex_application/features/scenes/providers/scene_provider.dart'
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 import 'package:cinex_application/features/acts/presentation/widgets/act_expansion_tile.dart';
+import 'package:cinex_application/features/acts/presentation/screens/act_form_screen.dart';
 import 'scene_form_screen.dart';
 
 class StoryboardTab extends StatefulWidget {
@@ -62,10 +63,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                 onAddScene: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => SceneFormScreen(
-                      actId: act.id!,
-                      projectId: widget.projectId,
-                    ),
+                    builder: (_) => SceneFormScreen(actId: act.id!),
                   ),
                 ),
                 onEditScene: (scene) => Navigator.push(
@@ -73,7 +71,6 @@ class _StoryboardTabState extends State<StoryboardTab> {
                   MaterialPageRoute(
                     builder: (_) => SceneFormScreen(
                       actId: act.id!,
-                      projectId: widget.projectId,
                       scene: scene,
                     ),
                   ),
@@ -97,10 +94,47 @@ class _StoryboardTabState extends State<StoryboardTab> {
                     ),
                   );
                 },
+                onEditAct: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ActFormScreen(
+                      projectId: widget.projectId,
+                      act: act,
+                    ),
+                  ),
+                ),
+                onDeleteAct: () async {
+                  final actProvider = context.read<ActProvider>();
+                  final messenger = ScaffoldMessenger.of(context);
+                  final confirmed = await ConfirmDialog.show(
+                    context,
+                    title: 'Xoá hồi',
+                    content: 'Xoá "${act.title}" và toàn bộ cảnh bên trong?',
+                  );
+                  if (!confirmed) return;
+                  await actProvider.removeAct(act.id!);
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: const Text('Đã xoá hồi'),
+                      backgroundColor: Colors.green.shade700,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
               );
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'add_act_fab',
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActFormScreen(projectId: widget.projectId),
+          ),
+        ),
+        child: const Icon(Icons.add),
       ),
     );
   }

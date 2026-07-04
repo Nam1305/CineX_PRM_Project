@@ -47,6 +47,29 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Cập nhật dự án qua API, cập nhật danh sách local sau khi thành công
+  Future<bool> editProject(Project project) async {
+    if (project.id == null) return false;
+    try {
+      final updated = await _api.updateProject(project);
+      if (updated != null) {
+        final index = _projects.indexWhere((p) => p.id == updated.id);
+        if (index >= 0) {
+          _projects[index] = updated;
+        } else {
+          _projects.add(updated);
+        }
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = 'Không thể cập nhật dự án: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Xóa dự án qua API, xóa khỏi danh sách local sau khi thành công
   Future<bool> removeProject(int id) async {
     try {

@@ -9,6 +9,8 @@ class ActExpansionTile extends StatelessWidget {
   final VoidCallback onAddScene;
   final void Function(Scene) onEditScene;
   final void Function(Scene) onDeleteScene;
+  final VoidCallback? onEditAct;
+  final VoidCallback? onDeleteAct;
 
   const ActExpansionTile({
     super.key,
@@ -17,6 +19,8 @@ class ActExpansionTile extends StatelessWidget {
     required this.onAddScene,
     required this.onEditScene,
     required this.onDeleteScene,
+    this.onEditAct,
+    this.onDeleteAct,
   });
 
   @override
@@ -27,6 +31,16 @@ class ActExpansionTile extends StatelessWidget {
         title: Text(act.title,
             style: Theme.of(context).textTheme.titleMedium),
         subtitle: Text('${scenes.length} cảnh'),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'edit') onEditAct?.call();
+            if (value == 'delete') onDeleteAct?.call();
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'edit', child: Text('Sửa hồi')),
+            PopupMenuItem(value: 'delete', child: Text('Xoá hồi')),
+          ],
+        ),
         children: [
           ...scenes.map((s) => SceneCard(
                 scene: s,

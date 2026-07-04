@@ -10,12 +10,10 @@ import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class SceneFormScreen extends StatefulWidget {
   final int actId;
-  final int projectId;
   final Scene? scene;
   const SceneFormScreen({
     super.key,
     required this.actId,
-    required this.projectId,
     this.scene,
   });
 
@@ -26,6 +24,7 @@ class SceneFormScreen extends StatefulWidget {
 class _SceneFormScreenState extends State<SceneFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _numberCtrl;
+  late final TextEditingController _titleCtrl;
   late final TextEditingController _summaryCtrl;
   int? _selectedLocationId;
   SceneStatus _status = SceneStatus.todo;
@@ -39,6 +38,7 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     super.initState();
     _numberCtrl = TextEditingController(
         text: widget.scene?.sceneNumber.toString());
+    _titleCtrl = TextEditingController(text: widget.scene?.title);
     _summaryCtrl = TextEditingController(text: widget.scene?.summary);
     _selectedLocationId = widget.scene?.locationId;
     _status = widget.scene?.status ?? SceneStatus.todo;
@@ -48,14 +48,15 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations(widget.projectId);
-      context.read<CharacterProvider>().loadCharacters(widget.projectId);
+      context.read<LocationProvider>().loadLocations();
+      context.read<CharacterProvider>().loadCharacters();
     });
   }
 
   @override
   void dispose() {
     _numberCtrl.dispose();
+    _titleCtrl.dispose();
     _summaryCtrl.dispose();
     super.dispose();
   }
@@ -72,6 +73,12 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            TextFormField(
+              controller: _titleCtrl,
+              decoration: const InputDecoration(labelText: 'Tiêu đề cảnh *'),
+              validator: (v) => AppValidators.required(v, field: 'Tiêu đề cảnh'),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _numberCtrl,
               decoration: const InputDecoration(labelText: 'Số thứ tự cảnh *'),
@@ -136,15 +143,13 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     final sceneProvider = context.read<SceneProvider>();
     final sceneNumber = int.parse(_numberCtrl.text.trim());
-    final taken = await sceneProvider.isSceneNumberTaken(
+    final taken = sceneProvider.isSceneNumberTaken(
       widget.actId,
       sceneNumber,
       excludeId: widget.scene?.id,
     );
     if (taken) {
-      if (mounted) {
-        AppSnackbar.error(context, 'Số cảnh $sceneNumber đã tồn tại trong hồi này');
-      }
+      AppSnackbar.error(context, 'Số cảnh $sceneNumber đã tồn tại trong hồi này');
       return;
     }
     setState(() => _saving = true);
@@ -153,16 +158,25 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       actId: widget.actId,
       locationId: _selectedLocationId,
       sceneNumber: sceneNumber,
+      title: _titleCtrl.text.trim(),
       summary: _summaryCtrl.text.trim().isEmpty ? null : _summaryCtrl.text.trim(),
       status: _status,
     );
-    if (_isEditing) {
-      await sceneProvider.editScene(scene, _selectedCharacterIds.toList());
-      if (mounted) AppSnackbar.success(context, 'Đã cập nhật cảnh');
+    final ok = _isEditing
+        ? await sceneProvider.editScene(
+            scene,
+            _selectedCharacterIds.toList(),
+            previousCharacterIds:
+                widget.scene!.characters.map((c) => c.id!).toList(),
+          )
+        : await sceneProvider.addScene(scene, _selectedCharacterIds.toList());
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      AppSnackbar.success(context, _isEditing ? 'Đã cập nhật cảnh' : 'Đã thêm cảnh');
+      Navigator.pop(context);
     } else {
-      await sceneProvider.addScene(scene, _selectedCharacterIds.toList());
-      if (mounted) AppSnackbar.success(context, 'Đã thêm cảnh');
+      AppSnackbar.error(context, sceneProvider.error ?? 'Có lỗi xảy ra');
     }
-    if (mounted) Navigator.pop(context);
   }
 }

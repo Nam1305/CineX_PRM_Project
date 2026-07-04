@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 
 class SceneCard extends StatelessWidget {
@@ -60,7 +60,7 @@ class SceneCard extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 12,
                       backgroundImage: c.imagePath != null
-                          ? FileImage(File(c.imagePath!))
+                          ? adaptiveImageProvider(c.imagePath!)
                           : null,
                       child: c.imagePath == null
                           ? Text(c.name[0],

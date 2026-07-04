@@ -26,11 +26,11 @@ class Act {
         status: map['Status'] as String? ?? map['status'] as String? ?? 'WAITING',
       );
 
+  /// Body gửi lên server khi tạo/cập nhật
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'project_id': projectId,
+        'projectId': projectId,
         'title': title,
-        'sequence_order': sequenceOrder,
+        'sequenceOrder': sequenceOrder,
         'summary': summary,
         'status': status,
       };

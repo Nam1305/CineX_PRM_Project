@@ -122,6 +122,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'project_list_add_fab',
         onPressed: () {
           Navigator.push(
             context,

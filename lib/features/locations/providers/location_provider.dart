@@ -1,42 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class LocationProvider extends ChangeNotifier {
+  final _api = ApiService();
+
   List<Location> _locations = [];
   bool _isLoading = false;
+  String? _error;
 
   List<Location> get locations => _locations;
   bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  Future<void> loadLocations(int projectId) async {
+  /// Bối cảnh là dữ liệu dùng chung toàn hệ thống trên backend (không thuộc
+  /// riêng 1 project), nên danh sách này không lọc theo project.
+  Future<void> loadLocations() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
-    // Load mock data for now
-    _locations = MockData.locations.where((l) => l.projectId == projectId).toList();
-    await Future.delayed(const Duration(milliseconds: 500));
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> addLocation(Location location) async {
-    _locations.add(location.copyWith(
-      id: (_locations.isEmpty ? 0 : _locations.last.id ?? 0) + 1,
-    ));
-    notifyListeners();
-  }
-
-  Future<void> editLocation(Location location) async {
-    final index = _locations.indexWhere((l) => l.id == location.id);
-    if (index >= 0) {
-      _locations[index] = location;
+    try {
+      _locations = await _api.getLocations();
+    } catch (e) {
+      _error = 'Không thể tải bối cảnh: $e';
+      _locations = [];
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> removeLocation(int id) async {
-    _locations.removeWhere((l) => l.id == id);
-    notifyListeners();
+  Future<bool> addLocation(Location location) async {
+    try {
+      final created = await _api.createLocation(location);
+      if (created == null) return false;
+      await loadLocations();
+      return true;
+    } catch (e) {
+      _error = 'Không thể thêm bối cảnh: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> editLocation(Location location) async {
+    try {
+      final ok = await _api.updateLocation(location);
+      if (ok) await loadLocations();
+      return ok;
+    } catch (e) {
+      _error = 'Không thể cập nhật bối cảnh: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> removeLocation(int id) async {
+    try {
+      final ok = await _api.deleteLocation(id);
+      if (ok) await loadLocations();
+      return ok;
+    } catch (e) {
+      _error = 'Không thể xoá bối cảnh: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
   Location? getLocationById(int id) {

@@ -7,10 +7,11 @@ class Scene {
   final int actId;
   final int? locationId;
   final int sceneNumber;
+  final String title;
   final String? summary;
   final SceneStatus status;
 
-  // Enriched at runtime by SceneRepository — not stored in scenes table
+  // Enriched at runtime — not sent back to the server directly
   final Location? location;
   final List<Character> characters;
 
@@ -19,35 +20,19 @@ class Scene {
     required this.actId,
     this.locationId,
     required this.sceneNumber,
+    required this.title,
     this.summary,
     this.status = SceneStatus.todo,
     this.location,
     this.characters = const [],
   });
 
-  factory Scene.fromMap(Map<String, dynamic> map) => Scene(
-        id: map['id'] as int?,
-        actId: map['act_id'] as int,
-        locationId: map['location_id'] as int?,
-        sceneNumber: map['scene_number'] as int,
-        summary: map['summary'] as String?,
-        status: SceneStatusExt.fromDb(map['status'] as String? ?? 'TODO'),
-      );
-
-  Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'act_id': actId,
-        'location_id': locationId,
-        'scene_number': sceneNumber,
-        'summary': summary,
-        'status': status.dbValue,
-      };
-
   Scene copyWith({
     int? id,
     int? actId,
     int? locationId,
     int? sceneNumber,
+    String? title,
     String? summary,
     SceneStatus? status,
     Location? location,
@@ -58,6 +43,7 @@ class Scene {
         actId: actId ?? this.actId,
         locationId: locationId ?? this.locationId,
         sceneNumber: sceneNumber ?? this.sceneNumber,
+        title: title ?? this.title,
         summary: summary ?? this.summary,
         status: status ?? this.status,
         location: location ?? this.location,

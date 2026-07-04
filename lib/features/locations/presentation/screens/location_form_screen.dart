@@ -7,9 +7,8 @@ import 'package:cinex_application/features/locations/providers/location_provider
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class LocationFormScreen extends StatefulWidget {
-  final int projectId;
   final Location? location;
-  const LocationFormScreen({super.key, required this.projectId, this.location});
+  const LocationFormScreen({super.key, this.location});
 
   @override
   State<LocationFormScreen> createState() => _LocationFormScreenState();
@@ -106,19 +105,25 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     final provider = context.read<LocationProvider>();
     final location = Location(
       id: widget.location?.id,
-      projectId: widget.projectId,
       name: _nameCtrl.text.trim(),
       setting: _setting,
       timeOfDay: _timeOfDay,
+      address: widget.location?.address,
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     );
-    if (_isEditing) {
-      await provider.editLocation(location);
-      if (mounted) AppSnackbar.success(context, 'Đã cập nhật bối cảnh');
+    final ok = _isEditing
+        ? await provider.editLocation(location)
+        : await provider.addLocation(location);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      AppSnackbar.success(
+        context,
+        _isEditing ? 'Đã cập nhật bối cảnh' : 'Đã thêm bối cảnh',
+      );
+      Navigator.pop(context);
     } else {
-      await provider.addLocation(location);
-      if (mounted) AppSnackbar.success(context, 'Đã thêm bối cảnh');
+      AppSnackbar.error(context, provider.error ?? 'Có lỗi xảy ra');
     }
-    if (mounted) Navigator.pop(context);
   }
 }

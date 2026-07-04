@@ -180,18 +180,22 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
     setState(() => _saving = true);
 
     final location = Location(
-      projectId: 1,
       name: _nameCtrl.text.trim(),
       setting: _setting,
       timeOfDay: _timeOfDay,
       notes: _notesCtrl.text.trim(),
     );
 
-    await context.read<LocationProvider>().addLocation(location);
+    final provider = context.read<LocationProvider>();
+    final ok = await provider.addLocation(location);
 
-    if (mounted) {
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
       AppSnackbar.success(context, 'Bối cảnh đã được thêm');
       Navigator.pop(context);
+    } else {
+      AppSnackbar.error(context, provider.error ?? 'Có lỗi xảy ra');
     }
   }
 }

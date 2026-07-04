@@ -1,38 +1,69 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
-import 'package:cinex_application/features/characters/data/repositories/character_repository.dart';
 
 class CharacterProvider extends ChangeNotifier {
-  final _repo = CharacterRepository();
+  final _api = ApiService();
 
   List<Character> _characters = [];
-  int? _currentProjectId;
   bool _isLoading = false;
+  String? _error;
 
   List<Character> get characters => _characters;
   bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  Future<void> loadCharacters(int projectId) async {
-    _currentProjectId = projectId;
+  /// Nhân vật là dữ liệu dùng chung toàn hệ thống trên backend (không thuộc
+  /// riêng 1 project), nên danh sách này không lọc theo project.
+  Future<void> loadCharacters() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
-    _characters = await _repo.getByProject(projectId);
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _characters = await _api.getCharacters();
+    } catch (e) {
+      _error = 'Không thể tải nhân vật: $e';
+      _characters = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  Future<void> addCharacter(Character character) async {
-    await _repo.insert(character);
-    if (_currentProjectId != null) await loadCharacters(_currentProjectId!);
+  Future<bool> addCharacter(Character character) async {
+    try {
+      final created = await _api.createCharacter(character);
+      if (created == null) return false;
+      await loadCharacters();
+      return true;
+    } catch (e) {
+      _error = 'Không thể thêm nhân vật: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<void> editCharacter(Character character) async {
-    await _repo.update(character);
-    if (_currentProjectId != null) await loadCharacters(_currentProjectId!);
+  Future<bool> editCharacter(Character character) async {
+    try {
+      final ok = await _api.updateCharacter(character);
+      if (ok) await loadCharacters();
+      return ok;
+    } catch (e) {
+      _error = 'Không thể cập nhật nhân vật: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<void> removeCharacter(int id) async {
-    await _repo.delete(id);
-    if (_currentProjectId != null) await loadCharacters(_currentProjectId!);
+  Future<bool> removeCharacter(int id) async {
+    try {
+      final ok = await _api.deleteCharacter(id);
+      if (ok) await loadCharacters();
+      return ok;
+    } catch (e) {
+      _error = 'Không thể xoá nhân vật: $e';
+      notifyListeners();
+      return false;
+    }
   }
 }

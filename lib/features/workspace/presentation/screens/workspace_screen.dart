@@ -24,8 +24,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     final id = widget.project.id!;
     _tabs = [
       StoryboardTab(projectId: id),
-      CharactersTab(projectId: id),
-      LocationsTab(projectId: id),
+      const CharactersTab(),
+      const LocationsTab(),
       ProductionTab(projectId: id),
     ];
   }

@@ -9,8 +9,7 @@ import 'character_form_screen.dart';
 import 'character_detail_screen.dart';
 
 class CharactersTab extends StatefulWidget {
-  final int projectId;
-  const CharactersTab({super.key, required this.projectId});
+  const CharactersTab({super.key});
 
   @override
   State<CharactersTab> createState() => _CharactersTabState();
@@ -23,7 +22,7 @@ class _CharactersTabState extends State<CharactersTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CharacterProvider>().loadCharacters(widget.projectId);
+      context.read<CharacterProvider>().loadCharacters();
     });
   }
 
@@ -152,7 +151,6 @@ class _CharactersTabState extends State<CharactersTab> {
       context,
       MaterialPageRoute(
         builder: (_) => CharacterFormScreen(
-          projectId: widget.projectId,
           character: character,
         ),
       ),

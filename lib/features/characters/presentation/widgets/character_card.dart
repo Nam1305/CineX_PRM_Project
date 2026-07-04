@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 
@@ -56,11 +56,9 @@ class CharacterCard extends StatelessWidget {
           children: [
             Expanded(
               child: character.imagePath != null
-                  ? Image.file(
-                      File(character.imagePath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _fallbackAvatar(theme),
+                  ? AdaptiveImage(
+                      source: character.imagePath!,
+                      placeholderBuilder: (_) => _fallbackAvatar(theme),
                     )
                   : _fallbackAvatar(theme),
             ),

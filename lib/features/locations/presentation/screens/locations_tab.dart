@@ -6,8 +6,7 @@ import '../widgets/location_tile.dart';
 import 'location_form_screen.dart';
 
 class LocationsTab extends StatefulWidget {
-  final int projectId;
-  const LocationsTab({super.key, required this.projectId});
+  const LocationsTab({super.key});
 
   @override
   State<LocationsTab> createState() => _LocationsTabState();
@@ -18,7 +17,7 @@ class _LocationsTabState extends State<LocationsTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations(widget.projectId);
+      context.read<LocationProvider>().loadLocations();
     });
   }
 
@@ -66,7 +65,6 @@ class _LocationsTabState extends State<LocationsTab> {
       context,
       MaterialPageRoute(
         builder: (_) => LocationFormScreen(
-          projectId: widget.projectId,
           location: location,
         ),
       ),
