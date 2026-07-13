@@ -18,7 +18,7 @@ class ShootingDayGroup extends StatelessWidget {
     
     // Guess setting and time from the first scene in group if available
     final firstLoc = scenes.first.location;
-    final settingStr = (firstLoc?.setting?.toString() == LocationSetting.interior.toString() || firstLoc?.setting?.toString() == 'LocationSetting.interior' || firstLoc?.setting?.toString() == 'INT') ? 'Nội (INT)' : 'Ngoại (EXT)';
+    final settingStr = (firstLoc?.setting.toString() == LocationSetting.interior.toString() || firstLoc?.setting.toString() == 'LocationSetting.interior' || firstLoc?.setting.toString() == 'INT') ? 'Nội (INT)' : 'Ngoại (EXT)';
     
     return Container(
       margin: const EdgeInsets.only(bottom: 24),

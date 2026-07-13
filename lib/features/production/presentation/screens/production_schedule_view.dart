@@ -141,8 +141,8 @@ class ProductionScheduleView extends StatelessWidget {
           sheet.appendRow([
             TextCellValue(locationLabel),
             TextCellValue(scene.sceneNumber.toString()),
-            TextCellValue(scene.location?.setting?.label ?? ''),
-            TextCellValue(scene.location?.timeOfDay?.label ?? ''),
+            TextCellValue(scene.location?.setting.label ?? ''),
+            TextCellValue(scene.location?.timeOfDay.label ?? ''),
             TextCellValue(scene.summary ?? 'Cảnh ${scene.sceneNumber}'),
             TextCellValue(scene.status.name.toUpperCase()),
           ]);

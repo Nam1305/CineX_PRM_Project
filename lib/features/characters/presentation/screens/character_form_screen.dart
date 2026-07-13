@@ -7,6 +7,7 @@ import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 
 class CharacterFormScreen extends StatefulWidget {
   final Character? character;
@@ -21,6 +22,7 @@ class CharacterFormScreen extends StatefulWidget {
 
 class _CharacterFormScreenState extends State<CharacterFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _api = ApiService();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _actorCtrl;
   late final TextEditingController _descCtrl;
@@ -147,7 +149,16 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.save),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
+                    )
+                  : const Icon(Icons.save),
               label: Text(_isEditing ? 'LƯU THAY ĐỔI' : 'LƯU NHÂN VẬT'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -183,16 +194,24 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final provider = context.read<CharacterProvider>();
-    // Lưu ý: backend chưa có endpoint upload ảnh, nên _imagePath (đường dẫn
-    // file local) không được gửi lên server — chỉ giữ nguyên ImageUrl cũ
-    // (nếu có) để không ghi đè dữ liệu thật bằng đường dẫn cục bộ vô nghĩa.
+    
+    String? finalImageUrl = widget.character?.imagePath;
+
+    // Upload local image to R2 if selected
+    if (_imagePath != null && !_imagePath!.startsWith('http')) {
+      final uploadedUrl = await _api.uploadFile(_imagePath!, 'character');
+      if (uploadedUrl != null) {
+        finalImageUrl = uploadedUrl;
+      }
+    }
+
     final character = Character(
       id: widget.character?.id,
       name: _nameCtrl.text.trim(),
       roleType: _roleType,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       actorName: _actorCtrl.text.trim().isEmpty ? null : _actorCtrl.text.trim(),
-      imagePath: widget.character?.imagePath,
+      imagePath: finalImageUrl,
       castingStatus: widget.character?.castingStatus,
     );
     final ok = _isEditing

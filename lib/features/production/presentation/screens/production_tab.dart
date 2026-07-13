@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
+import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'production_schedule_view.dart';
 import 'production_analytics_view.dart';
 
@@ -24,6 +25,7 @@ class _ProductionTabState extends State<ProductionTab> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductionProvider>().loadForProject(widget.projectId);
+      context.read<CharacterProvider>().loadCharacters();
     });
   }
 

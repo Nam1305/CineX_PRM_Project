@@ -6,11 +6,12 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 class ApiService {
-  // static const String baseUrl = 'http://localhost:5274/odata'; // local test
-  static const String baseUrl =
-      'https://cinex-api.onrender.com/odata'; // production
+  static const String baseUrl = 'http://localhost:5274/odata'; // local test
+  // static const String baseUrl =
+  //     'https://cinex-api.onrender.com/odata'; // production
 
   static const _headers = {'Content-Type': 'application/json'};
 
@@ -44,8 +45,13 @@ class ApiService {
         'Title': project.title,
         'Genre': project.genre,
         'Description': project.description,
+        'Director': project.director,
         'StartDate': project.startDate,
+        'EndDate': project.endDate,
         'PosterUrl': project.posterUrl,
+        'Progress': project.progress,
+        'Status': project.status,
+        'CrewCount': project.crewCount,
       });
       final response = await http.post(url, headers: _headers, body: body);
       if (response.statusCode == 201) {
@@ -60,7 +66,7 @@ class ApiService {
     }
   }
 
-  /// Cập nhật dự án theo id
+  /// Cập nhật dự án theo id (Sử dụng PATCH để tương thích OData)
   Future<Project?> updateProject(Project project) async {
     if (project.id == null) return null;
     final url = Uri.parse('$baseUrl/Projects(${project.id})');
@@ -69,10 +75,15 @@ class ApiService {
         'Title': project.title,
         'Genre': project.genre,
         'Description': project.description,
+        'Director': project.director,
         'StartDate': project.startDate,
+        'EndDate': project.endDate,
         'PosterUrl': project.posterUrl,
+        'Progress': project.progress,
+        'Status': project.status,
+        'CrewCount': project.crewCount,
       });
-      final response = await http.put(url, headers: _headers, body: body);
+      final response = await http.patch(url, headers: _headers, body: body);
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (response.body.isEmpty) {
           return project;
@@ -84,6 +95,38 @@ class ApiService {
       }
     } catch (e) {
       print('ApiService.updateProject error: $e');
+      return null;
+    }
+  }
+
+  /// Tải tệp tin lên Cloudflare R2 thông qua API Upload (Hỗ trợ cả Mobile & Web)
+  Future<String?> uploadFile(String filePath, String prefix) async {
+    final base = baseUrl.replaceAll('/odata', '');
+    final uploadUrl = Uri.parse('$base/api/FileUpload/upload');
+    try {
+      final bytes = await XFile(filePath).readAsBytes();
+      final filename = filePath.split('/').last.split('\\').last;
+      
+      final request = http.MultipartRequest('POST', uploadUrl)
+        ..fields['prefix'] = prefix
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: filename.isNotEmpty ? filename : 'upload.png',
+          ),
+        );
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['Url'] ?? data['url']) as String?;
+      } else {
+        throw Exception('Failed to upload file: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('ApiService.uploadFile error: $e');
       return null;
     }
   }

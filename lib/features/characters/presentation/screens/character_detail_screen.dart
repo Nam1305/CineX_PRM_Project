@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/widgets/adaptive_image.dart';
 
 class CharacterDetailScreen extends StatelessWidget {
   final Character character;
@@ -26,16 +27,30 @@ class CharacterDetailScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Container(
-                    color: theme.colorScheme.surface,
-                    child: Center(
-                      child: Icon(
-                        Icons.person,
-                        size: 120,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                      ),
-                    ),
-                  ),
+                  character.imagePath != null
+                      ? AdaptiveImage(
+                          source: character.imagePath!,
+                          placeholderBuilder: (_) => Container(
+                            color: theme.colorScheme.surface,
+                            child: Center(
+                              child: Icon(
+                                Icons.person,
+                                size: 120,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: theme.colorScheme.surface,
+                          child: Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 120,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                            ),
+                          ),
+                        ),
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -114,7 +129,6 @@ class CharacterDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomNav(activeIndex: 1),
     );
   }
 }
@@ -323,37 +337,3 @@ class _SceneListSection extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  final int activeIndex;
-
-  const _BottomNav({required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: activeIndex,
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.dashboard_outlined),
-          selectedIcon: Icon(Icons.dashboard),
-          label: 'Dashboard',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.people_outline),
-          selectedIcon: Icon(Icons.people),
-          label: 'Nhân vật',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.location_on_outlined),
-          selectedIcon: Icon(Icons.location_on),
-          label: 'Bối cảnh',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.movie_filter_outlined),
-          selectedIcon: Icon(Icons.movie_filter),
-          label: 'Storyboard',
-        ),
-      ],
-    );
-  }
-}

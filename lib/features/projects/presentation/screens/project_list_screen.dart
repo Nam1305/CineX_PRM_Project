@@ -5,7 +5,7 @@ import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/progress_widget.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
-import 'package:cinex_application/features/projects/presentation/screens/add_project_screen.dart';
+import 'package:cinex_application/features/projects/presentation/screens/project_form_screen.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_detail_screen.dart';
 
 class ProjectListScreen extends StatefulWidget {
@@ -16,6 +16,9 @@ class ProjectListScreen extends StatefulWidget {
 }
 
 class _ProjectListScreenState extends State<ProjectListScreen> {
+  bool _isSearching = false;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -33,20 +36,62 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final projects = provider.projects;
+          final allProjects = provider.projects;
+          final projects = allProjects
+              .where((p) => p.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+              .toList();
+
           final activeProjects =
-              projects.where((p) => p.status == 'SHOOTING').toList();
+              allProjects.where((p) => p.status == 'SHOOTING').toList();
           final completedProjects =
-              projects.where((p) => p.status == 'POST_PRODUCTION').toList();
+              allProjects.where((p) => p.status == 'POST_PRODUCTION').toList();
 
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: AppHeader(
-                  title: 'Dự án của tôi',
-                  onSearch: () {},
-                  onNotification: () {},
-                ),
+                child: _isSearching
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                autofocus: true,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _searchQuery = value.trim();
+                                  });
+                                },
+                                decoration: InputDecoration(
+                                  hintText: 'Tìm kiếm dự án...',
+                                  prefixIcon: const Icon(Icons.search),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _isSearching = false;
+                                      });
+                                    },
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : AppHeader(
+                        title: 'Dự án của tôi',
+                        onSearch: () {
+                          setState(() {
+                            _isSearching = true;
+                          });
+                        },
+                        onNotification: () {},
+                      ),
               ),
               if (projects.isNotEmpty)
                 SliverToBoxAdapter(
@@ -126,7 +171,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddProjectScreen()),
+            MaterialPageRoute(builder: (_) => const ProjectFormScreen()),
           );
         },
         child: const Icon(Icons.add),
