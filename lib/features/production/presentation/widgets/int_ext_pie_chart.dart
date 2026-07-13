@@ -10,10 +10,10 @@ class IntExtPieChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final interior = scenes
-        .where((s) => s.location?.setting?.toString() == LocationSetting.interior.toString() || s.location?.setting?.toString() == 'INT' || s.location?.setting?.toString() == 'LocationSetting.interior')
+        .where((s) => s.location?.setting.toString() == LocationSetting.interior.toString() || s.location?.setting.toString() == 'INT' || s.location?.setting.toString() == 'LocationSetting.interior')
         .length;
     final exterior = scenes
-        .where((s) => s.location?.setting?.toString() == LocationSetting.exterior.toString() || s.location?.setting?.toString() == 'EXT' || s.location?.setting?.toString() == 'LocationSetting.exterior')
+        .where((s) => s.location?.setting.toString() == LocationSetting.exterior.toString() || s.location?.setting.toString() == 'EXT' || s.location?.setting.toString() == 'LocationSetting.exterior')
         .length;
     final total = interior + exterior;
 

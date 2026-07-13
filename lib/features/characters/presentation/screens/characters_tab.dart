@@ -17,6 +17,8 @@ class CharactersTab extends StatefulWidget {
 
 class _CharactersTabState extends State<CharactersTab> {
   RoleType? _selectedRole;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -27,25 +29,61 @@ class _CharactersTabState extends State<CharactersTab> {
   }
 
   List<dynamic> _getFilteredCharacters(List<dynamic> characters) {
-    if (_selectedRole == null) return characters;
-    return characters.where((c) => c.roleType == _selectedRole).toList();
+    var list = characters;
+    if (_selectedRole != null) {
+      list = list.where((c) => c.roleType == _selectedRole).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      list = list.where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    }
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CineX Production'),
+        title: _isSearching
+            ? TextField(
+                autofocus: true,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.trim();
+                  });
+                },
+                decoration: const InputDecoration(
+                  hintText: 'Tìm kiếm nhân vật...',
+                  border: InputBorder.none,
+                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              )
+            : const Text('CineX Production'),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_outlined),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
-          ),
+          if (_isSearching)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _isSearching = false;
+                });
+              },
+            )
+          else ...[
+            IconButton(
+              icon: const Icon(Icons.search_outlined),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {},
+            ),
+          ],
         ],
       ),
       body: Consumer<CharacterProvider>(

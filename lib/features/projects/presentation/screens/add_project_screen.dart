@@ -188,7 +188,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       director: _directorCtrl.text.trim(),
       genre: _selectedGenre,
       description: _loglineCtrl.text.trim(),
-      posterUrl: 'https://via.placeholder.com/300x450/FF4D00/FFFFFF?text=New',
+      posterUrl: 'https://placehold.co/300x450/FF4D00/FFFFFF?text=New',
       progress: 0.0,
       status: 'PLANNING',
     );

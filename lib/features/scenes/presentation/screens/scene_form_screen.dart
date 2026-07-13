@@ -63,6 +63,7 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final locationProvider = context.watch<LocationProvider>();
     final characterProvider = context.watch<CharacterProvider>();
 
@@ -88,25 +89,36 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
               initialValue: _selectedLocationId,
-              decoration: const InputDecoration(labelText: 'Bối cảnh'),
+              decoration: const InputDecoration(labelText: 'Bối cảnh *'),
               items: [
-                const DropdownMenuItem(value: null, child: Text('— Chưa chọn —')),
+                const DropdownMenuItem(value: null, child: Text('— Chọn bối cảnh —')),
                 ...locationProvider.locations.map((l) =>
                     DropdownMenuItem(value: l.id, child: Text(l.sceneLabel))),
               ],
+              validator: (v) => v == null ? 'Vui lòng chọn bối cảnh' : null,
               onChanged: (v) => setState(() => _selectedLocationId = v),
             ),
             const SizedBox(height: 16),
-            const Text('Nhân vật tham gia'),
+            const Text('Nhân vật tham gia', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              runSpacing: 4,
+              runSpacing: 8,
               children: characterProvider.characters.map((c) {
                 final selected = _selectedCharacterIds.contains(c.id);
                 return FilterChip(
                   label: Text(c.name),
                   selected: selected,
+                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  checkmarkColor: theme.colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: selected ? theme.colorScheme.primary : Colors.white70,
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  side: BorderSide(
+                    color: selected ? theme.colorScheme.primary : const Color(0xFF393939),
+                    width: selected ? 1.5 : 1,
+                  ),
                   onSelected: (v) => setState(() {
                     v ? _selectedCharacterIds.add(c.id!) : _selectedCharacterIds.remove(c.id);
                   }),

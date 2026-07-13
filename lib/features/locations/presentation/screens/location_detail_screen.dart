@@ -25,7 +25,7 @@ class LocationDetailScreen extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               background: ImageCard(
                 imageUrl:
-                    'https://via.placeholder.com/400x300/1C1B1B/FF4D00?text=${location.name}',
+                    'https://placehold.co/400x300/1C1B1B/FF4D00?text=${Uri.encodeComponent(location.name)}',
                 onTap: () {},
                 heroTag: 'location_${location.id}',
               ),

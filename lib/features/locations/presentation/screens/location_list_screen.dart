@@ -18,6 +18,7 @@ class LocationListScreen extends StatefulWidget {
 
 class _LocationListScreenState extends State<LocationListScreen> {
   LocationSetting? _filter;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -36,11 +37,13 @@ class _LocationListScreenState extends State<LocationListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final filtered = _filter == null
-              ? provider.locations
-              : provider.locations
-                  .where((l) => l.setting == _filter)
-                  .toList();
+          final filtered = provider.locations.where((l) {
+            final matchesFilter = _filter == null || l.setting == _filter;
+            final matchesSearch = _searchQuery.isEmpty ||
+                l.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                (l.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+            return matchesFilter && matchesSearch;
+          }).toList();
 
           return CustomScrollView(
             slivers: [
@@ -60,6 +63,11 @@ class _LocationListScreenState extends State<LocationListScreen> {
                     children: [
                       // Search field
                       TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.trim();
+                          });
+                        },
                         decoration: InputDecoration(
                           hintText: 'Tìm kiếm bối cảnh...',
                           prefixIcon: const Icon(Icons.search_outlined),
@@ -205,7 +213,7 @@ class _LocationCard extends StatelessWidget {
               children: [
                 ImageCard(
                   imageUrl:
-                      'https://via.placeholder.com/400x300/1C1B1B/FF4D00?text=${location.name}',
+                      'https://placehold.co/400x300/1C1B1B/FF4D00?text=${Uri.encodeComponent(location.name)}',
                   onTap: onTap,
                   height: 180,
                   heroTag: 'location_${location.id}',

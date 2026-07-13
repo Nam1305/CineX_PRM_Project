@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../widgets/int_ext_pie_chart.dart';
 import '../widgets/character_frequency_chart.dart';
 import 'package:cinex_application/core/utils/enums.dart';
@@ -137,18 +135,15 @@ class ProductionAnalyticsView extends StatelessWidget {
 
       final charCounts = <String, int>{};
       for (var scene in provider.allScenes) {
-        if (scene.characters != null) {
-          for (var c in scene.characters!) {
-            charCounts[c.name] = (charCounts[c.name] ?? 0) + 1;
-          }
+        for (var c in scene.characters) {
+          charCounts[c.name] = (charCounts[c.name] ?? 0) + 1;
         }
       }
       final sortedChars = charCounts.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
       // Font hỗ trợ tiếng Việt
-      final fontData = await rootBundle.load("assets/fonts/NotoSans-Regular.ttf");
-      final ttf = pw.Font.ttf(fontData);
+      final ttf = await PdfGoogleFonts.notoSansRegular();
 
       pdf.addPage(
         pw.Page(
@@ -183,21 +178,10 @@ class ProductionAnalyticsView extends StatelessWidget {
         ),
       );
 
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/BaoCao_Project_Analytics.pdf';
-      
-      final file = File(path);
-      await file.writeAsBytes(await pdf.save());
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã lưu PDF tại: $path'),
-            backgroundColor: const Color(0xFF51CF66),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'BaoCaoSảnXuất_CineX.pdf',
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
