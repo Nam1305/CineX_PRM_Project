@@ -270,14 +270,17 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                               final project = paginatedProjects[index];
                               return _ProjectCard(
                                 project: project,
-                                onTap: () {
-                                  Navigator.push(
+                                onTap: () async {
+                                  await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) =>
                                           ProjectDetailScreen(project: project),
                                     ),
                                   );
+                                  if (context.mounted) {
+                                    context.read<ProjectProvider>().loadProjects();
+                                  }
                                 },
                               );
                             },
@@ -370,9 +373,7 @@ class _ProjectCardState extends State<_ProjectCard> {
   @override
   void didUpdateWidget(_ProjectCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.project.id != widget.project.id) {
-      _loadLocalProgress();
-    }
+    _loadLocalProgress();
   }
 
   Future<void> _loadLocalProgress() async {
@@ -381,6 +382,13 @@ class _ProjectCardState extends State<_ProjectCard> {
       return;
     }
     try {
+      // Race condition safety: wait for ApiService token to load from tryAutoLogin
+      int retries = 0;
+      while (ApiService.token == null && retries < 10) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        retries++;
+      }
+
       final api = ApiService();
       final scenes = await api.getScenesForProject(widget.project.id!);
       final prefs = await SharedPreferences.getInstance();
@@ -402,7 +410,8 @@ class _ProjectCardState extends State<_ProjectCard> {
           _loadingProgress = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      print('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
       if (mounted) {
         setState(() => _loadingProgress = false);
       }
