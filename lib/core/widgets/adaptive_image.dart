@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Trên Flutter Web, `dart:io File` không thể đọc được (kể cả với blob URL
-/// do image_picker trả về), nên bắt buộc phải dùng [Image.network]. Trên
+/// do image_picker trả về), nên bắt buộc phải dùng [CachedNetworkImage]. Trên
 /// mobile/desktop, ImageUrl từ server là http nên cũng dùng network; chỉ
 /// ảnh vừa chọn từ thiết bị (đường dẫn cục bộ) mới cần [Image.file].
 bool _isNetworkSource(String source) =>
@@ -24,20 +25,27 @@ class AdaptiveImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget onError(BuildContext context, Object error, StackTrace? stack) =>
-        placeholderBuilder(context);
-
     if (kIsWeb || _isNetworkSource(source)) {
-      return Image.network(source, fit: fit, errorBuilder: onError);
+      return CachedNetworkImage(
+        imageUrl: source,
+        fit: fit,
+        fadeInDuration: const Duration(milliseconds: 200),
+        placeholder: (context, url) => placeholderBuilder(context),
+        errorWidget: (context, url, error) => placeholderBuilder(context),
+      );
     }
-    return Image.file(File(source), fit: fit, errorBuilder: onError);
+    return Image.file(
+      File(source),
+      fit: fit,
+      errorBuilder: (context, error, stack) => placeholderBuilder(context),
+    );
   }
 }
 
 /// Dùng cho các chỗ cần [ImageProvider] (vd. `CircleAvatar.backgroundImage`).
 ImageProvider adaptiveImageProvider(String source) {
   if (kIsWeb || _isNetworkSource(source)) {
-    return NetworkImage(source);
+    return CachedNetworkImageProvider(source);
   }
   return FileImage(File(source));
 }

@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
+import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import 'package:cinex_application/data/mock_data.dart';
 import '../widgets/cinematic_character_card.dart';
 import 'character_form_screen.dart';
 import 'character_detail_screen.dart';
 
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
+import 'package:cinex_application/shared/widgets/pagination_bar.dart';
+
 class CharactersTab extends StatefulWidget {
-  const CharactersTab({super.key});
+  final int projectId;
+  const CharactersTab({super.key, required this.projectId});
 
   @override
   State<CharactersTab> createState() => _CharactersTabState();
@@ -17,14 +22,15 @@ class CharactersTab extends StatefulWidget {
 
 class _CharactersTabState extends State<CharactersTab> {
   RoleType? _selectedRole;
-  bool _isSearching = false;
   String _searchQuery = '';
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CharacterProvider>().loadCharacters();
+      context.read<CharacterProvider>().loadCharacters(widget.projectId);
     });
   }
 
@@ -41,51 +47,10 @@ class _CharactersTabState extends State<CharactersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isWritable = auth.isScreenwriter;
+
     return Scaffold(
-      appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                autofocus: true,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.trim();
-                  });
-                },
-                decoration: const InputDecoration(
-                  hintText: 'Tìm kiếm nhân vật...',
-                  border: InputBorder.none,
-                ),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              )
-            : const Text('CineX Production'),
-        elevation: 0,
-        actions: [
-          if (_isSearching)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                setState(() {
-                  _searchQuery = '';
-                  _isSearching = false;
-                });
-              },
-            )
-          else ...[
-            IconButton(
-              icon: const Icon(Icons.search_outlined),
-              onPressed: () {
-                setState(() {
-                  _isSearching = true;
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {},
-            ),
-          ],
-        ],
-      ),
       body: Consumer<CharacterProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
@@ -94,101 +59,181 @@ class _CharactersTabState extends State<CharactersTab> {
           if (provider.characters.isEmpty) {
             return EmptyStateWidget(
               icon: Icons.person_outline,
-              message: 'Chưa có nhân vật nào.\nBấm nút + để thêm nhân vật đầu tiên.',
+              message: isWritable
+                  ? 'Chưa có nhân vật nào.\nBấm nút + để thêm nhân vật đầu tiên.'
+                  : 'Chưa có nhân vật nào trong hệ thống.',
+              actionLabel: isWritable ? 'Thêm nhân vật' : null,
+              onAction: isWritable ? () => _openForm(context) : null,
             );
           }
 
           final filtered = _getFilteredCharacters(provider.characters);
 
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _FilterChip(
-                          label: 'TẤT CẢ',
-                          isSelected: _selectedRole == null,
-                          onPressed: () =>
-                              setState(() => _selectedRole = null),
+          // Phân trang
+          final totalItems = filtered.length;
+          final totalPages = (totalItems / _itemsPerPage).ceil();
+
+          if (_currentPage > totalPages && totalPages > 0) {
+            _currentPage = totalPages;
+          }
+
+          final startIndex = (_currentPage - 1) * _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final paginated = filtered.sublist(startIndex, endIndex);
+
+          return Column(
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF2C2C2C)),
+                              ),
+                              child: TextField(
+                                onChanged: (value) {
+                                  setState(() {
+                                    _searchQuery = value.trim();
+                                    _currentPage = 1;
+                                  });
+                                },
+                                decoration: const InputDecoration(
+                                  hintText: 'Tìm kiếm nhân vật...',
+                                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _FilterChip(
+                                    label: 'TẤT CẢ',
+                                    isSelected: _selectedRole == null,
+                                    onPressed: () =>
+                                        setState(() {
+                                          _selectedRole = null;
+                                          _currentPage = 1;
+                                        }),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: 'MAIN',
+                                    isSelected: _selectedRole == RoleType.main,
+                                    onPressed: () =>
+                                        setState(() {
+                                          _selectedRole = RoleType.main;
+                                          _currentPage = 1;
+                                        }),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: 'SUPPORT',
+                                    isSelected: _selectedRole == RoleType.support,
+                                    onPressed: () =>
+                                        setState(() {
+                                          _selectedRole = RoleType.support;
+                                          _currentPage = 1;
+                                        }),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: 'CROWD',
+                                    isSelected: _selectedRole == RoleType.crowd,
+                                    onPressed: () =>
+                                        setState(() {
+                                          _selectedRole = RoleType.crowd;
+                                          _currentPage = 1;
+                                        }),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'MAIN',
-                          isSelected: _selectedRole == RoleType.main,
-                          onPressed: () =>
-                              setState(() => _selectedRole = RoleType.main),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'SUPPORT',
-                          isSelected: _selectedRole == RoleType.support,
-                          onPressed: () =>
-                              setState(() => _selectedRole = RoleType.support),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'CROWD',
-                          isSelected: _selectedRole == RoleType.crowd,
-                          onPressed: () =>
-                              setState(() => _selectedRole = RoleType.crowd),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 300,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.1,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) {
+                            final char = paginated[i];
+                            final sceneCount = MockData.characterSceneCount[char.id] ?? 0;
+                            final status = MockData.characterStatus[char.id] ?? '';
+                            final isGreen = MockData.characterStatusGreen[char.id] ?? false;
+
+                            return CinematicCharacterCard(
+                              character: char,
+                              sceneCount: sceneCount,
+                              status: status,
+                              statusGreen: isGreen,
+                              isWritable: isWritable,
+                              onTap: () => _openDetail(context, char),
+                              onEdit: () => _openForm(context, character: char),
+                              onDelete: () async {
+                                await context
+                                    .read<CharacterProvider>()
+                                    .removeCharacter(char.id!);
+                              },
+                            );
+                          },
+                          childCount: paginated.length,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) {
-                      final char = filtered[i];
-                      final sceneCount = MockData.characterSceneCount[char.id] ?? 0;
-                      final status = MockData.characterStatus[char.id] ?? '';
-                      final isGreen = MockData.characterStatusGreen[char.id] ?? false;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: CinematicCharacterCard(
-                          character: char,
-                          sceneCount: sceneCount,
-                          status: status,
-                          statusGreen: isGreen,
-                          onTap: () => _openDetail(context, char),
-                          onEdit: () => _openForm(context, character: char),
-                          onDelete: () async {
-                            await context
-                                .read<CharacterProvider>()
-                                .removeCharacter(char.id!);
-                          },
-                        ),
-                      );
-                    },
-                    childCount: filtered.length,
-                  ),
-                ),
+              PaginationBar(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                totalItems: totalItems,
+                itemsPerPage: _itemsPerPage,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
               ),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_character_fab',
-        onPressed: () => _openForm(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: isWritable
+          ? FloatingActionButton(
+              heroTag: 'add_character_fab',
+              onPressed: () => _openForm(context),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
-  void _openForm(BuildContext context, {character}) {
+  void _openForm(BuildContext context, {Character? character}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CharacterFormScreen(
+          projectId: widget.projectId,
           character: character,
         ),
       ),

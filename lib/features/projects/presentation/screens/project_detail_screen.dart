@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
@@ -18,6 +19,7 @@ import 'package:cinex_application/core/utils/pdf_exporter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Project project;
@@ -65,12 +67,33 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final acts = await _api.getActsForProject(_project.id!);
       final scenes = await _api.getScenesForProject(_project.id!);
       
-      // Calculate Stats
+      final prefs = await SharedPreferences.getInstance();
+
+      // Calculate Stats based on actual shooting progress
       final total = scenes.length;
-      final done = scenes.where((s) => s.status == SceneStatus.done).length;
-      final inProg = scenes.where((s) => s.status == SceneStatus.inProgress).length;
-      final todo = scenes.where((s) => s.status == SceneStatus.todo).length;
+      int done = 0;
+      int inProg = 0;
+      int todo = 0;
+
+      for (var s in scenes) {
+        if (s.status != SceneStatus.done) {
+          // If script is not done, shooting status is waiting to be written
+          todo++;
+        } else {
+          final savedStatus = prefs.getString('proj_${_project.id}_scene_${s.id}_shooting_status');
+          final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
+          if (shootingStatus == SceneStatus.done) {
+            done++;
+          } else if (shootingStatus == SceneStatus.inProgress) {
+            inProg++;
+          } else {
+            todo++;
+          }
+        }
+      }
+
       final progressVal = total == 0 ? 0.0 : done / total;
+      await prefs.setDouble('proj_${_project.id}_last_known_shooting_progress', progressVal);
 
       // Extract unique characters and locations appearing in scenes
       final uniqueChars = scenes.expand((s) => s.characters).map((c) => c.id).toSet();
@@ -285,17 +308,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         statusLabel = 'LẬP KẾ HOẠCH';
     }
 
+    final auth = context.watch<AuthProvider>();
+    final isWritable = auth.isScreenwriter;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final metadataCols = screenWidth > 800 ? 4 : (screenWidth > 500 ? 2 : 1);
+    final metadataRatio = screenWidth > 800 ? 3.5 : (screenWidth > 500 ? 2.5 : 2.0);
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Cinematic Flexible Header
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: CustomScrollView(
+                slivers: [
+              // Cinematic Flexible Header
+              SliverAppBar(
+                expandedHeight: 280,
+                pinned: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
                   ImageCard(
                     imageUrl: _project.posterUrl,
                     onTap: () {},
@@ -325,27 +358,28 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               StatusBadge(status: statusType, label: statusLabel),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.white),
-                                    onPressed: _editProject,
-                                    tooltip: 'Chỉnh sửa dự án',
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.black45,
+                              if (isWritable)
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.white),
+                                      onPressed: _editProject,
+                                      tooltip: 'Chỉnh sửa dự án',
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.black45,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                    onPressed: _deleteProject,
-                                    tooltip: 'Xóa dự án',
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.black45,
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                      onPressed: _deleteProject,
+                                      tooltip: 'Xóa dự án',
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.black45,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -365,39 +399,121 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Metadata Grid
-                GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.6,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _MetadataCard(
-                      label: 'Ngày bắt đầu',
-                      value: _formatDate(_project.startDate),
-                      icon: Icons.calendar_today_outlined,
-                    ),
-                    _MetadataCard(
-                      label: 'Ngày kết thúc',
-                      value: _formatDate(_project.endDate),
-                      icon: Icons.event_outlined,
-                    ),
-                    _MetadataCard(
-                      label: 'Đạo diễn',
-                      value: _project.director ?? 'TBD',
-                      icon: Icons.person_outline,
-                    ),
-                    _MetadataCard(
-                      label: 'Đoàn phim',
-                      value: _project.crewCount > 0
-                          ? '${_project.crewCount} người'
-                          : 'TBD',
-                      icon: Icons.people_outline,
-                    ),
-                  ],
-                ),
+                // Metadata Cards (Responsive Layout using Row/Column instead of GridView to avoid childAspectRatio height limits)
+                if (screenWidth > 900)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MetadataCard(
+                          label: 'Ngày bắt đầu',
+                          value: _formatDate(_project.startDate),
+                          icon: Icons.calendar_today_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MetadataCard(
+                          label: 'Ngày kết thúc',
+                          value: _formatDate(_project.endDate),
+                          icon: Icons.event_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MetadataCard(
+                          label: 'Đạo diễn',
+                          value: _project.director ?? 'TBD',
+                          icon: Icons.person_outline,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MetadataCard(
+                          label: 'Đoàn phim',
+                          value: _project.crewCount > 0
+                              ? '${_project.crewCount} người'
+                              : 'TBD',
+                          icon: Icons.people_outline,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (screenWidth > 600)
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _MetadataCard(
+                              label: 'Ngày bắt đầu',
+                              value: _formatDate(_project.startDate),
+                              icon: Icons.calendar_today_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _MetadataCard(
+                              label: 'Ngày kết thúc',
+                              value: _formatDate(_project.endDate),
+                              icon: Icons.event_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _MetadataCard(
+                              label: 'Đạo diễn',
+                              value: _project.director ?? 'TBD',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _MetadataCard(
+                              label: 'Đoàn phim',
+                              value: _project.crewCount > 0
+                                  ? '${_project.crewCount} người'
+                                  : 'TBD',
+                              icon: Icons.people_outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _MetadataCard(
+                        label: 'Ngày bắt đầu',
+                        value: _formatDate(_project.startDate),
+                        icon: Icons.calendar_today_outlined,
+                      ),
+                      const SizedBox(height: 12),
+                      _MetadataCard(
+                        label: 'Ngày kết thúc',
+                        value: _formatDate(_project.endDate),
+                        icon: Icons.event_outlined,
+                      ),
+                      const SizedBox(height: 12),
+                      _MetadataCard(
+                        label: 'Đạo diễn',
+                        value: _project.director ?? 'TBD',
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 12),
+                      _MetadataCard(
+                        label: 'Đoàn phim',
+                        value: _project.crewCount > 0
+                            ? '${_project.crewCount} người'
+                            : 'TBD',
+                        icon: Icons.people_outline,
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 20),
 
                 // Description
@@ -435,10 +551,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   const Center(child: CircularProgressIndicator()),
                   const SizedBox(height: 20),
                 ],
-
-                // Action Buttons Grid (4 Options now)
-                _buildActionGrid(theme),
-                const SizedBox(height: 24),
 
                 // Act Progress Section
                 SectionCard(
@@ -478,10 +590,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           ),
         ],
       ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 80,
+          alignment: Alignment.center,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildActionGrid(theme),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildBentoDashboard(ThemeData theme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -548,29 +676,54 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         const SizedBox(height: 12),
 
         // 4 Bento Stats grid
-        Row(
-          children: [
-            Expanded(
-              child: _buildBentoStatCard('NHÂN VẬT', '$_characterCount', Icons.groups, Colors.blue),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildBentoStatCard('PHÂN CẢNH', '$_totalScenes', Icons.movie_filter, Colors.purple),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildBentoStatCard('HỒI', '$_actCount', Icons.layers, Colors.orange),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildBentoStatCard('BỐI CẢNH', '$_locationCount', Icons.location_on, Colors.green),
-            ),
-          ],
-        ),
+        if (isLargeScreen)
+          Row(
+            children: [
+              Expanded(
+                child: _buildBentoStatCard('NHÂN VẬT', '$_characterCount', Icons.groups, Colors.blue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBentoStatCard('PHÂN CẢNH', '$_totalScenes', Icons.movie_filter, Colors.purple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBentoStatCard('HỒI', '$_actCount', Icons.layers, Colors.orange),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBentoStatCard('BỐI CẢNH', '$_locationCount', Icons.location_on, Colors.green),
+              ),
+            ],
+          )
+        else
+          Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildBentoStatCard('NHÂN VẬT', '$_characterCount', Icons.groups, Colors.blue),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildBentoStatCard('PHÂN CẢNH', '$_totalScenes', Icons.movie_filter, Colors.purple),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildBentoStatCard('HỒI', '$_actCount', Icons.layers, Colors.orange),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildBentoStatCard('BỐI CẢNH', '$_locationCount', Icons.location_on, Colors.green),
+                  ),
+                ],
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -625,58 +778,118 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Widget _buildActionGrid(ThemeData theme) {
-    return GridView.count(
-      crossAxisCount: 4,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 0.95,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _ActionButton(
-          label: 'Kịch Bản',
-          icon: Icons.movie_filter_outlined,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => WorkspaceScreen(project: _project),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Kịch Bản',
+              icon: Icons.movie_filter_outlined,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => WorkspaceScreen(project: _project, initialTab: 0),
+                ),
+              ).then((_) => _loadProjectData()),
             ),
-          ).then((_) => _loadProjectData()),
-        ),
-        _ActionButton(
-          label: 'Lịch Quay',
-          icon: Icons.calendar_month_outlined,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProjectProductionScreen(
-                projectId: _project.id!,
-                projectTitle: _project.title,
-                initialTab: 0,
-              ),
+          ),
+          _toolbarDivider(),
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Nhân Vật',
+              icon: Icons.people_outline,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => WorkspaceScreen(project: _project, initialTab: 1),
+                ),
+              ).then((_) => _loadProjectData()),
             ),
-          ).then((_) => _loadProjectData()),
-        ),
-        _ActionButton(
-          label: 'Phân Tích',
-          icon: Icons.analytics_outlined,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProjectProductionScreen(
-                projectId: _project.id!,
-                projectTitle: _project.title,
-                initialTab: 1,
-              ),
+          ),
+          _toolbarDivider(),
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Bối Cảnh',
+              icon: Icons.location_on_outlined,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => WorkspaceScreen(project: _project, initialTab: 2),
+                ),
+              ).then((_) => _loadProjectData()),
             ),
-          ).then((_) => _loadProjectData()),
-        ),
-        _ActionButton(
-          label: 'Xuất PDF',
-          icon: Icons.description_outlined,
-          onTap: _showExportOptions,
-        ),
-      ],
+          ),
+          _toolbarDivider(),
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Lịch Quay',
+              icon: Icons.calendar_month_outlined,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProjectProductionScreen(
+                    projectId: _project.id!,
+                    projectTitle: _project.title,
+                    projectStartDate: _project.startDate,
+                    projectEndDate: _project.endDate,
+                    initialTab: 0,
+                  ),
+                ),
+              ).then((_) => _loadProjectData()),
+            ),
+          ),
+          _toolbarDivider(),
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Phân Tích',
+              icon: Icons.analytics_outlined,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProjectProductionScreen(
+                    projectId: _project.id!,
+                    projectTitle: _project.title,
+                    projectStartDate: _project.startDate,
+                    projectEndDate: _project.endDate,
+                    initialTab: 1,
+                  ),
+                ),
+              ).then((_) => _loadProjectData()),
+            ),
+          ),
+          _toolbarDivider(),
+          Expanded(
+            child: _ToolbarItem(
+              label: 'Xuất PDF',
+              icon: Icons.description_outlined,
+              onTap: _showExportOptions,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toolbarDivider() {
+    return Container(
+      height: 32,
+      width: 1,
+      color: const Color(0xFF2C2C2C),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 
@@ -709,22 +922,42 @@ class _MetadataCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
           children: [
-            Icon(icon, size: 20, color: theme.colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(label, style: theme.textTheme.labelSmall),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.grey,
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -733,12 +966,12 @@ class _MetadataCard extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _ToolbarItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _ActionButton({
+  const _ToolbarItem({
     required this.label,
     required this.icon,
     required this.onTap,
@@ -747,25 +980,56 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLarge = screenWidth > 750;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Card(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 28, color: theme.colorScheme.primary),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: isLarge
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }

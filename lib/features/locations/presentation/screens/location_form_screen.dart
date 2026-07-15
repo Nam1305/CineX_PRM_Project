@@ -8,7 +8,8 @@ import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class LocationFormScreen extends StatefulWidget {
   final Location? location;
-  const LocationFormScreen({super.key, this.location});
+  final int? projectId;
+  const LocationFormScreen({super.key, this.location, this.projectId});
 
   @override
   State<LocationFormScreen> createState() => _LocationFormScreenState();
@@ -105,6 +106,7 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     final provider = context.read<LocationProvider>();
     final location = Location(
       id: widget.location?.id,
+      projectId: widget.location?.projectId ?? widget.projectId,
       name: _nameCtrl.text.trim(),
       setting: _setting,
       timeOfDay: _timeOfDay,

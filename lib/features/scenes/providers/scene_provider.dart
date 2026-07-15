@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/utils/enums.dart';
 
 class SceneProvider extends ChangeNotifier {
   final _api = ApiService();
@@ -33,7 +34,9 @@ class SceneProvider extends ChangeNotifier {
     try {
       final created = await _api.createScene(scene, characterIds);
       if (created == null) return false;
-      await loadScenesForAct(scene.actId);
+      _scenesByAct.putIfAbsent(scene.actId, () => []);
+      _scenesByAct[scene.actId]!.add(created);
+      notifyListeners();
       return true;
     } catch (e) {
       _error = 'Không thể thêm cảnh: $e';
@@ -57,7 +60,14 @@ class SceneProvider extends ChangeNotifier {
         previousCharacterIds: previousCharacterIds,
       );
       if (updated == null) return false;
-      await loadScenesForAct(scene.actId);
+      final list = _scenesByAct[scene.actId];
+      if (list != null) {
+        final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
+        if (index >= 0) {
+          list[index] = updated;
+        }
+      }
+      notifyListeners();
       return true;
     } catch (e) {
       _error = 'Không thể cập nhật cảnh: $e';
@@ -67,11 +77,26 @@ class SceneProvider extends ChangeNotifier {
   }
 
   Future<bool> removeScene(int id, int actId) async {
+    final list = _scenesByAct[actId];
+    if (list == null) return false;
+    final index = list.indexWhere((s) => s.id == id);
+    if (index < 0) return false;
+    final backup = list[index];
+
+    list.removeAt(index);
+    notifyListeners();
+
     try {
       final ok = await _api.deleteScene(id);
-      if (ok) await loadScenesForAct(actId);
-      return ok;
+      if (!ok) {
+        _scenesByAct[actId]?.insert(index, backup);
+        _error = 'Không thể xoá cảnh từ máy chủ';
+        notifyListeners();
+        return false;
+      }
+      return true;
     } catch (e) {
+      _scenesByAct[actId]?.insert(index, backup);
       _error = 'Không thể xoá cảnh: $e';
       notifyListeners();
       return false;
@@ -82,5 +107,48 @@ class SceneProvider extends ChangeNotifier {
     return scenesForAct(actId).any(
       (s) => s.sceneNumber == sceneNumber && s.id != excludeId,
     );
+  }
+
+  /// Quick status update — only changes the status field without touching characters.
+  Future<bool> updateSceneStatus(Scene scene, SceneStatus newStatus) async {
+    try {
+      final updated = scene.copyWith(status: newStatus);
+      final result = await _api.updateScene(
+        updated,
+        scene.characters.map((c) => c.id!).toList(),
+        previousCharacterIds: scene.characters.map((c) => c.id!).toList(),
+      );
+      if (result == null) return false;
+      final list = _scenesByAct[scene.actId];
+      if (list != null) {
+        final index = list.indexWhere((s) => s.id == scene.id);
+        if (index >= 0) {
+          list[index] = result.copyWith(
+            location: scene.location,
+            characters: scene.characters,
+          );
+        }
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Không thể cập nhật trạng thái: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> restoreScene(int id, int actId) async {
+    try {
+      final ok = await _api.restoreScene(id);
+      if (ok) {
+        await loadScenesForAct(actId);
+      }
+      return ok;
+    } catch (e) {
+      _error = 'Không thể khôi phục phân cảnh: $e';
+      notifyListeners();
+      return false;
+    }
   }
 }

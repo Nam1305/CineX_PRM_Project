@@ -24,7 +24,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations();
+      context.read<LocationProvider>().loadLocations(101);
     });
   }
 

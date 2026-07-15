@@ -7,12 +7,14 @@ class LocationTile extends StatelessWidget {
   final Location location;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final bool isWritable;
 
   const LocationTile({
     super.key,
     required this.location,
     required this.onTap,
     required this.onDelete,
+    this.isWritable = true,
   });
 
   @override
@@ -37,25 +39,42 @@ class LocationTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Chip(
-            label: Text(location.setting.fullLabel,
-                style: const TextStyle(fontSize: 11)),
+            label: Text(
+              location.setting.fullLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: location.setting == LocationSetting.interior
+                    ? Colors.blue.shade200
+                    : Colors.orange.shade200,
+              ),
+            ),
+            backgroundColor: location.setting == LocationSetting.interior
+                ? Colors.blue.shade900.withValues(alpha: 0.3)
+                : Colors.orange.shade900.withValues(alpha: 0.3),
+            side: BorderSide(
+              color: location.setting == LocationSetting.interior
+                  ? Colors.blue.shade700
+                  : Colors.orange.shade700,
+            ),
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () async {
-              final confirmed = await ConfirmDialog.show(
-                context,
-                title: 'Xoá bối cảnh',
-                content: 'Xoá "${location.name}"? Các cảnh liên kết sẽ mất bối cảnh.',
-              );
-              if (confirmed) onDelete();
-            },
-          ),
+          if (isWritable)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                final confirmed = await ConfirmDialog.show(
+                  context,
+                  title: 'Xoá bối cảnh',
+                  content: 'Xoá "${location.name}"? Các cảnh liên kết sẽ mất bối cảnh.',
+                );
+                if (confirmed) onDelete();
+              },
+            ),
         ],
       ),
-      onTap: onTap,
+      onTap: isWritable ? onTap : null,
     );
   }
 }

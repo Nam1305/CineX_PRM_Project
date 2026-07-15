@@ -9,10 +9,12 @@ import 'package:cinex_application/features/scenes/providers/scene_provider.dart'
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class SceneFormScreen extends StatefulWidget {
+  final int projectId;
   final int actId;
   final Scene? scene;
   const SceneFormScreen({
     super.key,
+    required this.projectId,
     required this.actId,
     this.scene,
   });
@@ -48,8 +50,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations();
-      context.read<CharacterProvider>().loadCharacters();
+      context.read<LocationProvider>().loadLocations(widget.projectId);
+      context.read<CharacterProvider>().loadCharacters(widget.projectId);
     });
   }
 

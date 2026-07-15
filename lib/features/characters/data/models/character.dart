@@ -2,6 +2,7 @@ import 'package:cinex_application/core/utils/enums.dart';
 
 class Character {
   final int? id;
+  final int? projectId;
   final String name;
   final RoleType roleType;
   final String? actorName;
@@ -11,6 +12,7 @@ class Character {
 
   const Character({
     this.id,
+    this.projectId,
     required this.name,
     this.roleType = RoleType.main,
     this.actorName,
@@ -22,6 +24,7 @@ class Character {
   /// Parse từ JSON OData server (PascalCase)
   factory Character.fromMap(Map<String, dynamic> map) => Character(
         id: map['Id'] as int? ?? map['id'] as int?,
+        projectId: map['ProjectId'] as int? ?? map['projectId'] as int?,
         name: (map['Name'] ?? map['name'] ?? '') as String,
         roleType: RoleTypeExt.fromDb(
           map['Role'] as String? ?? map['role_type'] as String? ?? 'MAIN',
@@ -34,6 +37,7 @@ class Character {
 
   /// Body gửi lên server khi tạo/cập nhật (OData PascalCase field names)
   Map<String, dynamic> toMap() => {
+        'projectId': projectId,
         'name': name,
         'role': roleType.dbValue,
         'actorName': actorName,
@@ -44,6 +48,7 @@ class Character {
 
   Character copyWith({
     int? id,
+    int? projectId,
     String? name,
     RoleType? roleType,
     String? actorName,
@@ -53,6 +58,7 @@ class Character {
   }) =>
       Character(
         id: id ?? this.id,
+        projectId: projectId ?? this.projectId,
         name: name ?? this.name,
         roleType: roleType ?? this.roleType,
         actorName: actorName ?? this.actorName,

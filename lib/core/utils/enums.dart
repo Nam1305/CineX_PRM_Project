@@ -75,6 +75,17 @@ extension SceneStatusExt on SceneStatus {
     }
   }
 
+  String get shootingLabel {
+    switch (this) {
+      case SceneStatus.todo:
+        return 'Chờ quay';
+      case SceneStatus.inProgress:
+        return 'Đang quay';
+      case SceneStatus.done:
+        return 'Đã quay xong';
+    }
+  }
+
   static SceneStatus fromDb(String value) {
     switch (value) {
       case 'IN_PROGRESS':

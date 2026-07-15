@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ImageCard extends StatelessWidget {
   final String? imageUrl;
@@ -33,22 +34,18 @@ class ImageCard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: imageUrl != null
-                ? Image.network(
-                    imageUrl!,
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    placeholder: (context, url) => Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) =>
                         _buildPlaceholder(theme),
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      );
-                    },
                   )
                 : _buildPlaceholder(theme),
           ),

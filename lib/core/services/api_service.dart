@@ -10,10 +10,16 @@ import 'package:image_picker/image_picker.dart' show XFile;
 
 class ApiService {
   static const String baseUrl = 'http://localhost:5274/odata'; // local test
-  // static const String baseUrl =
-  //     'https://cinex-api.onrender.com/odata'; // production
+  static String? token;
+  static final http.Client _client = http.Client();
 
-  static const _headers = {'Content-Type': 'application/json'};
+  static Map<String, String> get _headers {
+    final map = {'Content-Type': 'application/json'};
+    if (token != null) {
+      map['Authorization'] = 'Bearer $token';
+    }
+    return map;
+  }
 
   // ─── PROJECTS ─────────────────────────────────────────────────────────────
 
@@ -21,7 +27,7 @@ class ApiService {
   Future<List<Project>> getProjects() async {
     final url = Uri.parse('$baseUrl/Projects');
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -53,7 +59,7 @@ class ApiService {
         'Status': project.status,
         'CrewCount': project.crewCount,
       });
-      final response = await http.post(url, headers: _headers, body: body);
+      final response = await _client.post(url, headers: _headers, body: body);
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return Project.fromMap(data as Map<String, dynamic>);
@@ -83,7 +89,7 @@ class ApiService {
         'Status': project.status,
         'CrewCount': project.crewCount,
       });
-      final response = await http.patch(url, headers: _headers, body: body);
+      final response = await _client.patch(url, headers: _headers, body: body);
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (response.body.isEmpty) {
           return project;
@@ -135,7 +141,7 @@ class ApiService {
   Future<bool> deleteProject(int id) async {
     final url = Uri.parse('$baseUrl/Projects($id)');
     try {
-      final response = await http.delete(url);
+      final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
       print('ApiService.deleteProject error: $e');
@@ -152,7 +158,7 @@ class ApiService {
       '$baseUrl/Acts?\$filter=ProjectId eq $projectId&\$orderby=SequenceOrder',
     );
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -172,7 +178,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/Acts');
     try {
       final response =
-          await http.post(url, headers: _headers, body: jsonEncode(act.toMap()));
+          await _client.post(url, headers: _headers, body: jsonEncode(act.toMap()));
       if (response.statusCode == 201) {
         return Act.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
       }
@@ -188,7 +194,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/Acts(${act.id})');
     try {
       final response =
-          await http.patch(url, headers: _headers, body: jsonEncode(act.toMap()));
+          await _client.patch(url, headers: _headers, body: jsonEncode(act.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       print('ApiService.updateAct error: $e');
@@ -199,7 +205,7 @@ class ApiService {
   Future<bool> deleteAct(int id) async {
     final url = Uri.parse('$baseUrl/Acts($id)');
     try {
-      final response = await http.delete(url);
+      final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
       print('ApiService.deleteAct error: $e');
@@ -208,12 +214,11 @@ class ApiService {
   }
 
   // ─── LOCATIONS ────────────────────────────────────────────────────────────
-  // Location là entity dùng chung toàn hệ thống trên backend (không có ProjectId).
 
-  Future<List<Location>> getLocations() async {
-    final url = Uri.parse('$baseUrl/Locations');
+  Future<List<Location>> getLocations(int projectId) async {
+    final url = Uri.parse('$baseUrl/Locations?\$filter=ProjectId eq $projectId');
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -232,7 +237,7 @@ class ApiService {
   Future<Location?> createLocation(Location location) async {
     final url = Uri.parse('$baseUrl/Locations');
     try {
-      final response = await http.post(url,
+      final response = await _client.post(url,
           headers: _headers, body: jsonEncode(location.toMap()));
       if (response.statusCode == 201) {
         return Location.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
@@ -248,7 +253,7 @@ class ApiService {
     if (location.id == null) return false;
     final url = Uri.parse('$baseUrl/Locations(${location.id})');
     try {
-      final response = await http.patch(url,
+      final response = await _client.patch(url,
           headers: _headers, body: jsonEncode(location.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
@@ -260,7 +265,7 @@ class ApiService {
   Future<bool> deleteLocation(int id) async {
     final url = Uri.parse('$baseUrl/Locations($id)');
     try {
-      final response = await http.delete(url);
+      final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
       print('ApiService.deleteLocation error: $e');
@@ -271,10 +276,11 @@ class ApiService {
   // ─── CHARACTERS ───────────────────────────────────────────────────────────
   // Character là entity dùng chung toàn hệ thống trên backend (không có ProjectId).
 
-  Future<List<Character>> getCharacters() async {
-    final url = Uri.parse('$baseUrl/Characters');
+  Future<List<Character>> getCharacters({int? projectId}) async {
+    final filter = projectId != null ? '?\$filter=ProjectId eq $projectId' : '';
+    final url = Uri.parse('$baseUrl/Characters$filter');
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -293,7 +299,7 @@ class ApiService {
   Future<Character?> createCharacter(Character character) async {
     final url = Uri.parse('$baseUrl/Characters');
     try {
-      final response = await http.post(url,
+      final response = await _client.post(url,
           headers: _headers, body: jsonEncode(character.toMap()));
       if (response.statusCode == 201) {
         return Character.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
@@ -309,7 +315,7 @@ class ApiService {
     if (character.id == null) return false;
     final url = Uri.parse('$baseUrl/Characters(${character.id})');
     try {
-      final response = await http.patch(url,
+      final response = await _client.patch(url,
           headers: _headers, body: jsonEncode(character.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
@@ -321,7 +327,7 @@ class ApiService {
   Future<bool> deleteCharacter(int id) async {
     final url = Uri.parse('$baseUrl/Characters($id)');
     try {
-      final response = await http.delete(url);
+      final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
       print('ApiService.deleteCharacter error: $e');
@@ -378,7 +384,7 @@ class ApiService {
       '$baseUrl/Scenes?\$expand=Location,SceneCharacters(\$expand=Character)&\$filter=Act/ProjectId eq $projectId',
     );
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -400,7 +406,7 @@ class ApiService {
       '$baseUrl/Scenes?\$expand=Location,SceneCharacters(\$expand=Character)&\$filter=ActId eq $actId&\$orderby=SceneNumber',
     );
     try {
-      final response = await http.get(url);
+      final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
@@ -429,7 +435,7 @@ class ApiService {
   Future<Scene?> createScene(Scene scene, List<int> characterIds) async {
     final url = Uri.parse('$baseUrl/Scenes');
     try {
-      final response = await http.post(url,
+      final response = await _client.post(url,
           headers: _headers, body: jsonEncode(_sceneBody(scene, characterIds)));
       if (response.statusCode == 201) {
         return _sceneFromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -460,7 +466,7 @@ class ApiService {
     if (scene.id == null) return null;
     final url = Uri.parse('$baseUrl/Scenes(${scene.id})');
     try {
-      final response = await http.patch(
+      final response = await _client.patch(
         url,
         headers: _headers,
         body: jsonEncode({
@@ -485,10 +491,62 @@ class ApiService {
   Future<bool> deleteScene(int id) async {
     final url = Uri.parse('$baseUrl/Scenes($id)');
     try {
-      final response = await http.delete(url);
+      final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
       print('ApiService.deleteScene error: $e');
+      return false;
+    }
+  }
+
+  Future<List<Act>> getDeletedActs(int projectId) async {
+    final url = Uri.parse('$baseUrl/api/Acts/Deleted/$projectId');
+    try {
+      final response = await _client.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(response.body);
+        return list.map((e) => Act.fromMap(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('ApiService.getDeletedActs error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Scene>> getDeletedScenes(int projectId) async {
+    final url = Uri.parse('$baseUrl/api/Scenes/Deleted/$projectId');
+    try {
+      final response = await _client.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(response.body);
+        return list.map((e) => _sceneFromJson(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('ApiService.getDeletedScenes error: $e');
+      return [];
+    }
+  }
+
+  Future<bool> restoreAct(int id) async {
+    final url = Uri.parse('$baseUrl/api/Acts/Restore/$id');
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.restoreAct error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> restoreScene(int id) async {
+    final url = Uri.parse('$baseUrl/api/Scenes/Restore/$id');
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.restoreScene error: $e');
       return false;
     }
   }

@@ -7,12 +7,16 @@ import 'package:cinex_application/features/production/presentation/screens/produ
 class ProjectProductionScreen extends StatelessWidget {
   final int projectId;
   final String projectTitle;
+  final String? projectStartDate;
+  final String? projectEndDate;
   final int initialTab; // 0 = Lịch Quay, 1 = Thống kê / Phân tích
 
   const ProjectProductionScreen({
     super.key,
     required this.projectId,
     required this.projectTitle,
+    this.projectStartDate,
+    this.projectEndDate,
     this.initialTab = 0,
   });
 
@@ -31,6 +35,8 @@ class ProjectProductionScreen extends StatelessWidget {
         body: ProductionTab(
           projectId: projectId,
           initialTab: initialTab,
+          projectStartDate: projectStartDate,
+          projectEndDate: projectEndDate,
         ),
       ),
     );

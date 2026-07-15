@@ -5,24 +5,34 @@ import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import '../widgets/location_tile.dart';
 import 'location_form_screen.dart';
 
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
+import 'package:cinex_application/shared/widgets/pagination_bar.dart';
+
 class LocationsTab extends StatefulWidget {
-  const LocationsTab({super.key});
+  final int projectId;
+  const LocationsTab({super.key, required this.projectId});
 
   @override
   State<LocationsTab> createState() => _LocationsTabState();
 }
 
 class _LocationsTabState extends State<LocationsTab> {
+  int _currentPage = 1;
+  static const int _itemsPerPage = 10;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations();
+      context.read<LocationProvider>().loadLocations(widget.projectId);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isWritable = auth.isScreenwriter;
+
     return Scaffold(
       body: Consumer<LocationProvider>(
         builder: (context, provider, _) {
@@ -32,31 +42,68 @@ class _LocationsTabState extends State<LocationsTab> {
           if (provider.locations.isEmpty) {
             return EmptyStateWidget(
               icon: Icons.location_off_outlined,
-              message: 'Chưa có bối cảnh nào.\nBấm nút + để thêm bối cảnh đầu tiên.',
+              message: isWritable
+                  ? 'Chưa có bối cảnh nào.\nBấm nút + để thêm bối cảnh đầu tiên.'
+                  : 'Chưa có bối cảnh nào trong hệ thống.',
+              actionLabel: isWritable ? 'Thêm bối cảnh' : null,
+              onAction: isWritable ? () => _openForm(context) : null,
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: provider.locations.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, i) {
-              final loc = provider.locations[i];
-              return LocationTile(
-                location: loc,
-                onTap: () => _openForm(context, location: loc),
-                onDelete: () async {
-                  await provider.removeLocation(loc.id!);
-                },
+
+          // Phân trang
+          final totalItems = provider.locations.length;
+          final totalPages = (totalItems / _itemsPerPage).ceil();
+
+          if (_currentPage > totalPages && totalPages > 0) {
+            _currentPage = totalPages;
+          }
+
+          final startIndex = (_currentPage - 1) * _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final paginatedLocations = provider.locations.sublist(startIndex, endIndex);
+
+          return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: paginatedLocations.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final loc = paginatedLocations[i];
+                        return LocationTile(
+                          location: loc,
+                          isWritable: isWritable,
+                          onTap: () => _openForm(context, location: loc),
+                          onDelete: () async {
+                            await provider.removeLocation(loc.id!);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  PaginationBar(
+                    currentPage: _currentPage,
+                    totalPages: totalPages,
+                    totalItems: totalItems,
+                    itemsPerPage: _itemsPerPage,
+                    onPageChanged: (page) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    },
+                  ),
+                ],
               );
-            },
-          );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_location_fab',
-        onPressed: () => _openForm(context),
-        child: const Icon(Icons.add_location_outlined),
-      ),
+      floatingActionButton: isWritable
+          ? FloatingActionButton(
+              heroTag: 'add_location_fab',
+              onPressed: () => _openForm(context),
+              child: const Icon(Icons.add_location_outlined),
+            )
+          : null,
     );
   }
 
@@ -66,6 +113,7 @@ class _LocationsTabState extends State<LocationsTab> {
       MaterialPageRoute(
         builder: (_) => LocationFormScreen(
           location: location,
+          projectId: widget.projectId,
         ),
       ),
     );
