@@ -362,11 +362,11 @@ class _ProjectCard extends StatefulWidget {
 
 class _ProjectCardState extends State<_ProjectCard> {
   double _localProgress = 0.0;
-  bool _loadingProgress = true;
 
   @override
   void initState() {
     super.initState();
+    _loadCachedProgress();
     _loadLocalProgress();
   }
 
@@ -376,11 +376,20 @@ class _ProjectCardState extends State<_ProjectCard> {
     _loadLocalProgress();
   }
 
+  Future<void> _loadCachedProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getDouble('proj_${widget.project.id}_last_known_shooting_progress');
+      if (cached != null && mounted) {
+        setState(() {
+          _localProgress = cached;
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadLocalProgress() async {
-    if (widget.project.id == null) {
-      if (mounted) setState(() => _loadingProgress = false);
-      return;
-    }
+    if (widget.project.id == null) return;
     try {
       // Race condition safety: wait for ApiService token to load from tryAutoLogin
       int retries = 0;
@@ -404,17 +413,17 @@ class _ProjectCardState extends State<_ProjectCard> {
           }
         }
       }
+
+      final calculatedProgress = total == 0 ? 0.0 : done / total;
+      await prefs.setDouble('proj_${widget.project.id}_last_known_shooting_progress', calculatedProgress);
+
       if (mounted) {
         setState(() {
-          _localProgress = total == 0 ? 0.0 : done / total;
-          _loadingProgress = false;
+          _localProgress = calculatedProgress;
         });
       }
     } catch (e) {
       print('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
-      if (mounted) {
-        setState(() => _loadingProgress = false);
-      }
     }
   }
 
@@ -458,7 +467,7 @@ class _ProjectCardState extends State<_ProjectCard> {
     final theme = Theme.of(context);
     final statusType = _getStatusType(widget.project.status);
     final statusLabel = _getStatusLabel(widget.project.status);
-    final progress = _loadingProgress ? widget.project.progress : _localProgress;
+    final progress = _localProgress;
 
     return Card(
       clipBehavior: Clip.antiAlias,

@@ -93,6 +93,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       }
 
       final progressVal = total == 0 ? 0.0 : done / total;
+      await prefs.setDouble('proj_${_project.id}_last_known_shooting_progress', progressVal);
 
       // Extract unique characters and locations appearing in scenes
       final uniqueChars = scenes.expand((s) => s.characters).map((c) => c.id).toSet();
