@@ -13,14 +13,12 @@ class LocationProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Bối cảnh là dữ liệu dùng chung toàn hệ thống trên backend (không thuộc
-  /// riêng 1 project), nên danh sách này không lọc theo project.
-  Future<void> loadLocations() async {
+  Future<void> loadLocations(int projectId) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     try {
-      _locations = await _api.getLocations();
+      _locations = await _api.getLocations(projectId);
     } catch (e) {
       _error = 'Không thể tải bối cảnh: $e';
       _locations = [];
@@ -34,7 +32,8 @@ class LocationProvider extends ChangeNotifier {
     try {
       final created = await _api.createLocation(location);
       if (created == null) return false;
-      await loadLocations();
+      _locations.add(created);
+      notifyListeners();
       return true;
     } catch (e) {
       _error = 'Không thể thêm bối cảnh: $e';
@@ -46,7 +45,13 @@ class LocationProvider extends ChangeNotifier {
   Future<bool> editLocation(Location location) async {
     try {
       final ok = await _api.updateLocation(location);
-      if (ok) await loadLocations();
+      if (ok) {
+        final index = _locations.indexWhere((l) => l.id == location.id);
+        if (index >= 0) {
+          _locations[index] = location;
+        }
+        notifyListeners();
+      }
       return ok;
     } catch (e) {
       _error = 'Không thể cập nhật bối cảnh: $e';
@@ -56,11 +61,24 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<bool> removeLocation(int id) async {
+    final index = _locations.indexWhere((l) => l.id == id);
+    if (index < 0) return false;
+    final backup = _locations[index];
+
+    _locations.removeAt(index);
+    notifyListeners();
+
     try {
       final ok = await _api.deleteLocation(id);
-      if (ok) await loadLocations();
-      return ok;
+      if (!ok) {
+        _locations.insert(index, backup);
+        _error = 'Không thể xoá bối cảnh từ máy chủ';
+        notifyListeners();
+        return false;
+      }
+      return true;
     } catch (e) {
+      _locations.insert(index, backup);
       _error = 'Không thể xoá bối cảnh: $e';
       notifyListeners();
       return false;

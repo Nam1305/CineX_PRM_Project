@@ -66,7 +66,7 @@ class IntExtPieChart extends StatelessWidget {
                         PieChartSectionData(
                           value: interior.toDouble(),
                           title: '$intPercent%',
-                          color: const Color(0xFFFF571A), // primary
+                          color: Colors.blue.shade600,
                           radius: 50,
                           titleStyle: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
@@ -74,10 +74,10 @@ class IntExtPieChart extends StatelessWidget {
                         PieChartSectionData(
                           value: exterior.toDouble(),
                           title: '$extPercent%',
-                          color: const Color(0xFFC9A900), // tertiary container
+                          color: Colors.orange.shade700,
                           radius: 40,
                           titleStyle: const TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black),
+                              fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ],
                       sectionsSpace: 4,
@@ -90,9 +90,9 @@ class IntExtPieChart extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLegend('NỘI (INT)', const Color(0xFFFF571A), interior),
+                    _buildLegend('NỘI (INT)', Colors.blue.shade600, interior),
                     const SizedBox(height: 12),
-                    _buildLegend('NGOẠI (EXT)', const Color(0xFFC9A900), exterior),
+                    _buildLegend('NGOẠI (EXT)', Colors.orange.shade700, exterior),
                   ],
                 ),
               ],

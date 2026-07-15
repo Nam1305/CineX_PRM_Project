@@ -265,7 +265,7 @@ class _SceneListSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: scenes.length,
@@ -310,16 +310,37 @@ class _SceneListSection extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 4,
+                            runSpacing: 4,
                             children: (scene['tags'] as List<String>).map((tag) {
-                              return Chip(
-                                label: Text(
-                                  tag,
-                                  style: const TextStyle(fontSize: 9),
+                              final isInt = tag.toUpperCase() == 'INT' || tag.toUpperCase() == 'NỘI';
+                              final isExt = tag.toUpperCase() == 'EXT' || tag.toUpperCase() == 'NGOẠI';
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isInt 
+                                      ? Colors.blue.shade900.withValues(alpha: 0.3)
+                                      : (isExt ? Colors.orange.shade900.withValues(alpha: 0.3) : const Color(0xFF2C2C2C)),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: isInt 
+                                        ? Colors.blue.shade700
+                                        : (isExt ? Colors.orange.shade700 : const Color(0xFF3C3C3C)),
+                                    width: 0.5,
+                                  ),
                                 ),
-                                padding: EdgeInsets.zero,
+                                child: Text(
+                                  tag,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: isInt 
+                                        ? Colors.blue.shade200
+                                        : (isExt ? Colors.orange.shade200 : Colors.white70),
+                                  ),
+                                ),
                               );
                             }).toList(),
                           ),

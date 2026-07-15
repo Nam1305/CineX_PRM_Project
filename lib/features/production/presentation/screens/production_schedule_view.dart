@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:excel/excel.dart';
+import 'package:cinex_application/core/utils/file_saver.dart';
 import '../widgets/scene_filter_bar.dart';
 import '../widgets/shooting_day_group.dart';
 import 'package:cinex_application/core/utils/enums.dart';
@@ -11,12 +13,40 @@ import 'package:cinex_application/core/utils/enums.dart';
 class ProductionScheduleView extends StatelessWidget {
   final ProductionProvider provider;
   final int projectId;
+  final String? projectStartDate;
+  final String? projectEndDate;
 
   const ProductionScheduleView({
     super.key,
     required this.provider,
     required this.projectId,
+    this.projectStartDate,
+    this.projectEndDate,
   });
+
+  /// Parse the project start date and compute the date for a given day index (0-based), or return a custom date if set.
+  DateTime? _shootingDate(String locationLabel, int dayIndex) {
+    // 1. Check custom date first
+    final customDateStr = provider.customDates[locationLabel];
+    if (customDateStr != null && customDateStr.isNotEmpty) {
+      try {
+        return DateTime.parse(customDateStr);
+      } catch (_) {}
+    }
+    // 2. Fallback to sequential date calculation
+    if (projectStartDate == null || projectStartDate!.isEmpty) return null;
+    try {
+      final base = DateTime.parse(projectStartDate!);
+      return base.add(Duration(days: dayIndex));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('dd/MM/yyyy').format(dt);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +126,11 @@ class ProductionScheduleView extends StatelessWidget {
                     return ShootingDayGroup(
                       locationLabel: entry.key,
                       scenes: entry.value,
+                      dayNumber: i + 1,
+                      shootingDate: _shootingDate(entry.key, i),
+                      projectId: projectId,
+                      projectStartDate: projectStartDate,
+                      projectEndDate: projectEndDate,
                     );
                   },
                   childCount: provider.groupedByLocation.length,
@@ -126,6 +161,7 @@ class ProductionScheduleView extends StatelessWidget {
       
       // Header
       sheet.appendRow([
+        TextCellValue('Ngày quay'),
         TextCellValue('Bối cảnh'),
         TextCellValue('Cảnh số'),
         TextCellValue('INT/EXT'),
@@ -135,31 +171,41 @@ class ProductionScheduleView extends StatelessWidget {
       ]);
 
       // Data
+      int dayCounter = 0;
       for (var entry in provider.groupedByLocation.entries) {
         final locationLabel = entry.key;
+        final dt = _shootingDate(locationLabel, dayCounter);
+        final dayLabel = dt != null
+            ? 'Ngày ${dayCounter + 1} (${_formatDate(dt)})'
+            : 'Ngày ${dayCounter + 1}';
         for (var scene in entry.value) {
           sheet.appendRow([
+            TextCellValue(dayLabel),
             TextCellValue(locationLabel),
             TextCellValue(scene.sceneNumber.toString()),
             TextCellValue(scene.location?.setting.label ?? ''),
             TextCellValue(scene.location?.timeOfDay.label ?? ''),
             TextCellValue(scene.summary ?? 'Cảnh ${scene.sceneNumber}'),
-            TextCellValue(scene.status.name.toUpperCase()),
+            TextCellValue(scene.status.shootingLabel),
           ]);
         }
+        dayCounter++;
       }
 
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/LichQuay_Project_$projectId.xlsx';
       final fileBytes = excel.encode();
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
-        
+        final filename = 'LichQuay_Project_$projectId.xlsx';
+        final savedPath = await saveAndDownloadFile(
+          bytes: Uint8List.fromList(fileBytes),
+          filename: filename,
+        );
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Đã lưu Excel tại: $path'),
+              content: Text(savedPath == 'Tải xuống trình duyệt'
+                  ? 'Đã tải xuống lịch quay thành công!'
+                  : 'Đã lưu Excel tại: $savedPath'),
               backgroundColor: const Color(0xFF51CF66),
               duration: const Duration(seconds: 5),
             ),

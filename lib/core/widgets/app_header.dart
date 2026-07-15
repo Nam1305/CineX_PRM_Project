@@ -4,12 +4,14 @@ class AppHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onSearch;
   final VoidCallback? onNotification;
+  final VoidCallback? onAdd;
 
   const AppHeader({
     super.key,
     required this.title,
     this.onSearch,
     this.onNotification,
+    this.onAdd,
   });
 
   @override
@@ -34,6 +36,13 @@ class AppHeader extends StatelessWidget {
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: onNotification ?? () {},
               ),
+              if (onAdd != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.tealAccent),
+                  onPressed: onAdd,
+                ),
+              ],
             ],
           ),
         ],

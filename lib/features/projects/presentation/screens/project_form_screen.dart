@@ -69,7 +69,11 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   Future<void> _pickPoster() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 80,
+    );
     if (file != null) {
       setState(() => _posterPath = file.path);
     }
@@ -156,206 +160,211 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Sửa thông tin dự án' : 'Tạo dự án mới'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Poster Picker Section
-            GestureDetector(
-              onTap: _pickPoster,
-              child: Container(
-                height: 240,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF393939), width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                  color: theme.colorScheme.surface,
-                ),
-                child: _posterPath != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: AdaptiveImage(
-                          source: _posterPath!,
-                          placeholderBuilder: (_) => _buildUploadPlaceholder(theme),
-                        ),
-                      )
-                    : _buildUploadPlaceholder(theme),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Project Title
-            _fieldLabel(theme, 'TÊN DỰ ÁN *'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Nhập tên dự án...',
-              ),
-              validator: (v) => AppValidators.required(v, field: 'Tên dự án'),
-            ),
-            const SizedBox(height: 16),
-
-            // Director
-            _fieldLabel(theme, 'ĐẠO DIỄN'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _directorCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Tên đạo diễn...',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Genre & Status Row
-            Row(
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _fieldLabel(theme, 'THỂ LOẠI'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedGenre,
-                        items: genreOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                        onChanged: (value) => setState(() => _selectedGenre = value ?? 'Drama'),
-                      ),
-                    ],
+                // Poster Picker Section
+                GestureDetector(
+                  onTap: _pickPoster,
+                  child: Container(
+                    height: 240,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF393939), width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surface,
+                    ),
+                    child: _posterPath != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: AdaptiveImage(
+                              source: _posterPath!,
+                              placeholderBuilder: (_) => _buildUploadPlaceholder(theme),
+                            ),
+                          )
+                        : _buildUploadPlaceholder(theme),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _fieldLabel(theme, 'TRẠNG THÁI'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedStatus,
-                        items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(getStatusLabel(s)))).toList(),
-                        onChanged: (value) => setState(() => _selectedStatus = value ?? 'PLANNING'),
-                      ),
-                    ],
+                const SizedBox(height: 24),
+
+                // Project Title
+                _fieldLabel(theme, 'TÊN DỰ ÁN *'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _titleCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Nhập tên dự án...',
+                  ),
+                  validator: (v) => AppValidators.required(v, field: 'Tên dự án'),
+                ),
+                const SizedBox(height: 16),
+
+                // Director
+                _fieldLabel(theme, 'ĐẠO DIỄN'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _directorCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Tên đạo diễn...',
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Genre & Status Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel(theme, 'THỂ LOẠI'),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _selectedGenre,
+                            items: genreOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                            onChanged: (value) => setState(() => _selectedGenre = value ?? 'Drama'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel(theme, 'TRẠNG THÁI'),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _selectedStatus,
+                            items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(getStatusLabel(s)))).toList(),
+                            onChanged: (value) => setState(() => _selectedStatus = value ?? 'PLANNING'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Date Pickers Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel(theme, 'NGÀY BẮT ĐẦU'),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: _selectStartDate,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                border: Border.all(color: const Color(0xFF393939)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _startDate != null ? dateFormat.format(_startDate!) : 'Chọn ngày',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel(theme, 'NGÀY KẾT THÚC'),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: _selectEndDate,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                border: Border.all(color: const Color(0xFF393939)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _endDate != null ? dateFormat.format(_endDate!) : 'Chọn ngày',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const Icon(Icons.event, size: 16, color: Colors.grey),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Crew Count
+                _fieldLabel(theme, 'SỐ THÀNH VIÊN ĐOÀN PHIM'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _crewCountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'Số lượng người...',
+                  ),
+                  validator: (v) => AppValidators.positiveInt(v, field: 'Số đoàn viên'),
+                ),
+                const SizedBox(height: 16),
+
+                // Description / Logline
+                _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE)'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _descCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Mô tả cốt truyện chi tiết...',
+                  ),
+                  maxLines: 5,
+                ),
+                const SizedBox(height: 32),
+
+                // Submit Button
+                FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_isEditing ? 'LƯU THAY ĐỔI' : 'TẠO DỰ ÁN'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.black,
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Date Pickers Row
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _fieldLabel(theme, 'NGÀY BẮT ĐẦU'),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _selectStartDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            border: Border.all(color: const Color(0xFF393939)),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _startDate != null ? dateFormat.format(_startDate!) : 'Chọn ngày',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                              const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _fieldLabel(theme, 'NGÀY KẾT THÚC'),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _selectEndDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            border: Border.all(color: const Color(0xFF393939)),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _endDate != null ? dateFormat.format(_endDate!) : 'Chọn ngày',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                              const Icon(Icons.event, size: 16, color: Colors.grey),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Crew Count
-            _fieldLabel(theme, 'SỐ THÀNH VIÊN ĐOÀN PHIM'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _crewCountCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: 'Số lượng người...',
-              ),
-              validator: (v) => AppValidators.positiveInt(v, field: 'Số đoàn viên'),
-            ),
-            const SizedBox(height: 16),
-
-            // Description / Logline
-            _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE)'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _descCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Mô tả cốt truyện chi tiết...',
-              ),
-              maxLines: 5,
-            ),
-            const SizedBox(height: 32),
-
-            // Submit Button
-            FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                    )
-                  : const Icon(Icons.save),
-              label: Text(_isEditing ? 'LƯU THAY ĐỔI' : 'TẠO DỰ ÁN'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.black,
-                textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );

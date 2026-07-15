@@ -72,14 +72,24 @@ class ProjectProvider extends ChangeNotifier {
 
   /// Xóa dự án qua API, xóa khỏi danh sách local sau khi thành công
   Future<bool> removeProject(int id) async {
+    final index = _projects.indexWhere((p) => p.id == id);
+    if (index < 0) return false;
+    final backup = _projects[index];
+
+    _projects.removeAt(index);
+    notifyListeners();
+
     try {
       final success = await _api.deleteProject(id);
-      if (success) {
-        _projects.removeWhere((p) => p.id == id);
+      if (!success) {
+        _projects.insert(index, backup);
+        _error = 'Không thể xóa dự án từ máy chủ';
         notifyListeners();
+        return false;
       }
-      return success;
+      return true;
     } catch (e) {
+      _projects.insert(index, backup);
       _error = 'Không thể xóa dự án: $e';
       notifyListeners();
       return false;

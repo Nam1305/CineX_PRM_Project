@@ -7,6 +7,7 @@ class ProjectCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool isWritable;
 
   const ProjectCard({
     super.key,
@@ -14,6 +15,7 @@ class ProjectCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    this.isWritable = true,
   });
 
   @override
@@ -57,25 +59,26 @@ class ProjectCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                      const PopupMenuItem(value: 'delete', child: Text('Xoá')),
-                    ],
-                    onSelected: (v) async {
-                      if (v == 'edit') {
-                        onEdit();
-                      } else {
-                        final confirmed = await ConfirmDialog.show(
-                          context,
-                          title: 'Xoá dự án',
-                          content:
-                              'Toàn bộ dữ liệu của "${project.title}" sẽ bị xoá vĩnh viễn.',
-                        );
-                        if (confirmed) onDelete();
-                      }
-                    },
-                  ),
+                  if (isWritable)
+                    PopupMenuButton<String>(
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                        const PopupMenuItem(value: 'delete', child: Text('Xoá')),
+                      ],
+                      onSelected: (v) async {
+                        if (v == 'edit') {
+                          onEdit();
+                        } else {
+                          final confirmed = await ConfirmDialog.show(
+                            context,
+                            title: 'Xoá dự án',
+                            content:
+                                'Toàn bộ dữ liệu của "${project.title}" sẽ bị xoá vĩnh viễn.',
+                          );
+                          if (confirmed) onDelete();
+                        }
+                      },
+                    ),
                 ],
               ),
             ),

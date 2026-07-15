@@ -8,11 +8,14 @@ import 'features/locations/providers/location_provider.dart';
 import 'features/scenes/providers/scene_provider.dart';
 import 'features/production/providers/production_provider.dart';
 
+import 'features/auth/providers/auth_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => ActProvider()),
         ChangeNotifierProvider(create: (_) => CharacterProvider()),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_list_screen.dart';
-import 'package:cinex_application/features/locations/presentation/screens/location_list_screen.dart';
-import 'package:cinex_application/features/characters/presentation/screens/characters_tab.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,8 +20,6 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _screens = [
       const ProjectListScreen(),
-      const LocationListScreen(),
-      const CharactersTab(),
       const _ProfilePlaceholder(),
     ];
   }
@@ -45,16 +43,6 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Dự án',
           ),
           NavigationDestination(
-            icon: Icon(Icons.location_on_outlined),
-            selectedIcon: Icon(Icons.location_on),
-            label: 'Bối cảnh',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Nhân vật',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
             label: 'Hồ sơ',
@@ -71,26 +59,73 @@ class _ProfilePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.person,
-            size: 64,
-            color: theme.colorScheme.primary,
+    final auth = context.watch<AuthProvider>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Hồ sơ cá nhân'),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                child: Icon(
+                  Icons.person,
+                  size: 48,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                auth.fullName ?? 'Người dùng',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '@${auth.username}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Chip(
+                label: Text(
+                  auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                backgroundColor: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 48),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.logout),
+                  label: const Text('ĐĂNG XUẤT'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => auth.logout(),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Hồ sơ',
-            style: theme.textTheme.headlineLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Màn hình này sẽ được phát triển sau',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
+        ),
       ),
     );
   }

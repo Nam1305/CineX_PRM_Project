@@ -10,9 +10,11 @@ import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 
 class CharacterFormScreen extends StatefulWidget {
+  final int projectId;
   final Character? character;
   const CharacterFormScreen({
     super.key,
+    required this.projectId,
     this.character,
   });
 
@@ -67,11 +69,14 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
             _ImageUploadSection(
               imagePath: _imagePath,
               castingStatus: widget.character?.castingStatus,
@@ -174,6 +179,8 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
           ],
         ),
       ),
+        ),
+      ),
     );
   }
 
@@ -186,7 +193,11 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 80,
+    );
     if (file != null) setState(() => _imagePath = file.path);
   }
 
@@ -207,6 +218,7 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
 
     final character = Character(
       id: widget.character?.id,
+      projectId: widget.projectId,
       name: _nameCtrl.text.trim(),
       roleType: _roleType,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
@@ -249,23 +261,22 @@ class _ImageUploadSection extends StatelessWidget {
     final approved = castingStatus == 'Đã duyệt';
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        aspectRatio: 3 / 4,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFF393939)),
+          color: theme.colorScheme.surface,
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF393939)),
-                color: theme.colorScheme.surface,
-              ),
-              child: imagePath != null
-                  ? AdaptiveImage(
-                      source: imagePath!,
-                      placeholderBuilder: (_) => _UploadPlaceholder(theme: theme),
-                    )
-                  : _UploadPlaceholder(theme: theme),
-            ),
+            imagePath != null
+                ? AdaptiveImage(
+                    source: imagePath!,
+                    placeholderBuilder: (_) => _UploadPlaceholder(theme: theme),
+                  )
+                : _UploadPlaceholder(theme: theme),
             if (castingStatus != null)
               Positioned(
                 top: 12,

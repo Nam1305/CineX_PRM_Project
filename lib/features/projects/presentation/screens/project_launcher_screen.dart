@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
-import 'package:cinex_application/features/workspace/presentation/screens/workspace_screen.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import '../widgets/project_card.dart';
 import 'project_form_screen.dart';
+
+import 'project_detail_screen.dart';
+
+import 'package:cinex_application/features/projects/data/models/project.dart';
+import 'package:cinex_application/shared/widgets/pagination_bar.dart';
 
 class ProjectLauncherScreen extends StatefulWidget {
   const ProjectLauncherScreen({super.key});
@@ -14,6 +19,9 @@ class ProjectLauncherScreen extends StatefulWidget {
 }
 
 class _ProjectLauncherScreenState extends State<ProjectLauncherScreen> {
+  int _currentPage = 1;
+  static const int _itemsPerPage = 6;
+
   @override
   void initState() {
     super.initState();
@@ -24,8 +32,29 @@ class _ProjectLauncherScreenState extends State<ProjectLauncherScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isWritable = auth.isScreenwriter;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('CineX')),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('CineX Launcher'),
+            Text(
+              'Xin chào, ${auth.fullName} (${auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất'})',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => auth.logout(),
+            tooltip: 'Đăng xuất',
+          ),
+        ],
+      ),
       body: Consumer<ProjectProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
@@ -34,43 +63,101 @@ class _ProjectLauncherScreenState extends State<ProjectLauncherScreen> {
           if (provider.projects.isEmpty) {
             return EmptyStateWidget(
               icon: Icons.movie_creation_outlined,
-              message: 'Chưa có dự án nào.\nBấm nút + để tạo dự án đầu tiên.',
-              actionLabel: 'Tạo dự án',
-              onAction: () => _openForm(context),
+              message: isWritable
+                  ? 'Chưa có dự án nào.\nBấm nút + để tạo dự án đầu tiên.'
+                  : 'Không có dự án phim nào trong hệ thống.',
+              actionLabel: isWritable ? 'Tạo dự án' : null,
+              onAction: isWritable ? () => _openForm(context) : null,
             );
           }
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 260,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.75,
-            ),
-            itemCount: provider.projects.length,
-            itemBuilder: (context, i) {
-              final project = provider.projects[i];
-              return ProjectCard(
-                project: project,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => WorkspaceScreen(project: project),
+
+          // Sắp xếp theo ngày tạo mới nhất lên đầu
+          final sortedProjects = List<Project>.from(provider.projects)
+            ..sort((a, b) {
+              final aTime = DateTime.tryParse(a.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final bTime = DateTime.tryParse(b.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return bTime.compareTo(aTime);
+            });
+
+          // Phân trang
+          final totalItems = sortedProjects.length;
+          final totalPages = (totalItems / _itemsPerPage).ceil();
+          
+          // Giới hạn trang hiện tại trong khoảng hợp lệ (phòng trường hợp xoá phần tử)
+          if (_currentPage > totalPages && totalPages > 0) {
+            _currentPage = totalPages;
+          }
+          
+          final startIndex = (_currentPage - 1) * _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final paginatedProjects = sortedProjects.sublist(startIndex, endIndex);
+
+          final screenWidth = MediaQuery.of(context).size.width;
+          final double availableWidth = screenWidth - 32;
+          int crossAxisCount = (availableWidth / 260).floor();
+          if (crossAxisCount < 1) crossAxisCount = 1;
+          if (crossAxisCount > paginatedProjects.length && paginatedProjects.isNotEmpty) {
+            double widthPerCard = (availableWidth - (paginatedProjects.length - 1) * 16) / paginatedProjects.length;
+            if (widthPerCard <= 360) {
+              crossAxisCount = paginatedProjects.length;
+            } else {
+              int limitCols = (availableWidth / 360).floor();
+              crossAxisCount = limitCols < paginatedProjects.length ? paginatedProjects.length : limitCols;
+            }
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.15,
                   ),
+                  itemCount: paginatedProjects.length,
+                  itemBuilder: (context, i) {
+                    final project = paginatedProjects[i];
+                    return ProjectCard(
+                      project: project,
+                      isWritable: isWritable,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectDetailScreen(project: project),
+                        ),
+                      ),
+                      onEdit: () => _openForm(context, project: project),
+                      onDelete: () async {
+                        await provider.removeProject(project.id!);
+                      },
+                    );
+                  },
                 ),
-                onEdit: () => _openForm(context, project: project),
-                onDelete: () async {
-                  await provider.removeProject(project.id!);
+              ),
+              PaginationBar(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                totalItems: totalItems,
+                itemsPerPage: _itemsPerPage,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
                 },
-              );
-            },
+              ),
+            ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: isWritable
+          ? FloatingActionButton(
+              onPressed: () => _openForm(context),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 

@@ -8,11 +8,15 @@ import 'production_analytics_view.dart';
 class ProductionTab extends StatefulWidget {
   final int projectId;
   final int initialTab;
+  final String? projectStartDate;
+  final String? projectEndDate;
 
   const ProductionTab({
     super.key,
     required this.projectId,
     this.initialTab = 0,
+    this.projectStartDate,
+    this.projectEndDate,
   });
 
   @override
@@ -25,7 +29,7 @@ class _ProductionTabState extends State<ProductionTab> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductionProvider>().loadForProject(widget.projectId);
-      context.read<CharacterProvider>().loadCharacters();
+      context.read<CharacterProvider>().loadCharacters(widget.projectId);
     });
   }
 
@@ -65,8 +69,15 @@ class _ProductionTabState extends State<ProductionTab> {
                     ProductionScheduleView(
                       provider: provider,
                       projectId: widget.projectId,
+                      projectStartDate: widget.projectStartDate,
+                      projectEndDate: widget.projectEndDate,
                     ),
-                    ProductionAnalyticsView(provider: provider),
+                    ProductionAnalyticsView(
+                      provider: provider,
+                      projectId: widget.projectId,
+                      projectStartDate: widget.projectStartDate,
+                      projectEndDate: widget.projectEndDate,
+                    ),
                   ],
                 );
               },

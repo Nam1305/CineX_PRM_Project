@@ -12,6 +12,7 @@ class CinematicCharacterCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool isWritable;
 
   const CinematicCharacterCard({
     super.key,
@@ -22,6 +23,7 @@ class CinematicCharacterCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    this.isWritable = true,
   });
 
   @override
@@ -37,7 +39,7 @@ class CinematicCharacterCard extends StatelessWidget {
             Stack(
               children: [
                 AspectRatio(
-                  aspectRatio: 4 / 3,
+                  aspectRatio: 2.5,
                   child: character.imagePath != null
                       ? AdaptiveImage(
                           source: character.imagePath!,
@@ -93,30 +95,31 @@ class CinematicCharacterCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      PopupMenuButton(
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            onTap: onEdit,
-                            child: const Text('Sửa'),
+                      if (isWritable)
+                        PopupMenuButton(
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              onTap: onEdit,
+                              child: const Text('Sửa'),
+                            ),
+                            PopupMenuItem(
+                              onTap: () async {
+                                final confirmed = await ConfirmDialog.show(
+                                  context,
+                                  title: 'Xóa nhân vật',
+                                  content: 'Xóa "${character.name}" khỏi dự án?',
+                                );
+                                if (confirmed) onDelete();
+                              },
+                              child: const Text('Xóa'),
+                            ),
+                          ],
+                          child: Icon(
+                            Icons.more_vert,
+                            size: 16,
+                            color: theme.colorScheme.onSurface,
                           ),
-                          PopupMenuItem(
-                            onTap: () async {
-                              final confirmed = await ConfirmDialog.show(
-                                context,
-                                title: 'Xóa nhân vật',
-                                content: 'Xóa "${character.name}" khỏi dự án?',
-                              );
-                              if (confirmed) onDelete();
-                            },
-                            child: const Text('Xóa'),
-                          ),
-                        ],
-                        child: Icon(
-                          Icons.more_vert,
-                          size: 16,
-                          color: theme.colorScheme.onSurface,
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 8),

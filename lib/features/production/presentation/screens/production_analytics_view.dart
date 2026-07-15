@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../widgets/int_ext_pie_chart.dart';
 import '../widgets/character_frequency_chart.dart';
+import '../widgets/scene_characters_chart.dart';
+import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/features/projects/data/models/project.dart';
+import 'package:cinex_application/core/utils/pdf_exporter.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 
 class ProductionAnalyticsView extends StatelessWidget {
   final ProductionProvider provider;
+  final int projectId;
+  final String? projectStartDate;
+  final String? projectEndDate;
 
-  const ProductionAnalyticsView({super.key, required this.provider});
+  const ProductionAnalyticsView({
+    super.key,
+    required this.provider,
+    required this.projectId,
+    this.projectStartDate,
+    this.projectEndDate,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (provider.allScenes.isEmpty) {
       return Container(
         color: const Color(0xFF131313),
@@ -38,6 +49,55 @@ class ProductionAnalyticsView extends StatelessWidget {
         ),
       );
     }
+
+    // Calculate Insights
+    String keyCharacter = 'N/A';
+    int maxCharScenes = 0;
+    double charCoverage = 0.0;
+    
+    final charCounts = <String, int>{};
+    for (var scene in provider.allScenes) {
+      for (var c in scene.characters) {
+        charCounts[c.name] = (charCounts[c.name] ?? 0) + 1;
+      }
+    }
+    if (charCounts.isNotEmpty) {
+      final sortedChars = charCounts.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      keyCharacter = sortedChars.first.key;
+      maxCharScenes = sortedChars.first.value;
+      charCoverage = maxCharScenes / provider.allScenes.length * 100;
+    }
+
+    String keyLocation = 'N/A';
+    int maxLocScenes = 0;
+    final locCounts = <String, int>{};
+    for (var scene in provider.allScenes) {
+      final locName = scene.location?.name ?? 'Chưa rõ';
+      locCounts[locName] = (locCounts[locName] ?? 0) + 1;
+    }
+    if (locCounts.isNotEmpty) {
+      final sortedLocs = locCounts.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      keyLocation = sortedLocs.first.key;
+      maxLocScenes = sortedLocs.first.value;
+    }
+
+    String mostComplexSceneNum = 'N/A';
+    String mostComplexSceneTitle = 'N/A';
+    int maxSceneChars = 0;
+    List<String> complexSceneChars = [];
+    double totalCharsInScenes = 0.0;
+    for (var scene in provider.allScenes) {
+      totalCharsInScenes += scene.characters.length;
+      if (scene.characters.length > maxSceneChars) {
+        maxSceneChars = scene.characters.length;
+        mostComplexSceneNum = scene.sceneNumber.toString();
+        mostComplexSceneTitle = scene.title;
+        complexSceneChars = scene.characters.map((c) => c.name).toList();
+      }
+    }
+    double avgCharsPerScene = provider.allScenes.isEmpty ? 0.0 : totalCharsInScenes / provider.allScenes.length;
 
     return Container(
       color: const Color(0xFF131313),
@@ -87,7 +147,7 @@ class ProductionAnalyticsView extends StatelessWidget {
                 Expanded(
                   child: _buildStatCard(
                     'Đã quay',
-                    provider.allScenes.where((s) => s.status.name == 'done').length.toString(),
+                    provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length.toString(),
                     Icons.check_circle,
                   ),
                 ),
@@ -98,9 +158,33 @@ class ProductionAnalyticsView extends StatelessWidget {
             // Int vs Ext Chart
             IntExtPieChart(scenes: provider.allScenes),
             const SizedBox(height: 24),
+
+            // Scene Characters Chart
+            SceneCharactersChart(scenes: provider.allScenes),
+            const SizedBox(height: 24),
             
             // Character Frequency Chart
             CharacterFrequencyChart(scenes: provider.allScenes),
+            const SizedBox(height: 24),
+
+            // Production Insights Section
+            _buildInsightsSection(
+              theme,
+              keyCharacter,
+              maxCharScenes,
+              charCoverage,
+              keyLocation,
+              maxLocScenes,
+              mostComplexSceneNum,
+              mostComplexSceneTitle,
+              maxSceneChars,
+              complexSceneChars,
+              avgCharsPerScene,
+            ),
+            const SizedBox(height: 24),
+
+            // Production Shooting Plan Summary
+            _buildShootingPlanSection(theme),
             const SizedBox(height: 32),
           ],
         ),
@@ -109,89 +193,311 @@ class ProductionAnalyticsView extends StatelessWidget {
   }
 
   Future<void> _exportReport(BuildContext context) async {
-    final provider = context.read<ProductionProvider>();
     if (provider.allScenes.isEmpty) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Đang tạo báo cáo PDF...'),
+        content: Text('Đang thu thập thông tin dự án...'),
         backgroundColor: Colors.blueGrey,
       ),
     );
 
     try {
-      final pdf = pw.Document();
-
-      // Tính toán thống kê
-      final totalScenes = provider.allScenes.length;
-      final doneScenes = provider.allScenes.where((s) => s.status.name == 'done').length;
-      
-      int intCount = 0;
-      int extCount = 0;
-      for (var s in provider.allScenes) {
-        if (s.location?.setting == LocationSetting.interior) intCount++;
-        if (s.location?.setting == LocationSetting.exterior) extCount++;
-      }
-
-      final charCounts = <String, int>{};
-      for (var scene in provider.allScenes) {
-        for (var c in scene.characters) {
-          charCounts[c.name] = (charCounts[c.name] ?? 0) + 1;
-        }
-      }
-      final sortedChars = charCounts.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-
-      // Font hỗ trợ tiếng Việt
-      final ttf = await PdfGoogleFonts.notoSansRegular();
-
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('BÁO CÁO SẢN XUẤT CINEX', style: pw.TextStyle(font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 20),
-                
-                pw.Text('1. Tổng quan:', style: pw.TextStyle(font: ttf, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.Bullet(text: 'Tổng số phân cảnh: $totalScenes', style: pw.TextStyle(font: ttf)),
-                pw.Bullet(text: 'Đã quay xong: $doneScenes', style: pw.TextStyle(font: ttf)),
-                pw.SizedBox(height: 10),
-
-                pw.Text('2. Bối cảnh (INT/EXT):', style: pw.TextStyle(font: ttf, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.Bullet(text: 'Nội cảnh (INT): $intCount', style: pw.TextStyle(font: ttf)),
-                pw.Bullet(text: 'Ngoại cảnh (EXT): $extCount', style: pw.TextStyle(font: ttf)),
-                pw.SizedBox(height: 10),
-
-                pw.Text('3. Tần suất xuất hiện nhân vật:', style: pw.TextStyle(font: ttf, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.ListView.builder(
-                  itemCount: sortedChars.length,
-                  itemBuilder: (context, index) {
-                    final e = sortedChars[index];
-                    return pw.Bullet(text: '${e.key}: ${e.value} phân cảnh', style: pw.TextStyle(font: ttf));
-                  },
-                ),
-              ],
-            );
-          },
+      final api = ApiService();
+      // Tải danh sách dự án để tìm dự án hiện tại
+      final projects = await api.getProjects();
+      final project = projects.firstWhere(
+        (p) => p.id == projectId,
+        orElse: () => Project(
+          id: projectId,
+          title: 'Dự án CineX',
+          status: 'PLANNING',
+          crewCount: 0,
         ),
       );
 
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'BaoCaoSảnXuất_CineX.pdf',
-      );
+      // Tải danh sách hồi (Acts)
+      final acts = await api.getActsForProject(projectId);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đang tạo báo cáo kịch bản & sản xuất PDF...'),
+            backgroundColor: Colors.indigo,
+          ),
+        );
+        await PdfExporter.exportScreenplay(
+          context: context,
+          project: project,
+          acts: acts,
+          allScenes: provider.allScenes,
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi xuất PDF: $e'),
+            content: Text('Lỗi tải báo cáo PDF: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
     }
+  }
+
+  Widget _buildInsightsSection(
+    ThemeData theme,
+    String keyCharacter,
+    int maxCharScenes,
+    double charCoverage,
+    String keyLocation,
+    int maxLocScenes,
+    String complexSceneNum,
+    String complexSceneTitle,
+    int maxSceneChars,
+    List<String> complexSceneChars,
+    double avgCharsPerScene,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PHÂN TÍCH CHUYÊN SÂU',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFFFF571A),
+                ),
+              ),
+              const Icon(Icons.psychology_outlined, color: Color(0xFFFF571A), size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildInsightRow(
+            icon: Icons.person_pin,
+            iconColor: Colors.blueAccent,
+            title: 'Nhân vật chủ chốt',
+            value: keyCharacter != 'N/A' ? keyCharacter : 'Chưa có',
+            subtitle: keyCharacter != 'N/A' 
+                ? 'Xuất hiện trong $maxCharScenes cảnh (${charCoverage.toStringAsFixed(0)}% thời lượng kịch bản)'
+                : 'Thêm nhân vật vào cảnh để thống kê',
+          ),
+          const Divider(color: Color(0xFF2C2C2C), height: 24),
+          _buildInsightRow(
+            icon: Icons.location_history,
+            iconColor: Colors.green,
+            title: 'Bối cảnh quay trọng điểm',
+            value: keyLocation != 'N/A' ? keyLocation : 'Chưa có',
+            subtitle: keyLocation != 'N/A'
+                ? 'Được sử dụng cho $maxLocScenes phân cảnh kịch bản'
+                : 'Thêm bối cảnh vào cảnh để thống kê',
+          ),
+          const Divider(color: Color(0xFF2C2C2C), height: 24),
+          _buildInsightRow(
+            icon: Icons.groups_outlined,
+            iconColor: Colors.orangeAccent,
+            title: 'Mức độ phức tạp trung bình',
+            value: '${avgCharsPerScene.toStringAsFixed(1)} nhân vật/cảnh',
+            subtitle: 'Đoàn phim cần lưu ý sắp xếp lịch điều phối nhân sự phù hợp',
+          ),
+          if (maxSceneChars > 0) ...[
+            const Divider(color: Color(0xFF2C2C2C), height: 24),
+            _buildInsightRow(
+              icon: Icons.report_problem_outlined,
+              iconColor: Colors.redAccent,
+              title: 'Cảnh phức tạp nhất (Cảnh $complexSceneNum)',
+              value: complexSceneTitle,
+              subtitle: 'Đòi hỏi sự xuất hiện của $maxSceneChars diễn viên cùng lúc:\n(${complexSceneChars.join(', ')})',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required String subtitle,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11, color: Colors.grey, height: 1.3),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShootingPlanSection(ThemeData theme) {
+    if (provider.groupedByLocation.isEmpty) return const SizedBox.shrink();
+
+    final groups = provider.groupedByLocation.entries.toList();
+
+    DateTime? getShootingDate(int dayIndex) {
+      final group = groups[dayIndex];
+      final customDateStr = provider.customDates[group.key];
+      if (customDateStr != null && customDateStr.isNotEmpty) {
+        try {
+          return DateTime.parse(customDateStr);
+        } catch (_) {}
+      }
+      if (projectStartDate == null || projectStartDate!.isEmpty) return null;
+      try {
+        final base = DateTime.parse(projectStartDate!);
+        return base.add(Duration(days: dayIndex));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'KẾ HOẠCH BẤM MÁY CHI TIẾT',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFFFF571A),
+                ),
+              ),
+              const Icon(Icons.calendar_today_outlined, color: Color(0xFFFF571A), size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: groups.length,
+            separatorBuilder: (context, index) => const Divider(color: Color(0xFF2C2C2C), height: 24),
+            itemBuilder: (context, index) {
+              final group = groups[index];
+              final date = getShootingDate(index);
+              final dateStr = date != null ? DateFormat('dd/MM/yyyy').format(date) : 'Chưa thiết lập ngày';
+              final firstLoc = group.value.first.location;
+              final settingStr = (firstLoc?.setting.toString() == LocationSetting.interior.toString() ||
+                      firstLoc?.setting.toString() == 'LocationSetting.interior' ||
+                      firstLoc?.setting.toString() == 'INT')
+                  ? 'Nội (INT)'
+                  : 'Ngoại (EXT)';
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 90,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF571A).withValues(alpha: 0.1),
+                      border: Border.all(color: const Color(0xFFFF571A).withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'NGÀY ${index + 1}',
+                          style: const TextStyle(
+                            color: Color(0xFFFF571A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontFamily: 'JetBrains Mono',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          dateStr,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 9,
+                            fontFamily: 'JetBrains Mono',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.key.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$settingStr · ${group.value.length} phân cảnh (Cảnh: ${group.value.map((s) => s.sceneNumber).join(', ')})',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatCard(String title, String value, IconData icon) {
