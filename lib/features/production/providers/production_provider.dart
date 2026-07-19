@@ -86,7 +86,9 @@ class ProductionProvider extends ChangeNotifier {
       await prefs.setString('proj_${projectId}_loc_${locationLabel}_date', dateStr);
       _customDates[locationLabel] = dateStr;
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
   }
 
   Future<void> updateShootingStatus(int projectId, int sceneId, SceneStatus status) async {
