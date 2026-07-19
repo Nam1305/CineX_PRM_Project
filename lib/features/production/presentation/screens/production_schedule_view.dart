@@ -31,7 +31,9 @@ class ProductionScheduleView extends StatelessWidget {
     if (customDateStr != null && customDateStr.isNotEmpty) {
       try {
         return DateTime.parse(customDateStr);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error: $e');
+      }
     }
     // 2. Fallback to sequential date calculation
     if (projectStartDate == null || projectStartDate!.isEmpty) return null;
