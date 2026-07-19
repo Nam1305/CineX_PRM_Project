@@ -230,7 +230,7 @@ class ApiService {
         throw Exception('Failed to load locations: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getLocations error: $e');
+      debugPrint('ApiService.getLocations error: $e');
       return [];
     }
   }
