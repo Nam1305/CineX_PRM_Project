@@ -292,7 +292,7 @@ class ApiService {
         throw Exception('Failed to load characters: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getCharacters error: $e');
+      debugPrint('ApiService.getCharacters error: $e');
       return [];
     }
   }
