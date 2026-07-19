@@ -269,7 +269,7 @@ class ApiService {
       final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
-      print('ApiService.deleteLocation error: $e');
+      debugPrint('ApiService.deleteLocation error: $e');
       return false;
     }
   }
