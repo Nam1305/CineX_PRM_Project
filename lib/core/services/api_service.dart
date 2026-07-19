@@ -258,7 +258,7 @@ class ApiService {
           headers: _headers, body: jsonEncode(location.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('ApiService.updateLocation error: $e');
+      debugPrint('ApiService.updateLocation error: $e');
       return false;
     }
   }
