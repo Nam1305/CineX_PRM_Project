@@ -133,7 +133,7 @@ class ApiService {
         throw Exception('Failed to upload file: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.uploadFile error: $e');
+      debugPrint('ApiService.uploadFile error: $e');
       return null;
     }
   }
