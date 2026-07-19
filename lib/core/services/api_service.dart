@@ -68,7 +68,7 @@ class ApiService {
         throw Exception('Failed to create project: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.createProject error: $e');
+      debugPrint('ApiService.createProject error: $e');
       return null;
     }
   }
