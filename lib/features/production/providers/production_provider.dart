@@ -97,7 +97,9 @@ class ProductionProvider extends ChangeNotifier {
       await prefs.setString('proj_${projectId}_scene_${sceneId}_shooting_status', status.dbValue);
       _sceneShootingStatuses[sceneId] = status;
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
   }
 
   void setFilter({int? characterId, SceneTime? timeOfDay}) {
