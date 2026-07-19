@@ -39,7 +39,7 @@ class ApiService {
         throw Exception('Failed to load projects: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getProjects error: $e');
+      debugPrint('ApiService.getProjects error: $e');
       return [];
     }
   }
