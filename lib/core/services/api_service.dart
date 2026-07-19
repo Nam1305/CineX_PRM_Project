@@ -320,7 +320,7 @@ class ApiService {
           headers: _headers, body: jsonEncode(character.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('ApiService.updateCharacter error: $e');
+      debugPrint('ApiService.updateCharacter error: $e');
       return false;
     }
   }
