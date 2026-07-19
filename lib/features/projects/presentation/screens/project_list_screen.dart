@@ -385,7 +385,9 @@ class _ProjectCardState extends State<_ProjectCard> {
           _localProgress = cached;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+        debugPrint('Error: $e');
+      }
   }
 
   Future<void> _loadLocalProgress() async {
