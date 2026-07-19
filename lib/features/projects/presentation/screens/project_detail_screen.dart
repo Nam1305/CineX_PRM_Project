@@ -899,7 +899,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     try {
       final dt = DateTime.parse(dateStr);
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error: $e');
       return dateStr;
     }
   }
