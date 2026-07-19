@@ -71,7 +71,9 @@ class ProductionProvider extends ChangeNotifier {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
 
     _applyFilters();
     _isLoading = false;
