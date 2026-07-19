@@ -245,7 +245,7 @@ class ApiService {
       }
       throw Exception('Failed to create location: ${response.statusCode}');
     } catch (e) {
-      print('ApiService.createLocation error: $e');
+      debugPrint('ApiService.createLocation error: $e');
       return null;
     }
   }
