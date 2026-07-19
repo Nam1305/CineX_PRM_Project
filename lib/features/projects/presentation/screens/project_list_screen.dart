@@ -425,7 +425,7 @@ class _ProjectCardState extends State<_ProjectCard> {
         });
       }
     } catch (e) {
-      print('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
+      debugPrint('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
     }
   }
 
