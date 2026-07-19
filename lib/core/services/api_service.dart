@@ -170,7 +170,7 @@ class ApiService {
         throw Exception('Failed to load acts: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getActsForProject error: $e');
+      debugPrint('ApiService.getActsForProject error: $e');
       return [];
     }
   }
