@@ -115,7 +115,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         });
       }
     } catch (e) {
-      print('ProjectDetailScreen._loadProjectData error: $e');
+      debugPrint('ProjectDetailScreen._loadProjectData error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
