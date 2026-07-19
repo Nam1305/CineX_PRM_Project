@@ -101,7 +101,7 @@ class ApiService {
         throw Exception('Failed to update project: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.updateProject error: $e');
+      debugPrint('ApiService.updateProject error: $e');
       return null;
     }
   }
