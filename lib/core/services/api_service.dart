@@ -307,7 +307,7 @@ class ApiService {
       }
       throw Exception('Failed to create character: ${response.statusCode}');
     } catch (e) {
-      print('ApiService.createCharacter error: $e');
+      debugPrint('ApiService.createCharacter error: $e');
       return null;
     }
   }
