@@ -418,7 +418,7 @@ class ApiService {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getScenesForAct error: $e');
+      debugPrint('ApiService.getScenesForAct error: $e');
       return [];
     }
   }
