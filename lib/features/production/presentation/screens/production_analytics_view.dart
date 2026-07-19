@@ -380,7 +380,9 @@ class ProductionAnalyticsView extends StatelessWidget {
       if (customDateStr != null && customDateStr.isNotEmpty) {
         try {
           return DateTime.parse(customDateStr);
-        } catch (_) {}
+        } catch (e) {
+        debugPrint('Error: $e');
+      }
       }
       if (projectStartDate == null || projectStartDate!.isEmpty) return null;
       try {
