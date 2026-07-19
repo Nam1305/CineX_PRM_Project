@@ -198,7 +198,7 @@ class ApiService {
           await _client.patch(url, headers: _headers, body: jsonEncode(act.toMap()));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('ApiService.updateAct error: $e');
+      debugPrint('ApiService.updateAct error: $e');
       return false;
     }
   }
