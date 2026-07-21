@@ -154,13 +154,12 @@ class ApiService {
         final projects = values
             .map((e) => Project.fromMap(e as Map<String, dynamic>))
             .toList();
-        return projects.isNotEmpty ? projects : MockData.projectsCopy();
+        return projects;
       } else {
         throw Exception('Failed to load projects: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getProjects error: $e');
-      return MockData.projectsCopy();
+      _rethrowAsApiException(e, 'Tải danh sách dự án');
     }
   }
 
@@ -356,13 +355,12 @@ class ApiService {
         final acts = values
             .map((e) => Act.fromMap(e as Map<String, dynamic>))
             .toList();
-        return acts.isNotEmpty ? acts : MockData.actsForProject(projectId);
+        return acts;
       } else {
         throw Exception('Failed to load acts: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getActsForProject error: $e');
-      return MockData.actsForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách hồi');
     }
   }
 
@@ -426,15 +424,12 @@ class ApiService {
         final locations = values
             .map((e) => Location.fromMap(e as Map<String, dynamic>))
             .toList();
-        return locations.isNotEmpty
-            ? locations
-            : MockData.locationsForProject(projectId);
+        return locations;
       } else {
         throw Exception('Failed to load locations: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getLocations error: $e');
-      return MockData.locationsForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách bối cảnh');
     }
   }
 
@@ -504,15 +499,12 @@ class ApiService {
         final characters = values
             .map((e) => Character.fromMap(e as Map<String, dynamic>))
             .toList();
-        return characters.isNotEmpty
-            ? characters
-            : MockData.charactersForProject(projectId);
+        return characters;
       } else {
         throw Exception('Failed to load characters: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getCharacters error: $e');
-      return MockData.charactersForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách nhân vật');
     }
   }
 
@@ -627,15 +619,12 @@ class ApiService {
         final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
-        return scenes.isNotEmpty
-            ? scenes
-            : MockData.scenesForProject(projectId);
+        return scenes;
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getScenesForProject error: $e');
-      return MockData.scenesForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách cảnh');
     }
   }
 
@@ -652,13 +641,12 @@ class ApiService {
         final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
-        return scenes.isNotEmpty ? scenes : MockData.scenesForAct(actId);
+        return scenes;
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService.getScenesForAct error: $e');
-      return MockData.scenesForAct(actId);
+      _rethrowAsApiException(e, 'Tải danh sách cảnh');
     }
   }
 

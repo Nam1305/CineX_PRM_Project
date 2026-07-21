@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class SceneProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _cache = LocalCacheService.instance;
 
   // Map of actId → scenes list for quick lookup per act
   final Map<int, List<Scene>> _scenesByAct = {};
@@ -20,16 +21,24 @@ class SceneProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+    List<Scene> cached = [];
     try {
-      _scenesByAct[actId] = await _api.getScenesForAct(actId);
+      cached = await _cache.getScenesForAct(actId);
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _scenesByAct[actId] = cached;
+      _isLoading = false;
+      notifyListeners();
+    }
+    try {
+      final fetched = await _api.getScenesForAct(actId);
+      await _cache.replaceScenesForAct(actId, fetched);
+      _scenesByAct[actId] = fetched;
     } catch (e) {
       _error = 'Không thể tải cảnh quay từ server, dùng dữ liệu cục bộ: $e';
-      final mockScenesForAct = MockData.mockScenes
-          .where((s) => s.actId == actId)
-          .toList();
-      _scenesByAct[actId] = mockScenesForAct.isNotEmpty
-          ? mockScenesForAct
-          : MockData.mockScenes;
+      if (cached.isEmpty) {
+        _scenesByAct[actId] = [];
+      }
     } finally {
       _scenesByAct[actId]?.sort(
         (a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber),
@@ -43,6 +52,7 @@ class SceneProvider extends ChangeNotifier {
     try {
       final created = await _api.createScene(scene, characterIds);
       if (created == null) return false;
+      await _cache.upsertScene(created);
       _scenesByAct.putIfAbsent(scene.actId, () => []);
       _scenesByAct[scene.actId]!.add(created);
       _scenesByAct[scene.actId]!.sort(
@@ -72,6 +82,7 @@ class SceneProvider extends ChangeNotifier {
         previousCharacterIds: previousCharacterIds,
       );
       if (updated == null) return false;
+      await _cache.upsertScene(updated);
       final list = _scenesByAct[scene.actId];
       if (list != null) {
         final index = list.indexWhere(
@@ -111,6 +122,7 @@ class SceneProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      await _cache.deleteScene(id);
       return true;
     } catch (e) {
       _scenesByAct[actId]?.insert(index, backup);

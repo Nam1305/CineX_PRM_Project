@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class LocationProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _cache = LocalCacheService.instance;
 
   List<Location> _locations = [];
   bool _isLoading = false;
@@ -18,14 +19,24 @@ class LocationProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+    List<Location> cached = [];
     try {
-      _locations = await _api.getLocations(projectId);
+      cached = await _cache.getLocations(projectId);
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _locations = cached;
+      _isLoading = false;
+      notifyListeners();
+    }
+    try {
+      final fetched = await _api.getLocations(projectId);
+      try {
+        await _cache.replaceLocations(projectId, fetched);
+      } catch (_) {}
+      _locations = fetched;
     } catch (e) {
       _error = 'Không thể tải bối cảnh từ server, dùng dữ liệu cục bộ: $e';
-      _locations = MockData.mockLocations.where((l) => l.projectId == projectId || l.projectId == null).toList();
-      if (_locations.isEmpty) {
-        _locations = List.from(MockData.mockLocations);
-      }
+      if (cached.isEmpty) _locations = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -36,6 +47,9 @@ class LocationProvider extends ChangeNotifier {
     try {
       final created = await _api.createLocation(location);
       if (created == null) return false;
+      try {
+        await _cache.upsertLocation(created);
+      } catch (_) {}
       _locations.add(created);
       notifyListeners();
       return true;
@@ -50,6 +64,9 @@ class LocationProvider extends ChangeNotifier {
     try {
       final ok = await _api.updateLocation(location);
       if (ok) {
+        try {
+          await _cache.upsertLocation(location);
+        } catch (_) {}
         final index = _locations.indexWhere((l) => l.id == location.id);
         if (index >= 0) {
           _locations[index] = location;
@@ -80,6 +97,9 @@ class LocationProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      try {
+        await _cache.deleteLocation(id);
+      } catch (_) {}
       return true;
     } catch (e) {
       _locations.insert(index, backup);

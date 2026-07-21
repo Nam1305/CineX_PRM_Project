@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_list_screen.dart';
+import 'package:cinex_application/core/connectivity/network_status_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -27,9 +28,33 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
+      body: Column(
+        children: [
+          Consumer<NetworkStatusProvider>(
+            builder: (context, network, _) {
+              if (!network.isOffline) return const SizedBox.shrink();
+              return Container(
+                width: double.infinity,
+                color: Colors.orange.shade800,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: const SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: Text(
+                    'Đang offline: chỉ xem, lọc và xuất dữ liệu đã lưu. Các thay đổi cần kết nối mạng.',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              );
+            },
+          ),
+          Expanded(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,

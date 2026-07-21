@@ -5,6 +5,7 @@ import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
@@ -65,21 +66,63 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     if (_project.id == null) return;
     setState(() => _isLoading = true);
 
+    final projectId = _project.id!;
+    var acts = <Act>[];
+    var scenes = <Scene>[];
     try {
-      final acts = await _api.getActsForProject(_project.id!);
-      final scenes = await _api.getScenesForProject(_project.id!);
-      
+      acts = await LocalCacheService.instance.getActs(projectId);
+      scenes = await LocalCacheService.instance.getScenesForProject(projectId);
+    } catch (_) {}
+    if (mounted && (acts.isNotEmpty || scenes.isNotEmpty)) {
       final prefs = await SharedPreferences.getInstance();
+      var done = 0;
+      var inProgress = 0;
+      for (final scene in scenes) {
+        final saved = prefs.getString(
+          'proj_${_project.id}_scene_${scene.id}_shooting_status',
+        );
+        final status = saved == null
+            ? SceneStatus.todo
+            : SceneStatusExt.fromDb(saved);
+        if (status == SceneStatus.done) done++;
+        if (status == SceneStatus.inProgress) inProgress++;
+      }
+      final total = scenes.length;
+      final progress = total == 0
+          ? (_project.status == 'COMPLETED' ? 1.0 : 0.0)
+          : done / total;
+      setState(() {
+        _acts = acts;
+        _scenes = scenes;
+        _totalScenes = total;
+        _doneScenes = done;
+        _inProgressScenes = inProgress;
+        _todoScenes = total - done - inProgress;
+        _dynamicProgress = progress;
+        _characterCount = scenes.expand((s) => s.characters).map((c) => c.id).toSet().length;
+        _locationCount = scenes.map((s) => s.locationId).whereType<int>().toSet().length;
+        _actCount = acts.length;
+        _isLoading = false;
+      });
+    }
 
-      // Calculate Stats based on actual shooting progress
+    try {
+      final fetchedActs = await _api.getActsForProject(projectId);
+      final fetchedScenes = await _api.getScenesForProject(projectId);
+      acts = fetchedActs;
+      scenes = fetchedScenes;
+      try {
+        await LocalCacheService.instance.replaceActs(projectId, fetchedActs);
+        await LocalCacheService.instance.replaceScenesForProject(projectId, fetchedScenes);
+      } catch (_) {}
+
+      final prefs = await SharedPreferences.getInstance();
       final total = scenes.length;
       int done = 0;
       int inProg = 0;
       int todo = 0;
-
       for (var s in scenes) {
         final savedStatus = prefs.getString('proj_${_project.id}_scene_${s.id}_shooting_status');
-        // Mặc định là chờ quay (todo) chứ không dựa trên trạng thái viết kịch bản
         final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
         if (shootingStatus == SceneStatus.done) {
           done++;
@@ -89,13 +132,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           todo++;
         }
       }
-
       final progressVal = total == 0
           ? (_project.status == 'COMPLETED' ? 1.0 : 0.0)
           : (done / total);
       await prefs.setDouble('proj_${_project.id}_last_known_shooting_progress', progressVal);
-
-      // Extract unique characters and locations appearing in scenes
       final uniqueChars = scenes.expand((s) => s.characters).map((c) => c.id).toSet();
       final uniqueLocs = scenes.map((s) => s.locationId).whereType<int>().toSet();
 
@@ -116,12 +156,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       }
     } catch (e) {
       debugPrint('ProjectDetailScreen._loadProjectData error: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
   Future<void> _editProject() async {
     await Navigator.push(
       context,
