@@ -12,8 +12,11 @@ import 'features/auth/providers/auth_provider.dart';
 
 import 'features/notifications/providers/notification_provider.dart';
 
+import 'core/services/database_helper.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  DatabaseHelper.initDatabaseFactory();
   runApp(
     MultiProvider(
       providers: [

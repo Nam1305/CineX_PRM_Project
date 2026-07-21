@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/services/database_helper.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/data/mock_data.dart';
 
 class SceneProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _db = DatabaseHelper.instance;
 
-  // Map of actId → scenes list for quick lookup per act
   final Map<int, List<Scene>> _scenesByAct = {};
   bool _isLoading = false;
   String? _error;
@@ -21,11 +22,30 @@ class SceneProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _scenesByAct[actId] = await _api.getScenesForAct(actId);
+      final fetched = await _api.getScenesForAct(actId);
+      if (fetched.isNotEmpty) {
+        _scenesByAct[actId] = fetched;
+        await _db.saveScenes(fetched);
+      } else {
+        final local = await _db.getScenesForAct(actId);
+        if (local.isNotEmpty) {
+          _scenesByAct[actId] = local;
+        } else {
+          final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
+          _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
+          await _db.saveScenes(_scenesByAct[actId]!);
+        }
+      }
     } catch (e) {
-      _error = 'Không thể tải cảnh quay từ server, dùng dữ liệu cục bộ: $e';
-      final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
-      _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
+      _error = 'Không thể tải cảnh quay từ server, đọc từ SQLite: $e';
+      final local = await _db.getScenesForAct(actId);
+      if (local.isNotEmpty) {
+        _scenesByAct[actId] = local;
+      } else {
+        final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
+        _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
+        await _db.saveScenes(_scenesByAct[actId]!);
+      }
     } finally {
       _scenesByAct[actId]?.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
       _isLoading = false;
@@ -36,19 +56,22 @@ class SceneProvider extends ChangeNotifier {
   Future<bool> addScene(Scene scene, List<int> characterIds) async {
     try {
       final created = await _api.createScene(scene, characterIds);
-      if (created == null) return false;
-      await loadScenesForAct(scene.actId);
-      return true;
+      if (created != null) {
+        await _db.saveScenes([created]);
+        await loadScenesForAct(scene.actId);
+        return true;
+      }
     } catch (e) {
-      _error = 'Không thể thêm cảnh: $e';
-      notifyListeners();
-      return false;
+      _error = 'Không thể thêm cảnh lên server: $e';
     }
+
+    final newId = DateTime.now().millisecondsSinceEpoch % 10000;
+    final fallback = scene.copyWith(id: newId);
+    await _db.saveScenes([fallback]);
+    await loadScenesForAct(scene.actId);
+    return true;
   }
 
-  /// [previousCharacterIds] là danh sách nhân vật đang gán cho cảnh trước khi
-  /// sửa — cần để phát hiện có cần xoá liên kết cũ hay không (xem ghi chú ở
-  /// ApiService.updateScene).
   Future<bool> editScene(
     Scene scene,
     List<int> characterIds, {
@@ -60,14 +83,18 @@ class SceneProvider extends ChangeNotifier {
         characterIds,
         previousCharacterIds: previousCharacterIds,
       );
-      if (updated == null) return false;
-      await loadScenesForAct(scene.actId);
-      return true;
+      if (updated != null) {
+        await _db.saveScenes([updated]);
+        await loadScenesForAct(scene.actId);
+        return true;
+      }
     } catch (e) {
-      _error = 'Không thể cập nhật cảnh: $e';
-      notifyListeners();
-      return false;
+      _error = 'Không thể cập nhật cảnh trên server: $e';
     }
+
+    await _db.saveScenes([scene]);
+    await loadScenesForAct(scene.actId);
+    return true;
   }
 
   Future<bool> removeScene(int id, int actId) async {
@@ -78,22 +105,21 @@ class SceneProvider extends ChangeNotifier {
     final backup = list[index];
 
     list.removeAt(index);
+    await _db.deleteScene(id);
     notifyListeners();
 
     try {
       final ok = await _api.deleteScene(id);
       if (!ok) {
         _scenesByAct[actId]?.insert(index, backup);
+        await _db.saveScenes([backup]);
         _error = 'Không thể xoá cảnh từ máy chủ';
         notifyListeners();
         return false;
       }
       return true;
     } catch (e) {
-      _scenesByAct[actId]?.insert(index, backup);
-      _error = 'Không thể xoá cảnh: $e';
-      notifyListeners();
-      return false;
+      return true;
     }
   }
 
@@ -103,7 +129,6 @@ class SceneProvider extends ChangeNotifier {
     );
   }
 
-  /// Quick status update — only changes the status field without touching characters.
   Future<bool> updateSceneStatus(Scene scene, SceneStatus newStatus) async {
     try {
       final updated = scene.copyWith(status: newStatus);
@@ -112,18 +137,12 @@ class SceneProvider extends ChangeNotifier {
         scene.characters.map((c) => c.id!).toList(),
         previousCharacterIds: scene.characters.map((c) => c.id!).toList(),
       );
-      if (result == null) return false;
-      final list = _scenesByAct[scene.actId];
-      if (list != null) {
-        final index = list.indexWhere((s) => s.id == scene.id);
-        if (index >= 0) {
-          list[index] = result.copyWith(
-            location: scene.location,
-            characters: scene.characters,
-          );
-        }
+      if (result != null) {
+        await _db.saveScenes([result]);
+      } else {
+        await _db.saveScenes([updated]);
       }
-      notifyListeners();
+      await loadScenesForAct(scene.actId);
       return true;
     } catch (e) {
       _error = 'Không thể cập nhật trạng thái: $e';
