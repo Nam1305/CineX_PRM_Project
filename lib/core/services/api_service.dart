@@ -12,7 +12,8 @@ import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:5274/odata'; // local test
+  static const String baseUrl =
+      'https://cinex-api.onrender.com/odata'; // local test
   static String? token;
   static final http.Client _client = http.Client();
 
@@ -115,7 +116,7 @@ class ApiService {
     try {
       final bytes = await XFile(filePath).readAsBytes();
       final filename = filePath.split('/').last.split('\\').last;
-      
+
       final request = http.MultipartRequest('POST', uploadUrl)
         ..fields['prefix'] = prefix
         ..files.add(
@@ -125,7 +126,7 @@ class ApiService {
             filename: filename.isNotEmpty ? filename : 'upload.png',
           ),
         );
-      
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
@@ -180,8 +181,11 @@ class ApiService {
   Future<Act?> createAct(Act act) async {
     final url = Uri.parse('$baseUrl/Acts');
     try {
-      final response =
-          await _client.post(url, headers: _headers, body: jsonEncode(act.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(act.toMap()),
+      );
       if (response.statusCode == 201) {
         return Act.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
       }
@@ -196,8 +200,11 @@ class ApiService {
     if (act.id == null) return false;
     final url = Uri.parse('$baseUrl/Acts(${act.id})');
     try {
-      final response =
-          await _client.patch(url, headers: _headers, body: jsonEncode(act.toMap()));
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(act.toMap()),
+      );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('ApiService.updateAct error: $e');
@@ -219,7 +226,9 @@ class ApiService {
   // ─── LOCATIONS ────────────────────────────────────────────────────────────
 
   Future<List<Location>> getLocations(int projectId) async {
-    final url = Uri.parse('$baseUrl/Locations?\$filter=ProjectId eq $projectId');
+    final url = Uri.parse(
+      '$baseUrl/Locations?\$filter=ProjectId eq $projectId',
+    );
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
@@ -240,10 +249,15 @@ class ApiService {
   Future<Location?> createLocation(Location location) async {
     final url = Uri.parse('$baseUrl/Locations');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(location.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(location.toMap()),
+      );
       if (response.statusCode == 201) {
-        return Location.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+        return Location.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
       }
       throw Exception('Failed to create location: ${response.statusCode}');
     } catch (e) {
@@ -256,8 +270,11 @@ class ApiService {
     if (location.id == null) return false;
     final url = Uri.parse('$baseUrl/Locations(${location.id})');
     try {
-      final response = await _client.patch(url,
-          headers: _headers, body: jsonEncode(location.toMap()));
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(location.toMap()),
+      );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('ApiService.updateLocation error: $e');
@@ -302,10 +319,15 @@ class ApiService {
   Future<Character?> createCharacter(Character character) async {
     final url = Uri.parse('$baseUrl/Characters');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(character.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(character.toMap()),
+      );
       if (response.statusCode == 201) {
-        return Character.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+        return Character.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
       }
       throw Exception('Failed to create character: ${response.statusCode}');
     } catch (e) {
@@ -318,8 +340,11 @@ class ApiService {
     if (character.id == null) return false;
     final url = Uri.parse('$baseUrl/Characters(${character.id})');
     try {
-      final response = await _client.patch(url,
-          headers: _headers, body: jsonEncode(character.toMap()));
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(character.toMap()),
+      );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('ApiService.updateCharacter error: $e');
@@ -357,14 +382,17 @@ class ApiService {
 
     int sNum = 0;
     if (e['SceneNumber'] != null) {
-      sNum = int.tryParse(
+      sNum =
+          int.tryParse(
             e['SceneNumber'].toString().replaceAll(RegExp(r'[^0-9]'), ''),
           ) ??
           0;
     }
 
-    final String dbSetting = e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';
-    final String dbTime = e['Time'] as String? ?? loc?.timeOfDay.dbValue ?? 'DAY';
+    final String dbSetting =
+        e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';
+    final String dbTime =
+        e['Time'] as String? ?? loc?.timeOfDay.dbValue ?? 'DAY';
     final setting = LocationSettingExt.fromDb(dbSetting);
     final timeOfDay = SceneTimeExt.fromDb(dbTime);
 
@@ -428,33 +456,42 @@ class ApiService {
   }
 
   Map<String, dynamic> _sceneBody(Scene scene, List<int> characterIds) => {
-        'ActId': scene.actId,
-        'LocationId': scene.locationId,
-        'SceneNumber': scene.sceneNumber.toString(),
-        'Title': scene.title,
-        'Summary': scene.summary,
-        'Status': scene.status.dbValue,
-        'Setting': scene.setting.dbValue,
-        'Time': scene.timeOfDay.dbValue,
-        'SceneCharacters': characterIds.map((id) => {'CharacterId': id}).toList(),
-      };
+    'ActId': scene.actId,
+    'LocationId': scene.locationId,
+    'SceneNumber': scene.sceneNumber.toString(),
+    'Title': scene.title,
+    'Summary': scene.summary,
+    'Status': scene.status.dbValue,
+    'Setting': scene.setting.dbValue,
+    'Time': scene.timeOfDay.dbValue,
+    'SceneCharacters': characterIds.map((id) => {'CharacterId': id}).toList(),
+  };
 
   Future<Scene?> createScene(Scene scene, List<int> characterIds) async {
     final url = Uri.parse('$baseUrl/Scenes');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(_sceneBody(scene, characterIds)));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(_sceneBody(scene, characterIds)),
+      );
       if (response.statusCode == 201) {
         final createdJson = jsonDecode(response.body) as Map<String, dynamic>;
         final createdId = createdJson['Id'] ?? createdJson['id'];
-        final intId = createdId is int ? createdId : int.tryParse(createdId.toString());
+        final intId = createdId is int
+            ? createdId
+            : int.tryParse(createdId.toString());
 
         // Fetch full scene with expanded characters
         if (intId != null) {
-          final getUrl = Uri.parse('$baseUrl/Scenes($intId)?\$expand=Location,SceneCharacters(\$expand=Character)');
+          final getUrl = Uri.parse(
+            '$baseUrl/Scenes($intId)?\$expand=Location,SceneCharacters(\$expand=Character)',
+          );
           final getRes = await _client.get(getUrl, headers: _headers);
           if (getRes.statusCode == 200) {
-            return _sceneFromJson(jsonDecode(getRes.body) as Map<String, dynamic>);
+            return _sceneFromJson(
+              jsonDecode(getRes.body) as Map<String, dynamic>,
+            );
           }
         }
         return scene.copyWith(id: intId);
@@ -481,10 +518,14 @@ class ApiService {
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Fetch full scene with expanded characters after update
-        final getUrl = Uri.parse('$baseUrl/Scenes(${scene.id})?\$expand=Location,SceneCharacters(\$expand=Character)');
+        final getUrl = Uri.parse(
+          '$baseUrl/Scenes(${scene.id})?\$expand=Location,SceneCharacters(\$expand=Character)',
+        );
         final getRes = await _client.get(getUrl, headers: _headers);
         if (getRes.statusCode == 200) {
-          return _sceneFromJson(jsonDecode(getRes.body) as Map<String, dynamic>);
+          return _sceneFromJson(
+            jsonDecode(getRes.body) as Map<String, dynamic>,
+          );
         }
         return scene;
       }
@@ -507,7 +548,8 @@ class ApiService {
   }
 
   Future<List<Act>> getDeletedActs(int projectId) async {
-    final url = Uri.parse('$baseUrl/api/Acts/Deleted/$projectId');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Acts/Deleted/$projectId');
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
@@ -522,7 +564,8 @@ class ApiService {
   }
 
   Future<List<Scene>> getDeletedScenes(int projectId) async {
-    final url = Uri.parse('$baseUrl/api/Scenes/Deleted/$projectId');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Scenes/Deleted/$projectId');
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
@@ -537,7 +580,8 @@ class ApiService {
   }
 
   Future<bool> restoreAct(int id) async {
-    final url = Uri.parse('$baseUrl/api/Acts/Restore/$id');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Acts/Restore/$id');
     try {
       final response = await _client.post(url, headers: _headers);
       return response.statusCode == 200;
@@ -548,7 +592,8 @@ class ApiService {
   }
 
   Future<bool> restoreScene(int id) async {
-    final url = Uri.parse('$baseUrl/api/Scenes/Restore/$id');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Scenes/Restore/$id');
     try {
       final response = await _client.post(url, headers: _headers);
       return response.statusCode == 200;
@@ -581,7 +626,9 @@ class ApiService {
   }
 
   /// Tạo thông báo mới và lưu vào database
-  Future<NotificationModel?> createNotification(NotificationModel notification) async {
+  Future<NotificationModel?> createNotification(
+    NotificationModel notification,
+  ) async {
     final url = Uri.parse('$baseUrl/Notifications');
     try {
       final body = jsonEncode(notification.toMap());
@@ -590,7 +637,9 @@ class ApiService {
         final data = jsonDecode(response.body);
         return NotificationModel.fromMap(data);
       } else {
-        print('ApiService.createNotification failed: ${response.statusCode} - ${response.body}');
+        print(
+          'ApiService.createNotification failed: ${response.statusCode} - ${response.body}',
+        );
         return null;
       }
     } catch (e) {
@@ -628,7 +677,9 @@ class ApiService {
   /// Đánh dấu thông báo của một dự án là đã đọc
   Future<bool> markProjectNotificationsAsRead(int projectId) async {
     final apiBaseUrl = baseUrl.replaceAll('/odata', '');
-    final url = Uri.parse('$apiBaseUrl/api/Notifications/MarkProjectAsRead/$projectId');
+    final url = Uri.parse(
+      '$apiBaseUrl/api/Notifications/MarkProjectAsRead/$projectId',
+    );
     try {
       final response = await _client.post(url, headers: _headers);
       return response.statusCode == 200;

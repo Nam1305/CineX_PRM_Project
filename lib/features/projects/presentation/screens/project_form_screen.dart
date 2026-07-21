@@ -379,7 +379,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 const SizedBox(height: 16),
 
                 // Crew Count
-                _fieldLabel(theme, 'SỐ THÀNH VIÊN ĐOÀN PHIM'),
+                _fieldLabel(theme, 'SỐ THÀNH VIÊN ĐOÀN PHIM *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _crewCountCtrl,

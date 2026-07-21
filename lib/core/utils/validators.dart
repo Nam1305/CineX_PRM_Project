@@ -13,6 +13,20 @@ class AppValidators {
     return null;
   }
 
+  static String? username(String? value, {String field = 'Tên đăng nhập'}) {
+    if (value == null || value.trim().isEmpty) {
+      return '$field không được để trống';
+    }
+    final v = value.trim();
+    if (v.length < 3 || v.length > 32) {
+      return '$field phải từ 3 đến 32 ký tự';
+    }
+    if (!RegExp(r'^[a-zA-Z0-9_.]+$').hasMatch(v)) {
+      return '$field chỉ được chứa chữ cái, số, dấu gạch dưới (_) và dấu chấm (.)';
+    }
+    return null;
+  }
+
   static String? positiveInt(String? value, {String field = 'Số thứ tự'}) {
     if (value == null || value.trim().isEmpty) {
       return '$field không được để trống';

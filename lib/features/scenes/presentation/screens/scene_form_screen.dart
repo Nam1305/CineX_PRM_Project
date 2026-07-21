@@ -208,6 +208,12 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     final sceneProvider = context.read<SceneProvider>();
     final sceneNumber = int.parse(_numberCtrl.text.trim());
+
+    // Refresh scenes from server first so the duplicate check below isn't
+    // fooled by a stale local cache if another user just added a scene.
+    await sceneProvider.loadScenesForAct(widget.actId);
+    if (!mounted) return;
+
     final taken = sceneProvider.isSceneNumberTaken(
       widget.actId,
       sceneNumber,

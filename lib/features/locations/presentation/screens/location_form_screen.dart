@@ -114,6 +114,14 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     setState(() => _saving = true);
     final provider = context.read<LocationProvider>();
     final name = _nameCtrl.text.trim();
+    final effectiveProjectId = widget.location?.projectId ?? widget.projectId;
+
+    // Refresh locations from server first so the duplicate check below isn't
+    // fooled by a stale local cache if another user just added a location.
+    if (effectiveProjectId != null) {
+      await provider.loadLocations(effectiveProjectId);
+    }
+    if (!mounted) return;
 
     // Check trùng bối cảnh: Tên trùng + Setting trùng + TimeOfDay trùng
     final isDuplicate = provider.locations.any((loc) {
@@ -134,7 +142,7 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
 
     final location = Location(
       id: widget.location?.id,
-      projectId: widget.location?.projectId ?? widget.projectId,
+      projectId: effectiveProjectId,
       name: name,
       setting: _setting,
       timeOfDay: _timeOfDay,

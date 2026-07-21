@@ -86,7 +86,7 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
               theme: theme,
             ),
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'NHÂN VẬT (CHARACTER NAME)'),
+            _fieldLabel(theme, 'NHÂN VẬT (CHARACTER NAME) *'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameCtrl,
