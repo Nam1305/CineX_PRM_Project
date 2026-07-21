@@ -89,18 +89,23 @@ class _StoryboardTabState extends State<StoryboardTab> {
                       scenes: scenes,
                       isWritable: isWritable,
                       initiallyExpanded: false,
-                      onAddScene: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SceneFormScreen(
-                            projectId: widget.projectId,
-                            actId: act.id!,
+                      onAddScene: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SceneFormScreen(
+                              projectId: widget.projectId,
+                              actId: act.id!,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                        if (context.mounted) {
+                          context.read<SceneProvider>().loadScenesForAct(act.id!);
+                        }
+                      },
                       onSceneStatusChanged: (scene, newStatus) async {
                         final ok = await context.read<SceneProvider>().updateSceneStatus(scene, newStatus);
-                        if (ok && mounted) {
+                        if (ok && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Đã cập nhật trạng thái cảnh sang ${newStatus.label}'),
@@ -111,16 +116,21 @@ class _StoryboardTabState extends State<StoryboardTab> {
                           );
                         }
                       },
-                      onEditScene: (scene) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SceneFormScreen(
-                            projectId: widget.projectId,
-                            actId: act.id!,
-                            scene: scene,
+                      onEditScene: (scene) async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SceneFormScreen(
+                              projectId: widget.projectId,
+                              actId: act.id!,
+                              scene: scene,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                        if (context.mounted) {
+                          context.read<SceneProvider>().loadScenesForAct(act.id!);
+                        }
+                      },
                       onDeleteScene: (scene) async {
                         final sceneProvider = context.read<SceneProvider>();
                         final messenger = ScaffoldMessenger.of(context);

@@ -135,7 +135,9 @@ class ProductionProvider extends ChangeNotifier {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
 
     _applyFilters();
     _isLoading = false;
@@ -148,7 +150,9 @@ class ProductionProvider extends ChangeNotifier {
       await prefs.setString('proj_${projectId}_loc_${locationLabel}_date', dateStr);
       _customDates[locationLabel] = dateStr;
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
   }
 
   Future<void> updateShootingStatus(int projectId, int sceneId, SceneStatus status) async {
@@ -157,7 +161,9 @@ class ProductionProvider extends ChangeNotifier {
       await prefs.setString('proj_${projectId}_scene_${sceneId}_shooting_status', status.dbValue);
       _sceneShootingStatuses[sceneId] = status;
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
   }
 
   void setFilter({int? characterId, SceneTime? timeOfDay}) {

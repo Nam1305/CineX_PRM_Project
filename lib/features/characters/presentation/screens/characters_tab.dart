@@ -202,14 +202,9 @@ class _CharactersTabState extends State<CharactersTab> {
                           (context, i) {
                             final char = paginated[i];
                             final sceneCount = _characterSceneCounts[char.id] ?? 0;
-                            final status = char.castingStatus ?? 'Đang tuyển';
-                            final isGreen = status == 'Đã duyệt' || status == 'APPROVED' || status == 'Approved';
-
-                            return CinematicCharacterCard(
+                             return CinematicCharacterCard(
                               character: char,
                               sceneCount: sceneCount,
-                              status: status,
-                              statusGreen: isGreen,
                               isWritable: isWritable,
                               onTap: () => _openDetail(context, char),
                               onEdit: () => _openForm(context, character: char),

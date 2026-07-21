@@ -30,7 +30,9 @@ class ProductionScheduleView extends StatelessWidget {
     if (customDateStr != null && customDateStr.isNotEmpty) {
       try {
         return DateTime.parse(customDateStr);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error: $e');
+      }
     }
     // 2. Fallback to sequential date calculation
     if (projectStartDate == null || projectStartDate!.isEmpty) return null;
@@ -62,27 +64,31 @@ class ProductionScheduleView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lịch sản xuất',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Flexible(
+                        child: Text(
+                          'Lịch sản xuất',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       ElevatedButton.icon(
                         onPressed: () => _exportSchedule(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF571A),
                           foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         icon: const Icon(Icons.ios_share, size: 18),
-                        label: const Text('Export Lịch'),
+                        label: const Text('Export'),
                       ),
                     ],
                   ),

@@ -107,51 +107,117 @@ class ProductionAnalyticsView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Thống kê Sản xuất',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const Flexible(
+                  child: Text(
+                    'Thống kê Sản xuất',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () => _exportReport(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF571A),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   icon: const Icon(Icons.download, size: 18),
-                  label: const Text('Tải báo cáo'),
+                  label: const Text('Export'),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             
             // Stats Grid
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Đã quay',
-                    provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length.toString(),
-                    Icons.check_circle,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final doneCount = provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length;
+                if (constraints.maxWidth < 360) {
+                  return Column(
+                    children: [
+                      _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation),
+                      const SizedBox(height: 8),
+                      _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on),
+                      const SizedBox(height: 8),
+                      _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle)),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Production Progress Bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF2C2C2C)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tiến độ sản xuất',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${(provider.productionProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF571A),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: provider.productionProgress,
+                      minHeight: 10,
+                      backgroundColor: const Color(0xFF2C2C2C),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        provider.productionProgress >= 1.0
+                            ? Colors.green
+                            : const Color(0xFFFF571A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${provider.completedScenesCount} / ${provider.allScenes.length} cảnh đã hoàn thành quay',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -436,7 +502,9 @@ class ProductionAnalyticsView extends StatelessWidget {
       if (customDateStr != null && customDateStr.isNotEmpty) {
         try {
           return DateTime.parse(customDateStr);
-        } catch (_) {}
+        } catch (e) {
+        debugPrint('Error: $e');
+      }
       }
       if (projectStartDate == null || projectStartDate!.isEmpty) return null;
       try {

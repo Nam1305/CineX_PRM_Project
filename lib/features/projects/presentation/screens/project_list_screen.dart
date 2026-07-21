@@ -261,7 +261,9 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                               crossAxisCount: crossAxisCount,
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12,
-                              childAspectRatio: 1.15,
+                              childAspectRatio: crossAxisCount == 1
+                                  ? (screenWidth < 350 ? 0.95 : 1.1)
+                                  : 1.15,
                             ),
                             itemCount: paginatedProjects.length,
                             itemBuilder: (context, index) {
@@ -383,7 +385,9 @@ class _ProjectCardState extends State<_ProjectCard> {
           _localProgress = cached;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+        debugPrint('Error: $e');
+      }
   }
 
   Future<void> _loadLocalProgress() async {
@@ -422,7 +426,7 @@ class _ProjectCardState extends State<_ProjectCard> {
         });
       }
     } catch (e) {
-      print('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
+      debugPrint('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
     }
   }
 

@@ -45,17 +45,22 @@ class ProjectProvider extends ChangeNotifier {
         notifyListeners();
         return created.id;
       }
-      return null;
     } catch (e) {
       _error = 'Không thể tạo dự án: $e';
-      notifyListeners();
-      return null;
     }
+
+    // Fallback nếu server lỗi/offline
+    final newId = DateTime.now().millisecondsSinceEpoch % 10000;
+    final fallbackProject = project.copyWith(id: newId);
+    _projects.add(fallbackProject);
+    notifyListeners();
+    return newId;
   }
 
   /// Cập nhật dự án qua API, cập nhật danh sách local sau khi thành công
   Future<bool> editProject(Project project) async {
     if (project.id == null) return false;
+    _error = null;
     try {
       final updated = await _api.updateProject(project);
       if (updated != null) {
@@ -68,12 +73,21 @@ class ProjectProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       }
-      return false;
     } catch (e) {
       _error = 'Không thể cập nhật dự án: $e';
-      notifyListeners();
-      return false;
     }
+
+    // Fallback: Nếu API không thành công (offline / mock data), cập nhật dữ liệu cục bộ
+    final index = _projects.indexWhere((p) => p.id == project.id);
+    if (index >= 0) {
+      _projects[index] = project;
+      notifyListeners();
+      return true;
+    }
+
+    _error = 'Không thể tìm thấy dự án để cập nhật';
+    notifyListeners();
+    return false;
   }
 
   /// Xóa dự án qua API, xóa khỏi danh sách local sau khi thành công

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
@@ -170,12 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderSide: const BorderSide(color: Color(0xFFFF571A)),
                       ),
                     ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Hãy điền tên đăng nhập';
-                      }
-                      return null;
-                    },
+                    validator: (v) => AppValidators.username(v),
                   ),
                   const SizedBox(height: 20),
 

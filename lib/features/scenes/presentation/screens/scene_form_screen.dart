@@ -138,9 +138,13 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
                   children: [
                     const Icon(Icons.info_outline, size: 16, color: Color(0xFFFF571A)),
                     const SizedBox(width: 8),
-                    Text(
-                      'Thuộc tính bối cảnh: ${_setting.fullLabel} · ${_timeOfDay.fullLabel}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    Flexible(
+                      child: Text(
+                        'Thuộc tính bối cảnh: ${_setting.fullLabel} · ${_timeOfDay.fullLabel}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                   ],
                 ),
@@ -204,6 +208,12 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     final sceneProvider = context.read<SceneProvider>();
     final sceneNumber = int.parse(_numberCtrl.text.trim());
+
+    // Refresh scenes from server first so the duplicate check below isn't
+    // fooled by a stale local cache if another user just added a scene.
+    await sceneProvider.loadScenesForAct(widget.actId);
+    if (!mounted) return;
+
     final taken = sceneProvider.isSceneNumberTaken(
       widget.actId,
       sceneNumber,

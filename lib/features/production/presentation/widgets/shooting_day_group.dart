@@ -373,21 +373,22 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${widget.scenes.length} phân cảnh',
+                        '${widget.scenes.length} cảnh',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Color(0xFFE6BEB2),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Icon(
                         _isExpanded ? Icons.expand_less : Icons.expand_more,
                         color: Colors.grey,
-                        size: 20,
+                        size: 18,
                       ),
                     ],
                   ),

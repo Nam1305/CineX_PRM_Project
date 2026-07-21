@@ -115,7 +115,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         });
       }
     } catch (e) {
-      print('ProjectDetailScreen._loadProjectData error: $e');
+      debugPrint('ProjectDetailScreen._loadProjectData error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -391,6 +391,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           Text(
                             _project.title,
                             style: theme.textTheme.headlineLarge,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -668,11 +670,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildSubCount('HOÀN THÀNH', '$_doneScenes Cảnh', const Color(0xFF51CF66)),
-                  _buildSubCount('ĐANG QUAY', '$_inProgressScenes Cảnh', const Color(0xFFFFD43B)),
-                  _buildSubCount('CÒN LẠI', '$_todoScenes Cảnh', const Color(0xFF9E9E9E)),
+                  Expanded(child: _buildSubCount('HOÀN THÀNH', '$_doneScenes Cảnh', const Color(0xFF51CF66))),
+                  Expanded(child: _buildSubCount('ĐANG QUAY', '$_inProgressScenes Cảnh', const Color(0xFFFFD43B))),
+                  Expanded(child: _buildSubCount('CÒN LẠI', '$_todoScenes Cảnh', const Color(0xFF9E9E9E))),
                 ],
               ),
             ],
@@ -904,7 +905,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     try {
       final dt = DateTime.parse(dateStr);
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error: $e');
       return dateStr;
     }
   }

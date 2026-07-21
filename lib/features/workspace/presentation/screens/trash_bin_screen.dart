@@ -44,7 +44,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProvid
         });
       }
     } catch (e) {
-      print('TrashBinScreen._loadTrashData error: $e');
+      debugPrint('TrashBinScreen._loadTrashData error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }

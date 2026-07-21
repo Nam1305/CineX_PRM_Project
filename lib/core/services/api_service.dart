@@ -44,7 +44,7 @@ class _TimeoutClient extends http.BaseClient {
 class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:5274/odata',
+    defaultValue: 'https://cinex-api.onrender.com/odata',
   );
   static String? token;
   static final http.Client _client = _TimeoutClient(

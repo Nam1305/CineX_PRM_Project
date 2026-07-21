@@ -116,21 +116,23 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
                 segments: const [
                   ButtonSegment<ProductionGroupMode>(
                     value: ProductionGroupMode.byLocation,
-                    label: Text('Gom theo Bối cảnh'),
-                    icon: Icon(Icons.location_on_outlined),
+                    label: Text('Bối cảnh', overflow: TextOverflow.ellipsis),
+                    icon: Icon(Icons.location_on_outlined, size: 16),
                   ),
                   ButtonSegment<ProductionGroupMode>(
                     value: ProductionGroupMode.byCharacter,
-                    label: Text('Gom theo Nhân vật'),
-                    icon: Icon(Icons.person_outline),
+                    label: Text('Nhân vật', overflow: TextOverflow.ellipsis),
+                    icon: Icon(Icons.person_outline, size: 16),
                   ),
                 ],
                 selected: {provider.groupMode},
                 onSelectionChanged: (Set<ProductionGroupMode> selection) {
                   provider.setGroupMode(selection.first);
                 },
+                showSelectedIcon: false,
                 style: SegmentedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
             ),
