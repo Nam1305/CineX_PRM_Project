@@ -46,9 +46,7 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Sửa bối cảnh' : 'Bối cảnh mới'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Sửa bối cảnh' : 'Bối cảnh mới')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -60,7 +58,12 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
                 labelText: 'Tên địa điểm / Bối cảnh *',
                 hintText: 'Ví dụ: Cà phê Sài Gòn, Nhà Hát Lớn...',
               ),
-              validator: (v) => AppValidators.required(v, field: 'Tên địa điểm'),
+              validator: (v) => AppValidators.text(
+                v,
+                field: 'Tên địa điểm',
+                min: 2,
+                max: 200,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -68,9 +71,16 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
                 Expanded(
                   child: DropdownButtonFormField<LocationSetting>(
                     value: _setting,
-                    decoration: const InputDecoration(labelText: 'Vị trí (Trong nhà / Ngoài trời)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Vị trí (Trong nhà / Ngoài trời)',
+                    ),
                     items: LocationSetting.values
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s.fullLabel)))
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s.fullLabel),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _setting = v!),
                   ),
@@ -79,9 +89,16 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
                 Expanded(
                   child: DropdownButtonFormField<SceneTime>(
                     value: _timeOfDay,
-                    decoration: const InputDecoration(labelText: 'Thời gian (Ngày / Đêm)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Thời gian (Ngày / Đêm)',
+                    ),
                     items: SceneTime.values
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t.fullLabel)))
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(t.fullLabel),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _timeOfDay = v!),
                   ),
@@ -95,7 +112,12 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
                 labelText: 'Ghi chú chuẩn bị đạo cụ & kỹ thuật *',
                 hintText: 'Ghi chú về đạo cụ, ánh sáng, máy quay, tiếng ồn...',
               ),
-              validator: (v) => AppValidators.required(v, field: 'Ghi chú đạo cụ'),
+              validator: (v) => AppValidators.text(
+                v,
+                field: 'Ghi chú đạo cụ',
+                min: 2,
+                max: 5000,
+              ),
               maxLines: 3,
             ),
             const SizedBox(height: 24),
@@ -155,14 +177,17 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     setState(() => _saving = false);
     if (ok) {
       context.read<NotificationProvider>().addNotification(
-            projectId: location.projectId,
-            projectTitle: 'Dự án CineX #${location.projectId}',
-            title: _isEditing
-                ? 'Cập nhật bối cảnh: $name'
-                : 'Thêm bối cảnh mới: $name',
-            body: '${_setting.fullLabel} · ${_timeOfDay.fullLabel}${_notesCtrl.text.trim().isNotEmpty ? " - ${_notesCtrl.text.trim()}" : ""}',
-            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
-          );
+        projectId: location.projectId,
+        projectTitle: 'Dự án CineX #${location.projectId}',
+        title: _isEditing
+            ? 'Cập nhật bối cảnh: $name'
+            : 'Thêm bối cảnh mới: $name',
+        body:
+            '${_setting.fullLabel} · ${_timeOfDay.fullLabel}${_notesCtrl.text.trim().isNotEmpty ? " - ${_notesCtrl.text.trim()}" : ""}',
+        actionType: _isEditing
+            ? NotificationActionType.update
+            : NotificationActionType.create,
+      );
       AppSnackbar.success(
         context,
         _isEditing ? 'Đã cập nhật bối cảnh' : 'Đã thêm bối cảnh',

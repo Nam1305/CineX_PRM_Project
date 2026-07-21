@@ -1,734 +1,481 @@
 import 'package:cinex_application/core/utils/enums.dart';
-import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
-import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:cinex_application/features/projects/data/models/project.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
 
 class MockData {
-  // Cosmetic placeholder stats for character cards
-  static Map<int, int> characterSceneCount = {
-    1: 12,
-    2: 8,
-    3: 5,
-    4: 6,
-    5: 4,
-    6: 3,
-    7: 15,
-    8: 14,
-    9: 9,
-    10: 10,
-    11: 11,
-    12: 2,
-    13: 4,
-  };
-
-  static Map<int, String> characterStatus = {
-    1: 'Đã duyệt',
-    2: 'Đã duyệt',
-    3: 'Chờ quay',
-    4: 'Đã duyệt',
-    5: 'Đã duyệt',
-    6: 'Chờ duyệt',
-    7: 'Hoàn tất',
-    8: 'Hoàn tất',
-    9: 'Hoàn tất',
-    10: 'Hậu kỳ',
-    11: 'Hậu kỳ',
-    12: 'Tuyển chọn',
-    13: 'Đang quay',
-  };
-
-  static Map<int, bool> characterStatusGreen = {
-    1: true,
-    2: true,
-    3: false,
-    4: true,
-    5: true,
-    6: false,
-    7: true,
-    8: true,
-    9: true,
-    10: true,
-    11: true,
-    12: false,
-    13: true,
-  };
-
-  // Mock Projects (Đa dạng trạng thái bao gồm cả COMPLETED)
   static final List<Project> mockProjects = [
     const Project(
       id: 1,
-      title: 'Đêm Đầu Tiên',
-      genre: 'Tâm lý / Gián điệp',
-      description: 'Một bộ phim tâm lý hồi hộp về một điệp viên giải ngũ phải thực hiện nhiệm vụ cuối cùng trong thành phố sương mù.',
-      director: 'Trần Văn Nam',
-      startDate: '2026-08-01',
-      endDate: '2026-10-15',
+      title: 'Dem Dau Tien',
+      genre: 'Tam ly / Gian diep',
+      description: 'Mot cuu diep vien nhan nhiem vu cuoi cung trong thanh pho suong mu.',
+      director: 'Tran Van Nam',
+      startDate: '2026-08-01T00:00:00',
+      endDate: '2026-11-15T00:00:00',
       posterUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800',
-      progress: 0.60,
+      progress: 0.58,
       status: 'SHOOTING',
       crewCount: 45,
       createdAt: '2026-07-01T10:00:00Z',
     ),
     const Project(
       id: 2,
-      title: 'Ranh Giới Bình Yên',
-      genre: 'Hành động / Drama',
-      description: 'Câu chuyện về tình đồng đội và những hy sinh thầm lặng của lực lượng cứu hộ trên vùng cao.',
-      director: 'Lê Minh',
-      startDate: '2026-09-10',
-      endDate: '2026-12-20',
-      posterUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800',
-      progress: 0.10,
-      status: 'PLANNING',
-      crewCount: 30,
-      createdAt: '2026-07-10T08:30:00Z',
+      title: 'Ranh Gioi Binh Yen',
+      genre: 'Hanh dong / Drama',
+      description: 'Luc luong cuu ho doi mat voi tran sat lo lon tren vung cao.',
+      director: 'Le Minh',
+      startDate: '2026-09-10T00:00:00',
+      endDate: '2027-01-20T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+      progress: 0.18,
+      status: 'SHOOTING',
+      crewCount: 36,
+      createdAt: '2026-07-05T08:30:00Z',
     ),
     const Project(
       id: 3,
-      title: 'Hào Quang Rực Rỡ',
-      genre: 'Âm nhạc / Lịch sử',
-      description: 'Dự án điện ảnh hoàn thiện tái hiện hành trình vinh quang và cay đắng của thế hệ nghệ sĩ tài hoa thập niên 90.',
-      director: 'Phạm Hoàng Anh',
-      startDate: '2025-01-15',
-      endDate: '2025-06-30',
+      title: 'Hao Quang Ruc Ro',
+      genre: 'Am nhac / Lich su',
+      description: 'Hanh trinh vinh quang va mat trai san khau cua mot ngoi sao thap nien 90.',
+      director: 'Pham Hoang Anh',
+      startDate: '2025-01-15T00:00:00',
+      endDate: '2025-06-30T00:00:00',
       posterUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-      progress: 1.0,
+      progress: 1,
       status: 'COMPLETED',
       crewCount: 65,
       createdAt: '2025-01-01T08:00:00Z',
     ),
     const Project(
       id: 4,
-      title: 'Ký Ức Thời Gian',
-      genre: 'Viễn tưởng / Tình cảm',
-      description: 'Hành trình xuyên không trở lại thập niên 90 để sửa chữa sai lầm tuổi trẻ của một nhà khoa học.',
-      director: 'Nguyễn Vũ',
-      startDate: '2026-02-01',
-      endDate: '2026-08-30',
+      title: 'Ky Uc Thoi Gian',
+      genre: 'Vien tuong / Tinh cam',
+      description: 'Mot nha vat ly tro ve nam 1995 de sua sai lam tuoi tre.',
+      director: 'Nguyen Vu',
+      startDate: '2026-02-01T00:00:00',
+      endDate: '2026-08-30T00:00:00',
       posterUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-      progress: 0.85,
+      progress: 0.82,
       status: 'POST_PRODUCTION',
       crewCount: 50,
       createdAt: '2026-01-15T09:00:00Z',
     ),
     const Project(
       id: 5,
-      title: 'Bão Xanh',
-      genre: 'Phiêu lưu / Thám hiểm',
-      description: 'Chuyến ra khơi định mệnh của đoàn thủy thủ trẻ đối mặt với cơn bão lớn nhất thế kỷ trên biển Đông.',
-      director: 'Đặng Tuấn',
-      startDate: '2026-11-01',
-      endDate: '2027-03-15',
-      posterUrl: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800',
-      progress: 0.0,
+      title: 'Bao Xanh',
+      genre: 'Phieu luu / Tham hiem',
+      description: 'Doan thuy thu tre ra khoi va doi mat voi con bao lon tren bien Dong.',
+      director: 'Dang Tuan',
+      startDate: '2026-11-01T00:00:00',
+      endDate: '2027-03-15T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+      progress: 0,
       status: 'PLANNING',
-      crewCount: 25,
-      createdAt: '2026-07-15T14:00:00Z',
+      crewCount: 28,
+      createdAt: '2026-07-12T14:00:00Z',
     ),
     const Project(
       id: 6,
-      title: 'Vệt Sáng Đêm Thu',
-      genre: 'Lãng mạn / Tâm lý',
-      description: 'Những mảnh ghép ký ức về tình yêu đầu đời giữa lòng thành phố sương mù Đà Lạt.',
-      director: 'Vũ Hà',
-      startDate: '2026-05-10',
-      endDate: '2026-09-30',
+      title: 'Vet Sang Dem Thu',
+      genre: 'Lang man / Tam ly',
+      description: 'Mot hoa si Da Lat tim lai cam hung giua mua suong mu.',
+      director: 'Vu Ha',
+      startDate: '2026-05-10T00:00:00',
+      endDate: '2026-09-30T00:00:00',
       posterUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800',
-      progress: 0.45,
+      progress: 0.43,
       status: 'SHOOTING',
       crewCount: 38,
       createdAt: '2026-04-20T11:20:00Z',
     ),
-  ];
-
-  // Mock Characters
-  static final List<Character> mockCharacters = [
-    // Project 1 (Đêm Đầu Tiên)
-    const Character(
-      id: 1,
-      projectId: 1,
-      name: 'Vũ Quốc Nam',
-      roleType: RoleType.main,
-      actorName: 'Nguyễn Thái Hòa',
-      description: 'Cựu điệp viên 35 tuổi, điềm tĩnh, trầm lặng nhưng quyết đoán. Nền tảng gia đình khó khăn, mục tiêu là bảo vệ gia đình và tìm ra sự thật.',
-      imagePath: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-      castingStatus: 'Đã ký hợp đồng',
-    ),
-    const Character(
-      id: 2,
-      projectId: 1,
-      name: 'Lê Mai Anh',
-      roleType: RoleType.main,
-      actorName: 'Trần Thu Hà',
-      description: 'Nhà báo điều tra thông minh, sắc sảo. Luôn tìm kiếm sự thật đằng sau những vụ bê bối tài chính.',
-      imagePath: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-      castingStatus: 'Đã ký hợp đồng',
-    ),
-    const Character(
-      id: 3,
-      projectId: 1,
-      name: 'Hoàng Bách',
-      roleType: RoleType.support,
-      actorName: 'Phạm Huy',
-      description: 'Chuyên gia công nghệ thông tin, hỗ trợ kỹ thuật từ xa cho Nam trong các chiến dịch bí mật.',
-      imagePath: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-      castingStatus: 'Chờ duyệt',
-    ),
-    // Project 2 (Ranh Giới Bình Yên)
-    const Character(
-      id: 4,
-      projectId: 2,
-      name: 'Đội trưởng Hùng',
-      roleType: RoleType.main,
-      actorName: 'Đặng Quân',
-      description: 'Đội trưởng cứu hộ dày dặn kinh nghiệm, nghiêm khắc nhưng giàu lòng vị tha.',
-      imagePath: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
-      castingStatus: 'Đã ký hợp đồng',
-    ),
-    const Character(
-      id: 5,
-      projectId: 2,
-      name: 'Bác sĩ Tuấn',
-      roleType: RoleType.support,
-      actorName: 'Trịnh Thắng',
-      description: 'Bác sĩ quân y trẻ tuổi đầy nhiệt huyết, sẵn sàng xông pha vào vùng thiên tai.',
-      imagePath: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
-      castingStatus: 'Đã ký hợp đồng',
-    ),
-    const Character(
-      id: 6,
-      projectId: 2,
-      name: 'Tình nguyện viên Thảo',
-      roleType: RoleType.support,
-      actorName: 'Lê Thanh',
-      description: 'Cô gái trẻ năng nổ phụ trách tiếp tế lương thực và hậu cần cho đoàn cứu hộ.',
-      imagePath: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-      castingStatus: 'Chờ duyệt',
-    ),
-    // Project 3 (Hào Quang Rực Rỡ - COMPLETED PROJECT)
-    const Character(
+    const Project(
       id: 7,
-      projectId: 3,
-      name: 'Ca sĩ Bảo Ngọc',
-      roleType: RoleType.main,
-      actorName: 'Minh Hằng',
-      description: 'Ngôi sao âm nhạc thập niên 90 với giọng hát thiên bẩm. Đã hoàn thành xuất sắc toàn bộ cảnh quay.',
-      imagePath: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
-      castingStatus: 'Đã hoàn thành vai',
+      title: 'Thanh Pho Khong Ngu',
+      genre: 'Toi pham / Thriller',
+      description: 'Doi dieu tra truy theo duong day tien ao trong dem Sai Gon.',
+      director: 'Bui Quoc Huy',
+      startDate: '2026-07-20T00:00:00',
+      endDate: '2026-12-22T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=800',
+      progress: 0.35,
+      status: 'SHOOTING',
+      crewCount: 52,
+      createdAt: '2026-06-18T13:15:00Z',
     ),
-    const Character(
+    const Project(
       id: 8,
-      projectId: 3,
-      name: 'Nhạc sĩ Đăng Khoa',
-      roleType: RoleType.main,
-      actorName: 'Hứa Vĩ Văn',
-      description: 'Nhạc sĩ thiên tài đứng đằng sau hàng loạt bản nhạc trữ tình sống mãi với thời gian.',
-      imagePath: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400',
-      castingStatus: 'Đã hoàn thành vai',
+      title: 'Tram Cuoi Mua Dong',
+      genre: 'Tinh cam / Chien tranh',
+      description: 'Hai nguoi tre gap lai nhau tai mot ga tau cu sau nhieu nam xa cach.',
+      director: 'Do Mai Anh',
+      startDate: '2025-10-01T00:00:00',
+      endDate: '2026-04-12T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1488415032361-b7e238421f1b?w=800',
+      progress: 0.78,
+      status: 'POST_PRODUCTION',
+      crewCount: 41,
+      createdAt: '2025-09-12T09:45:00Z',
     ),
-    const Character(
+    const Project(
       id: 9,
-      projectId: 3,
-      name: 'Nhà sản xuất Quang Huy',
-      roleType: RoleType.support,
-      actorName: 'Quang Minh',
-      description: 'Ông bầu âm nhạc quyền lực, người kiến tạo nên thời kỳ hoàng kim của giải trí.',
-      imagePath: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400',
-      castingStatus: 'Đã hoàn thành vai',
+      title: 'Duong Den Sao Hoa',
+      genre: 'Khoa hoc vien tuong',
+      description: 'Phi hanh doan Viet dau tien chuan bi chuyen bay mo phong len Sao Hoa.',
+      director: 'Hoang Nhat',
+      startDate: '2027-01-10T00:00:00',
+      endDate: '2027-07-30T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800',
+      progress: 0,
+      status: 'PLANNING',
+      crewCount: 60,
+      createdAt: '2026-07-15T16:10:00Z',
     ),
-    // Project 4 (Ký Ức Thời Gian)
-    const Character(
+    const Project(
       id: 10,
-      projectId: 4,
-      name: 'Giáo sư Trí',
-      roleType: RoleType.main,
-      actorName: 'Thành Lộc',
-      description: 'Nhà vật lý học phát minh ra thiết bị bóp méo thời gian để tìm lại tình yêu đã mất.',
-      imagePath: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=400',
-      castingStatus: 'Đã quay xong',
-    ),
-    const Character(
-      id: 11,
-      projectId: 4,
-      name: 'Linh',
-      roleType: RoleType.main,
-      actorName: 'Ninh Dương Lan Ngọc',
-      description: 'Cô gái trẻ thập niên 90 với vẻ đẹp dịu dàng và tâm hồn yêu nghệ thuật.',
-      imagePath: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-      castingStatus: 'Đã quay xong',
-    ),
-    // Project 5 (Bão Xanh)
-    const Character(
-      id: 12,
-      projectId: 5,
-      name: 'Thủy thủ Sơn',
-      roleType: RoleType.main,
-      actorName: 'Liên Bỉnh Phát',
-      description: 'Thủy thủ trẻ kiên cường, dạn dĩ trước sóng gió đại dương.',
-      imagePath: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-      castingStatus: 'Đang đàm phán',
-    ),
-    // Project 6 (Vệt Sáng Đêm Thu)
-    const Character(
-      id: 13,
-      projectId: 6,
-      name: 'Họa sĩ Hoàng',
-      roleType: RoleType.main,
-      actorName: 'Quốc Trường',
-      description: 'Chàng họa sĩ tài hoa tìm kiếm cảm hứng sáng tác giữa cao nguyên Đà Lạt.',
-      imagePath: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-      castingStatus: 'Đang ghi hình',
+      title: 'Nhung Ngay Khong Ten',
+      genre: 'Gia dinh / Doi thuong',
+      description: 'Mot gia dinh ba the he hoc cach tha thu trong nhung ngay cuoi nam.',
+      director: 'Nguyen Khanh Linh',
+      startDate: '2024-08-05T00:00:00',
+      endDate: '2025-02-28T00:00:00',
+      posterUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800',
+      progress: 1,
+      status: 'COMPLETED',
+      crewCount: 24,
+      createdAt: '2024-07-22T07:50:00Z',
     ),
   ];
 
-  // Mock Locations
-  static final List<Location> mockLocations = [
-    // Project 1
-    const Location(
-      id: 1,
-      projectId: 1,
-      name: 'Quán Cà Phê Cổ',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.day,
-      notes: 'Quán yên tĩnh, ánh sáng tự nhiên qua cửa kính lớn, phù hợp các cảnh đối thoại bí mật.',
-    ),
-    const Location(
-      id: 2,
-      projectId: 1,
-      name: 'Bến Cảng Đêm',
-      setting: LocationSetting.exterior,
-      timeOfDay: SceneTime.night,
-      notes: 'Cần máy tạo sương mù và đèn chiếu công suất lớn cho cảnh hành động.',
-    ),
-    const Location(
-      id: 3,
-      projectId: 1,
-      name: 'Căn Hộ Bí Mật',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.night,
-      notes: 'Không gian hẹp, tông màu tối, ánh đèn vàng ấm.',
-    ),
-    // Project 2
-    const Location(
-      id: 4,
-      projectId: 2,
-      name: 'Trạm Cứu Hộ Vùng Cao',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.day,
-      notes: 'Trạm gỗ ven đồi, cơ sở vật chất đơn sơ.',
-    ),
-    const Location(
-      id: 5,
-      projectId: 2,
-      name: 'Rừng Già Mù Sương',
-      setting: LocationSetting.exterior,
-      timeOfDay: SceneTime.day,
-      notes: 'Đường dốc đứng, tán cây rậm rạp.',
-    ),
-    // Project 3 (COMPLETED PROJECT)
-    const Location(
-      id: 6,
-      projectId: 3,
-      name: 'Nhà Hát Lớn Hà Nội',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.night,
-      notes: 'Sân khấu tráng lệ, ánh đèn chùm lộng lẫy cho cảnh Concert bùng nổ.',
-    ),
-    const Location(
-      id: 7,
-      projectId: 3,
-      name: 'Phòng Thu Âm Hiện Đại',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.day,
-      notes: 'Cách âm tuyệt đối, lưu giữ các bản demo đi vào lịch sử.',
-    ),
-    const Location(
-      id: 8,
-      projectId: 3,
-      name: 'Biệt Thự Hồ Tây',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.day,
-      notes: 'Kiến trúc cổ điển nơi diễn ra các buổi dạ tiệc âm nhạc.',
-    ),
-    // Project 4
-    const Location(
-      id: 9,
-      projectId: 4,
-      name: 'Phòng Thí Nghiệm Cổ Kính',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.night,
-      notes: 'Chứa cỗ máy thời gian và hệ thống bảng mạch phức tạp.',
-    ),
-    const Location(
-      id: 10,
-      projectId: 4,
-      name: 'Phố Cổ Thập Niên 90',
-      setting: LocationSetting.exterior,
-      timeOfDay: SceneTime.day,
-      notes: 'Duy trì bối cảnh xe đạp cào cào, biển hiệu vẽ tay.',
-    ),
-    // Project 5
-    const Location(
-      id: 11,
-      projectId: 5,
-      name: 'Boong Tàu Biển Đông',
-      setting: LocationSetting.exterior,
-      timeOfDay: SceneTime.day,
-      notes: 'Boong tàu đánh cá lớn trang bị cần cẩu và lưới kéo.',
-    ),
-    // Project 6
-    const Location(
-      id: 12,
-      projectId: 6,
-      name: 'Xưởng Vẽ Đà Lạt',
-      setting: LocationSetting.interior,
-      timeOfDay: SceneTime.day,
-      notes: 'Nhà gỗ kính nhìn ra thung lũng mây ngàn.',
-    ),
-  ];
-
-  // Mock Acts
   static final List<Act> mockActs = [
-    // Project 1
-    const Act(
-      id: 1,
-      projectId: 1,
-      title: 'Hồi I: Khởi Đầu & Manh Mối',
-      sequenceOrder: 1,
-      summary: 'Nam nhận được tin nhắn bí ẩn và gặp lại Mai Anh tại quán cà phê.',
-      status: 'DONE',
-    ),
-    const Act(
-      id: 2,
-      projectId: 1,
-      title: 'Hồi II: Đột Nhập & Truy Đuổi',
-      sequenceOrder: 2,
-      summary: 'Cuộc gặp bí mật tại bến cảng ban đêm và cuộc vây ráp bất ngờ.',
-      status: 'IN_PROGRESS',
-    ),
-    const Act(
-      id: 3,
-      projectId: 1,
-      title: 'Hồi III: Sự Thật Lộ Diện',
-      sequenceOrder: 3,
-      summary: 'Nam và Mai Anh đối mặt với kẻ đứng sau tại căn hộ bí mật.',
-      status: 'WAITING',
-    ),
-
-    // Project 2
-    const Act(
-      id: 4,
-      projectId: 2,
-      title: 'Hồi I: Tiếng Gọi Từ Núi Rừng',
-      sequenceOrder: 1,
-      summary: 'Đội cứu hộ nhận tín hiệu khẩn cấp từ bản làng bị chia cắt.',
-      status: 'IN_PROGRESS',
-    ),
-    const Act(
-      id: 5,
-      projectId: 2,
-      title: 'Hồi II: Trận Lũ Quét',
-      sequenceOrder: 2,
-      summary: 'Cuộc chiến sinh tồn với thiên tai khắc nghiệt.',
-      status: 'WAITING',
-    ),
-
-    // Project 3 (COMPLETED PROJECT - Tất cả các Hồi đều DONE)
-    const Act(
-      id: 6,
-      projectId: 3,
-      title: 'Hồi I: Bước Chân Đầu Tiên',
-      sequenceOrder: 1,
-      summary: 'Bảo Ngọc và Đăng Khoa gặp nhau tại phòng thu, sáng tác bản hit đầu tay.',
-      status: 'DONE',
-    ),
-    const Act(
-      id: 7,
-      projectId: 3,
-      title: 'Hồi II: Áp Lực Hào Quang',
-      sequenceOrder: 2,
-      summary: 'Đỉnh cao sự nghiệp đi kèm những xung đột nghệ thuật và bất đồng quan điểm.',
-      status: 'DONE',
-    ),
-    const Act(
-      id: 8,
-      projectId: 3,
-      title: 'Hồi III: Đêm Nhạc Để Đời',
-      sequenceOrder: 3,
-      summary: 'Đêm concert bùng nổ tại Nhà Hát Lớn khép lại hành trình vinh quang.',
-      status: 'DONE',
-    ),
-
-    // Project 4
-    const Act(
-      id: 9,
-      projectId: 4,
-      title: 'Hồi I: Cỗ Máy Thời Gian',
-      sequenceOrder: 1,
-      summary: 'Giáo sư Trí thử nghiệm thành công thiết bị xuyên không.',
-      status: 'DONE',
-    ),
-    const Act(
-      id: 10,
-      projectId: 4,
-      title: 'Hồi II: Trở Về Quá Khứ',
-      sequenceOrder: 2,
-      summary: 'Gặp lại Linh ở năm 1995 và tìm cách cứu cô khỏi tai nạn.',
-      status: 'DONE',
-    ),
-    const Act(
-      id: 11,
-      projectId: 4,
-      title: 'Hồi III: Khép Lại Vòng Lặp',
-      sequenceOrder: 3,
-      summary: 'Trở về hiện tại với những ký ức mới được khắc ghi.',
-      status: 'IN_PROGRESS',
-    ),
-
-    // Project 5
-    const Act(
-      id: 12,
-      projectId: 5,
-      title: 'Hồi I: Ra Khơi',
-      sequenceOrder: 1,
-      summary: 'Đoàn tàu nhổ neo xuất bến trong sự hy vọng của thân nhân.',
-      status: 'WAITING',
-    ),
-
-    // Project 6
-    const Act(
-      id: 13,
-      projectId: 6,
-      title: 'Hồi I: Bức Tranh Dở Dang',
-      sequenceOrder: 1,
-      summary: 'Hoàng vẽ nét cọ đầu tiên cho kiệt tác mùa thu Đà Lạt.',
-      status: 'IN_PROGRESS',
-    ),
+    const Act(id: 1, projectId: 1, sequenceOrder: 1, title: 'Hoi I - Tin Hieu', summary: 'Nam nhan thong diep ma hoa dau tien.', status: 'DONE'),
+    const Act(id: 2, projectId: 1, sequenceOrder: 2, title: 'Hoi II - Dot Nhap', summary: 'Nhom dieu tra lan theo dau vet trong dem.', status: 'IN_PROGRESS'),
+    const Act(id: 3, projectId: 1, sequenceOrder: 3, title: 'Hoi III - Lat Mat', summary: 'Ke chu muu lo dien tai can ho bi mat.', status: 'WAITING'),
+    const Act(id: 4, projectId: 2, sequenceOrder: 1, title: 'Hoi I - Len Duong', summary: 'Doi cuu ho nhan tin bao khan cap.', status: 'IN_PROGRESS'),
+    const Act(id: 5, projectId: 2, sequenceOrder: 2, title: 'Hoi II - Tam Bao', summary: 'Ca doi doi mat voi mua lu va sat lo.', status: 'WAITING'),
+    const Act(id: 6, projectId: 2, sequenceOrder: 3, title: 'Hoi III - Binh Minh', summary: 'Nguoi bi nan duoc dua ve noi an toan.', status: 'WAITING'),
+    const Act(id: 7, projectId: 3, sequenceOrder: 1, title: 'Hoi I - Ban Demo', summary: 'Bao Ngoc gap Dang Khoa tai phong thu.', status: 'DONE'),
+    const Act(id: 8, projectId: 3, sequenceOrder: 2, title: 'Hoi II - Ap Luc', summary: 'Danh tieng keo theo xung dot nghe thuat.', status: 'DONE'),
+    const Act(id: 9, projectId: 3, sequenceOrder: 3, title: 'Hoi III - Dem Nhac', summary: 'Concert lon khep lai hanh trinh ruc ro.', status: 'DONE'),
+    const Act(id: 10, projectId: 4, sequenceOrder: 1, title: 'Hoi I - Co May', summary: 'Giao su Tri kich hoat thiet bi thoi gian.', status: 'DONE'),
+    const Act(id: 11, projectId: 4, sequenceOrder: 2, title: 'Hoi II - Nam 1995', summary: 'Tri tim lai Linh giua pho cu.', status: 'DONE'),
+    const Act(id: 12, projectId: 4, sequenceOrder: 3, title: 'Hoi III - Vong Lap', summary: 'Su that ve ky uc duoc giai ma.', status: 'IN_PROGRESS'),
+    const Act(id: 13, projectId: 5, sequenceOrder: 1, title: 'Hoi I - Ra Khoi', summary: 'Thuyen truong Son tap hop thuy thu.', status: 'WAITING'),
+    const Act(id: 14, projectId: 5, sequenceOrder: 2, title: 'Hoi II - Tam Bao Xanh', summary: 'Con tau di vao vung ap thap nguy hiem.', status: 'WAITING'),
+    const Act(id: 15, projectId: 5, sequenceOrder: 3, title: 'Hoi III - Hai Dang', summary: 'Anh sang cuu ho xuat hien tren bien.', status: 'WAITING'),
+    const Act(id: 16, projectId: 6, sequenceOrder: 1, title: 'Hoi I - Buc Tranh', summary: 'Hoang tim thay khung canh mua thu.', status: 'DONE'),
+    const Act(id: 17, projectId: 6, sequenceOrder: 2, title: 'Hoi II - La Thu', summary: 'Mai gui lai nhung dieu chua tung noi.', status: 'IN_PROGRESS'),
+    const Act(id: 18, projectId: 6, sequenceOrder: 3, title: 'Hoi III - Vet Sang', summary: 'Buc tranh cuoi cung duoc hoan thanh.', status: 'WAITING'),
+    const Act(id: 19, projectId: 7, sequenceOrder: 1, title: 'Hoi I - Man Dem', summary: 'Doi dieu tra tiep can vu an tien ao.', status: 'DONE'),
+    const Act(id: 20, projectId: 7, sequenceOrder: 2, title: 'Hoi II - Giao Dich', summary: 'Dau vet dan den mot club ngam.', status: 'IN_PROGRESS'),
+    const Act(id: 21, projectId: 7, sequenceOrder: 3, title: 'Hoi III - Mat Na', summary: 'Noi bo doi dieu tra co ke phan boi.', status: 'IN_PROGRESS'),
+    const Act(id: 22, projectId: 8, sequenceOrder: 1, title: 'Hoi I - Ga Tau', summary: 'Hai nguoi cu gap lai trong mua dong.', status: 'DONE'),
+    const Act(id: 23, projectId: 8, sequenceOrder: 2, title: 'Hoi II - Buc Thu', summary: 'Qua khu chien tranh hien ve qua nhung la thu.', status: 'DONE'),
+    const Act(id: 24, projectId: 8, sequenceOrder: 3, title: 'Hoi III - Chuyen Tau Cuoi', summary: 'Ho chon cach roi di hay o lai.', status: 'IN_PROGRESS'),
+    const Act(id: 25, projectId: 9, sequenceOrder: 1, title: 'Hoi I - Mo Phong', summary: 'Phi hanh doan bat dau chuong trinh huan luyen.', status: 'WAITING'),
+    const Act(id: 26, projectId: 9, sequenceOrder: 2, title: 'Hoi II - Su Co', summary: 'He thong mo phong mat on dinh.', status: 'WAITING'),
+    const Act(id: 27, projectId: 9, sequenceOrder: 3, title: 'Hoi III - Quyet Dinh', summary: 'Lenh phong duoc can nhac trong 24 gio.', status: 'WAITING'),
+    const Act(id: 28, projectId: 10, sequenceOrder: 1, title: 'Hoi I - Tro Ve', summary: 'Cac thanh vien gia dinh ve nha cuoi nam.', status: 'DONE'),
+    const Act(id: 29, projectId: 10, sequenceOrder: 2, title: 'Hoi II - Khoang Cach', summary: 'Nhung xung dot cu duoc goi lai.', status: 'DONE'),
+    const Act(id: 30, projectId: 10, sequenceOrder: 3, title: 'Hoi III - Bua Com', summary: 'Bua com tat nien noi lai gia dinh.', status: 'DONE'),
   ];
 
-  // Mock Scenes (Các phân cảnh gắn kết chặt chẽ với Act, Location và Character)
-  static final List<Scene> mockScenes = [
-    // Project 1 Scenes
-    Scene(
-      id: 1,
-      actId: 1,
-      locationId: 1,
-      sceneNumber: 1,
-      title: 'Gặp gỡ đầu tiên',
-      summary: 'Vũ Quốc Nam gặp Mai Anh tại quán cà phê cổ để trao đổi tập tài liệu mật.',
-      status: SceneStatus.done,
-      location: mockLocations[0],
-      characters: [mockCharacters[0], mockCharacters[1]],
-    ),
-    Scene(
-      id: 2,
-      actId: 1,
-      locationId: 3,
-      sceneNumber: 2,
-      title: 'Giải mã tín hiệu',
-      summary: 'Nam cùng Hoàng Bách phân tích file âm thanh thu được.',
-      status: SceneStatus.done,
-      location: mockLocations[2],
-      characters: [mockCharacters[0], mockCharacters[2]],
-    ),
-    Scene(
-      id: 3,
-      actId: 2,
-      locationId: 2,
-      sceneNumber: 3,
-      title: 'Cuộc gặp bí mật tại Bến Cảng',
-      summary: 'Nam theo dõi giao dịch trên tàu hàng. Mai Anh hỗ trợ quan sát từ xa.',
-      status: SceneStatus.inProgress,
-      location: mockLocations[1],
-      characters: [mockCharacters[0], mockCharacters[1]],
-    ),
-    Scene(
-      id: 4,
-      actId: 2,
-      locationId: 2,
-      sceneNumber: 4,
-      title: 'Cuộc vây ráp',
-      summary: 'Nhóm kẻ thù xuất hiện, Nam và Mai Anh phải mở đường tháo chạy.',
-      status: SceneStatus.todo,
-      location: mockLocations[1],
-      characters: [mockCharacters[0], mockCharacters[1]],
-    ),
-    Scene(
-      id: 5,
-      actId: 3,
-      locationId: 3,
-      sceneNumber: 5,
-      title: 'Xung đột cao trào',
-      summary: 'Toàn bộ sự thật về kế hoạch gián điệp được phơi bày tại căn hộ bí mật.',
-      status: SceneStatus.todo,
-      location: mockLocations[2],
-      characters: [mockCharacters[0], mockCharacters[1], mockCharacters[2]],
-    ),
-
-    // Project 2 Scenes
-    Scene(
-      id: 6,
-      actId: 4,
-      locationId: 4,
-      sceneNumber: 1,
-      title: 'Xuất phát ứng cứu',
-      summary: 'Đội trưởng Hùng phổ biến phương án cứu hộ cho Bác sĩ Tuấn và Thảo.',
-      status: SceneStatus.done,
-      location: mockLocations[3],
-      characters: [mockCharacters[3], mockCharacters[4], mockCharacters[5]],
-    ),
-    Scene(
-      id: 7,
-      actId: 4,
-      locationId: 5,
-      sceneNumber: 2,
-      title: 'Băng rừng tìm kiếm',
-      summary: 'Cả đội hành quân trong mưa bão mù sương.',
-      status: SceneStatus.inProgress,
-      location: mockLocations[4],
-      characters: [mockCharacters[3], mockCharacters[4]],
-    ),
-    Scene(
-      id: 8,
-      actId: 5,
-      locationId: 5,
-      sceneNumber: 3,
-      title: 'Vượt dòng nước xiết',
-      summary: 'Cứu dỡ dân bản bị mắc kẹt giữa cồn cát.',
-      status: SceneStatus.todo,
-      location: mockLocations[4],
-      characters: [mockCharacters[3], mockCharacters[5]],
-    ),
-
-    // Project 3 Scenes (COMPLETED PROJECT - Tất cả Scene đều DONE)
-    Scene(
-      id: 9,
-      actId: 6,
-      locationId: 7,
-      sceneNumber: 1,
-      title: 'Bản demo đầu tiên',
-      summary: 'Bảo Ngọc thu âm ca khúc chủ đề dưới sự hướng dẫn của Đăng Khoa.',
-      status: SceneStatus.done,
-      location: mockLocations[6],
-      characters: [mockCharacters[6], mockCharacters[7]],
-    ),
-    Scene(
-      id: 10,
-      actId: 6,
-      locationId: 8,
-      sceneNumber: 2,
-      title: 'Bữa tiệc ra mắt',
-      summary: 'Nhà sản xuất Quang Huy giới thiệu Bảo Ngọc trước truyền thông.',
-      status: SceneStatus.done,
-      location: mockLocations[7],
-      characters: [mockCharacters[6], mockCharacters[8]],
-    ),
-    Scene(
-      id: 11,
-      actId: 7,
-      locationId: 7,
-      sceneNumber: 3,
-      title: 'Xung đột nghệ thuật',
-      summary: 'Tranh luận nảy lửa giữa Bảo Ngọc và Đăng Khoa về phong cách âm nhạc mới.',
-      status: SceneStatus.done,
-      location: mockLocations[6],
-      characters: [mockCharacters[6], mockCharacters[7], mockCharacters[8]],
-    ),
-    Scene(
-      id: 12,
-      actId: 7,
-      locationId: 8,
-      sceneNumber: 4,
-      title: 'Đêm mất ngủ',
-      summary: 'Đăng Khoa ngồi một mình bên cây đàn piano hoàn thiện giai điệu sầu lắng.',
-      status: SceneStatus.done,
-      location: mockLocations[7],
-      characters: [mockCharacters[7]],
-    ),
-    Scene(
-      id: 13,
-      actId: 8,
-      locationId: 6,
-      sceneNumber: 5,
-      title: 'Đêm concert bùng nổ',
-      summary: 'Bảo Ngọc đứng trên khán đài Nhà Hát Lớn cất giọng trước hàng ngàn khán giả.',
-      status: SceneStatus.done,
-      location: mockLocations[5],
-      characters: [mockCharacters[6], mockCharacters[7], mockCharacters[8]],
-    ),
-    Scene(
-      id: 14,
-      actId: 8,
-      locationId: 6,
-      sceneNumber: 6,
-      title: 'Lời cảm ơn sau màn nhung',
-      summary: 'Khoảnh khắc xúc động vinh danh ê-kíp làm nên thành công của dự án.',
-      status: SceneStatus.done,
-      location: mockLocations[5],
-      characters: [mockCharacters[6], mockCharacters[7], mockCharacters[8]],
-    ),
-
-    // Project 4 Scenes
-    Scene(
-      id: 15,
-      actId: 9,
-      locationId: 9,
-      sceneNumber: 1,
-      title: 'Khởi động cỗ máy',
-      summary: 'Giáo sư Trí kích hoạt năng lượng từ trường tại phòng thí nghiệm.',
-      status: SceneStatus.done,
-      location: mockLocations[8],
-      characters: [mockCharacters[9]],
-    ),
-    Scene(
-      id: 16,
-      actId: 10,
-      locationId: 10,
-      sceneNumber: 2,
-      title: 'Chuyến hành trình đầu tiên',
-      summary: 'Trí đặt chân tới phố cổ năm 1995 và tình cờ gặp lại Linh.',
-      status: SceneStatus.done,
-      location: mockLocations[9],
-      characters: [mockCharacters[9], mockCharacters[10]],
-    ),
-    Scene(
-      id: 17,
-      actId: 11,
-      locationId: 9,
-      sceneNumber: 3,
-      title: 'Trở về hiện tại',
-      summary: 'Khép lại vòng lặp thời gian với thông điệp trân trọng từng khoảnh khắc.',
-      status: SceneStatus.inProgress,
-      location: mockLocations[8],
-      characters: [mockCharacters[9], mockCharacters[10]],
-    ),
-
-    // Project 5 Scenes
-    Scene(
-      id: 18,
-      actId: 12,
-      locationId: 11,
-      sceneNumber: 1,
-      title: 'Chuẩn bị nhổ neo',
-      summary: 'Sơn kiểm tra dây neo và thiết bị hải trình trước giờ xuất bến.',
-      status: SceneStatus.todo,
-      location: mockLocations[10],
-      characters: [mockCharacters[11]],
-    ),
-
-    // Project 6 Scenes
-    Scene(
-      id: 19,
-      actId: 13,
-      locationId: 12,
-      sceneNumber: 1,
-      title: 'Nét vẽ đầu tiên',
-      summary: 'Hoàng bắt đầu bức họa phong cảnh mùa thu ngập tràn ánh nắng.',
-      status: SceneStatus.done,
-      location: mockLocations[11],
-      characters: [mockCharacters[12]],
-    ),
+  static final List<Location> mockLocations = [
+    const Location(id: 1, projectId: 1, name: 'Quan Cafe Co', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Khong gian hep, anh sang tu cua kinh lon.'),
+    const Location(id: 2, projectId: 1, name: 'Ben Cang Dem', setting: LocationSetting.exterior, timeOfDay: SceneTime.night, notes: 'Can may tao suong va den xanh do phan quang.'),
+    const Location(id: 3, projectId: 2, name: 'Tram Cuu Ho Vung Cao', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Tram go don so, nhieu ban do dia hinh.'),
+    const Location(id: 4, projectId: 2, name: 'Rung Gia Mu Suong', setting: LocationSetting.exterior, timeOfDay: SceneTime.day, notes: 'Duong dat doc, can thiet bi bao ho.'),
+    const Location(id: 5, projectId: 3, name: 'Phong Thu Bang Coi', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Phong thu co dien voi may ghi am analog.'),
+    const Location(id: 6, projectId: 3, name: 'Nha Hat Lon', setting: LocationSetting.interior, timeOfDay: SceneTime.night, notes: 'San khau lon, anh den vang va hang ghe khan gia.'),
+    const Location(id: 7, projectId: 4, name: 'Phong Thi Nghiem Co Kinh', setting: LocationSetting.interior, timeOfDay: SceneTime.night, notes: 'May gia toc trung tam va bang mach sang.'),
+    const Location(id: 8, projectId: 4, name: 'Pho Cu Thap Nien 90', setting: LocationSetting.exterior, timeOfDay: SceneTime.day, notes: 'Bang hieu ve tay va xe dap co.'),
+    const Location(id: 9, projectId: 5, name: 'Boong Tau Bien Dong', setting: LocationSetting.exterior, timeOfDay: SceneTime.day, notes: 'Gio manh, day neo va thung hang.'),
+    const Location(id: 10, projectId: 5, name: 'Khoang May Tau', setting: LocationSetting.interior, timeOfDay: SceneTime.night, notes: 'Khong gian hep, can am thanh dong co.'),
+    const Location(id: 11, projectId: 6, name: 'Xuong Ve Da Lat', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Nha go nhin ra thung lung may.'),
+    const Location(id: 12, projectId: 6, name: 'Doi Thong Suong Mu', setting: LocationSetting.exterior, timeOfDay: SceneTime.day, notes: 'Duong mon day la kho va suong som.'),
+    const Location(id: 13, projectId: 7, name: 'Van Phong An Ninh Mang', setting: LocationSetting.interior, timeOfDay: SceneTime.night, notes: 'Man hinh lon va den neon lanh.'),
+    const Location(id: 14, projectId: 7, name: 'Hem Sai Gon Mua Dem', setting: LocationSetting.exterior, timeOfDay: SceneTime.night, notes: 'Mat duong uot, bien quang cao phan chieu.'),
+    const Location(id: 15, projectId: 8, name: 'Ga Tau Cu', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'San ga vang nguoi voi ghe go cu.'),
+    const Location(id: 16, projectId: 8, name: 'Cau Sat Mua Dong', setting: LocationSetting.exterior, timeOfDay: SceneTime.night, notes: 'Can canh tuyet gia va den pha tau.'),
+    const Location(id: 17, projectId: 9, name: 'Trung Tam Mo Phong Vu Tru', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Buong lai mo phong va man hinh chien thuat.'),
+    const Location(id: 18, projectId: 9, name: 'Sa Mac Do Mo Phong', setting: LocationSetting.exterior, timeOfDay: SceneTime.day, notes: 'Cat do, khong gian rong cho rover.'),
+    const Location(id: 19, projectId: 10, name: 'Can Nha Cuoi Nam', setting: LocationSetting.interior, timeOfDay: SceneTime.day, notes: 'Phong khach am ap va ban tho gia dinh.'),
+    const Location(id: 20, projectId: 10, name: 'San Thuong Dem Giao Thua', setting: LocationSetting.exterior, timeOfDay: SceneTime.night, notes: 'Phap hoa xa va anh den thanh pho.'),
   ];
+
+  static final List<Character> mockCharacters = [
+    const Character(id: 1, projectId: 1, name: 'Vu Quoc Nam', roleType: RoleType.main, actorName: 'Nguyen Thai Hoa', description: 'Cuu diep vien tram lang va quyet doan.', imagePath: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 2, projectId: 1, name: 'Le Mai Anh', roleType: RoleType.main, actorName: 'Tran Thu Ha', description: 'Nha bao dieu tra sac sao.', imagePath: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 3, projectId: 1, name: 'Hoang Bach', roleType: RoleType.support, actorName: 'Pham Huy', description: 'Chuyen gia ma hoa ho tro tu xa.', imagePath: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', castingStatus: 'PENDING'),
+    const Character(id: 4, projectId: 2, name: 'Doi Truong Hung', roleType: RoleType.main, actorName: 'Dang Quan', description: 'Chi huy cuu ho day kinh nghiem.', imagePath: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 5, projectId: 2, name: 'Bac Si Tuan', roleType: RoleType.support, actorName: 'Trinh Thang', description: 'Bac si tre theo doi cuu ho.', imagePath: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 6, projectId: 2, name: 'Tinh Nguyen Vien Thao', roleType: RoleType.support, actorName: 'Le Thanh', description: 'Phu trach hau can va lien lac.', imagePath: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', castingStatus: 'PENDING'),
+    const Character(id: 7, projectId: 3, name: 'Bao Ngoc', roleType: RoleType.main, actorName: 'Minh Hang', description: 'Ngoi sao am nhac co giong hat noi bat.', imagePath: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 8, projectId: 3, name: 'Dang Khoa', roleType: RoleType.main, actorName: 'Hua Vi Van', description: 'Nhac si dung sau cac ban hit.', imagePath: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 9, projectId: 3, name: 'Quang Huy', roleType: RoleType.support, actorName: 'Quang Minh', description: 'Nha san xuat am nhac quyen luc.', imagePath: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 10, projectId: 4, name: 'Giao Su Tri', roleType: RoleType.main, actorName: 'Thanh Loc', description: 'Nha vat ly tao ra co may thoi gian.', imagePath: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 11, projectId: 4, name: 'Linh 90s', roleType: RoleType.main, actorName: 'Ninh Duong Lan Ngoc', description: 'Co gai nam 1995 gan voi ky uc cua Tri.', imagePath: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 12, projectId: 4, name: 'Tro Ly An', roleType: RoleType.support, actorName: 'Lam Bao Chau', description: 'Nguoi canh giu phong thi nghiem.', imagePath: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=400', castingStatus: 'PENDING'),
+    const Character(id: 13, projectId: 5, name: 'Thuyen Truong Son', roleType: RoleType.main, actorName: 'Lien Binh Phat', description: 'Thuyen truong tre kien cuong.', imagePath: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', castingStatus: 'PENDING'),
+    const Character(id: 14, projectId: 5, name: 'May Truong Kiet', roleType: RoleType.support, actorName: 'Huynh Dong', description: 'Nguoi giu trai tim con tau.', imagePath: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400', castingStatus: 'PENDING'),
+    const Character(id: 15, projectId: 5, name: 'Hoa Tieu Linh', roleType: RoleType.support, actorName: 'Kha Ngan', description: 'Hoa tieu tre co ban linh bien.', imagePath: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', castingStatus: 'PENDING'),
+    const Character(id: 16, projectId: 6, name: 'Hoa Si Hoang', roleType: RoleType.main, actorName: 'Quoc Truong', description: 'Hoa si tim lai cam hung sang tac.', imagePath: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 17, projectId: 6, name: 'Mai', roleType: RoleType.main, actorName: 'Jun Vu', description: 'Nguoi giu nhung la thu chua gui.', imagePath: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 18, projectId: 6, name: 'Chu Quan Tung', roleType: RoleType.support, actorName: 'Cong Ninh', description: 'Nguoi chung kien cau chuyen tinh cu.', imagePath: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400', castingStatus: 'PENDING'),
+    const Character(id: 19, projectId: 7, name: 'Thanh Tra Khoa', roleType: RoleType.main, actorName: 'Kieu Minh Tuan', description: 'Canh sat dieu tra toi pham cong nghe.', imagePath: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 20, projectId: 7, name: 'Hacker Nhi', roleType: RoleType.main, actorName: 'Hoang Yen Chibi', description: 'Chuyen gia truy vet tien ao.', imagePath: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 21, projectId: 7, name: 'Ong Trum Zero', roleType: RoleType.support, actorName: 'Thai Hoa', description: 'Ke dieu hanh duong day ngam.', imagePath: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400', castingStatus: 'PENDING'),
+    const Character(id: 22, projectId: 8, name: 'An', roleType: RoleType.main, actorName: 'Avin Lu', description: 'Nguoi linh tre tro ve ga tau cu.', imagePath: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 23, projectId: 8, name: 'Hoa', roleType: RoleType.main, actorName: 'Miu Le', description: 'Co gai giu buc thu cuoi cung.', imagePath: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 24, projectId: 8, name: 'Ong Bao Ve Ga', roleType: RoleType.support, actorName: 'Huu Chau', description: 'Nguoi giu nhung cau chuyen cua ga tau.', imagePath: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 25, projectId: 9, name: 'Chi Huy Lan', roleType: RoleType.main, actorName: 'Ngo Thanh Van', description: 'Chi huy chuong trinh vu tru.', imagePath: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400', castingStatus: 'PENDING'),
+    const Character(id: 26, projectId: 9, name: 'Ky Su Minh', roleType: RoleType.support, actorName: 'Song Luan', description: 'Ky su dieu khien rover mo phong.', imagePath: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400', castingStatus: 'PENDING'),
+    const Character(id: 27, projectId: 10, name: 'Ba Hanh', roleType: RoleType.main, actorName: 'Le Khanh', description: 'Nguoi me giu nep nha cuoi nam.', imagePath: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', castingStatus: 'APPROVED'),
+    const Character(id: 28, projectId: 10, name: 'Minh', roleType: RoleType.support, actorName: 'Tran Nghia', description: 'Nguoi con tro ve sau nhieu nam xa cach.', imagePath: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400', castingStatus: 'APPROVED'),
+  ];
+
+  static final List<Scene> mockScenes = _buildScenes();
+
+  static final List<NotificationModel> mockNotifications = [
+    NotificationModel(id: 1, projectId: 1, projectTitle: 'Dem Dau Tien', actId: 2, sceneId: 4, title: 'Cap nhat canh quay', body: 'Canh truy duoi tren cang da chuyen sang dang viet.', timestamp: DateTime.utc(2026, 7, 21, 8), actionType: NotificationActionType.statusChange),
+    NotificationModel(id: 2, projectId: 3, projectTitle: 'Hao Quang Ruc Ro', actId: 9, sceneId: 18, title: 'Du an hoan tat', body: 'Concert bung no da duoc danh dau hoan tat.', timestamp: DateTime.utc(2026, 7, 21, 8, 15), isRead: true, actionType: NotificationActionType.statusChange),
+    NotificationModel(id: 3, projectId: 7, projectTitle: 'Thanh Pho Khong Ngu', actId: 20, sceneId: 39, title: 'Them phan canh', body: 'May chu bi khoa da duoc them vao storyboard.', timestamp: DateTime.utc(2026, 7, 21, 8, 30), actionType: NotificationActionType.create),
+    NotificationModel(id: 4, projectId: 9, projectTitle: 'Duong Den Sao Hoa', actId: 25, sceneId: 49, title: 'Can chot lich quay', body: 'Buoi mo phong dau tien dang cho lich san xuat.', timestamp: DateTime.utc(2026, 7, 21, 8, 45)),
+    NotificationModel(id: 5, projectTitle: 'Thong bao chung', title: 'Seed demo moi', body: 'Neon da duoc lam moi voi bo du lieu demo day du.', timestamp: DateTime.utc(2026, 7, 21, 9), actionType: NotificationActionType.create),
+    NotificationModel(id: 6, projectId: 10, projectTitle: 'Nhung Ngay Khong Ten', actId: 30, sceneId: 60, title: 'Khoa du an', body: 'Du an da san sang de demo man hinh completed.', timestamp: DateTime.utc(2026, 7, 21, 9, 15), isRead: true),
+  ];
+
+  static const Set<int> _deletedActIds = {3};
+  static const Set<int> _deletedSceneIds = {5, 6};
+
+  static Map<int, int> get characterSceneCount {
+    final counts = <int, int>{};
+    for (final scene in mockScenes.where((scene) => !_deletedSceneIds.contains(scene.id))) {
+      for (final character in scene.characters) {
+        final id = character.id;
+        if (id != null) counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  static Map<int, String> get characterStatus => {
+        for (final character in mockCharacters)
+          if (character.id != null) character.id!: character.castingStatus ?? 'PENDING',
+      };
+
+  static Map<int, bool> get characterStatusGreen => {
+        for (final character in mockCharacters)
+          if (character.id != null) character.id!: character.castingStatus == 'APPROVED',
+      };
+
+  static List<Project> projectsCopy() => List<Project>.from(mockProjects);
+
+  static List<Act> actsForProject(int projectId) => List<Act>.from(
+        mockActs.where((act) => act.projectId == projectId && !_deletedActIds.contains(act.id)),
+      );
+
+  static List<Act> deletedActsForProject(int projectId) => List<Act>.from(
+        mockActs.where((act) => act.projectId == projectId && _deletedActIds.contains(act.id)),
+      );
+
+  static List<Location> locationsForProject(int projectId) => List<Location>.from(
+        mockLocations.where((location) => location.projectId == projectId),
+      );
+
+  static List<Character> charactersForProject(int? projectId) => List<Character>.from(
+        projectId == null
+            ? mockCharacters
+            : mockCharacters.where((character) => character.projectId == projectId),
+      );
+
+  static List<Scene> scenesForProject(int projectId) {
+    final actIds = mockActs
+        .where((act) => act.projectId == projectId)
+        .map((act) => act.id)
+        .whereType<int>()
+        .toSet();
+    return _copyScenes(
+      mockScenes.where(
+        (scene) => actIds.contains(scene.actId) && !_deletedSceneIds.contains(scene.id),
+      ),
+    );
+  }
+
+  static List<Scene> scenesForAct(int actId) => _copyScenes(
+        mockScenes.where((scene) => scene.actId == actId && !_deletedSceneIds.contains(scene.id)),
+      );
+
+  static List<Scene> deletedScenesForProject(int projectId) {
+    final actIds = mockActs
+        .where((act) => act.projectId == projectId)
+        .map((act) => act.id)
+        .whereType<int>()
+        .toSet();
+    return _copyScenes(
+      mockScenes.where(
+        (scene) => actIds.contains(scene.actId) && _deletedSceneIds.contains(scene.id),
+      ),
+    );
+  }
+
+  static List<NotificationModel> notificationsCopy() => mockNotifications
+      .map((notification) => notification.copyWith())
+      .toList();
+
+  static List<Scene> _copyScenes(Iterable<Scene> scenes) => scenes
+      .map((scene) => scene.copyWith(characters: List<Character>.from(scene.characters)))
+      .toList();
+
+  static List<Scene> _buildScenes() {
+    final scenes = <Scene>[];
+    for (var projectId = 1; projectId <= 10; projectId++) {
+      final specs = _sceneSpecs[projectId]!;
+      final characterIds = _projectCharacterIds[projectId]!;
+      final baseActId = (projectId - 1) * 3 + 1;
+      final baseLocationId = (projectId - 1) * 2 + 1;
+
+      for (var i = 0; i < specs.length; i++) {
+        final spec = specs[i];
+        final sceneOrder = i + 1;
+        final sceneId = (projectId - 1) * 6 + sceneOrder;
+        final location = _locationById(baseLocationId + (i % 2));
+        final characters = <Character>[
+          _characterById(characterIds[i % characterIds.length]),
+          _characterById(characterIds[(i + 1) % characterIds.length]),
+        ];
+        if (characterIds.length > 2 && (sceneOrder == 1 || sceneOrder == 4)) {
+          characters.add(_characterById(characterIds[2]));
+        }
+
+        scenes.add(
+          Scene(
+            id: sceneId,
+            actId: baseActId + (i ~/ 2),
+            locationId: location.id,
+            sceneNumber: sceneOrder.toString(),
+            title: spec.title,
+            summary: spec.summary,
+            status: spec.status,
+            setting: location.setting,
+            timeOfDay: location.timeOfDay,
+            location: location,
+            characters: characters,
+          ),
+        );
+      }
+    }
+    return scenes;
+  }
+
+  static Location _locationById(int id) => mockLocations.firstWhere((location) => location.id == id);
+
+  static Character _characterById(int id) => mockCharacters.firstWhere((character) => character.id == id);
+
+  static const Map<int, List<int>> _projectCharacterIds = {
+    1: [1, 2, 3],
+    2: [4, 5, 6],
+    3: [7, 8, 9],
+    4: [10, 11, 12],
+    5: [13, 14, 15],
+    6: [16, 17, 18],
+    7: [19, 20, 21],
+    8: [22, 23, 24],
+    9: [25, 26],
+    10: [27, 28],
+  };
+
+  static final Map<int, List<_SceneSpec>> _sceneSpecs = {
+    1: [
+      _SceneSpec('Tin hieu luc nua dem', 'Nam nhan tap tin ma hoa tai quan cafe.', SceneStatus.done),
+      _SceneSpec('Theo dau container', 'Mai Anh lan theo chiec container kha nghi.', SceneStatus.done),
+      _SceneSpec('Giai ma du lieu', 'Bach phat hien khoa truy cap bi an.', SceneStatus.inProgress),
+      _SceneSpec('Cuoc truy duoi tren cang', 'Nhom doi dau voi ke theo doi.', SceneStatus.inProgress),
+      _SceneSpec('Loi khai bat ngo', 'Nhan chung tiet lo danh tinh ke chu muu.', SceneStatus.todo),
+      _SceneSpec('Mat na trong dem', 'Nam doi mat voi nguoi quen cu.', SceneStatus.todo),
+    ],
+    2: [
+      _SceneSpec('Lenh goi khan cap', 'Doi cuu ho chuan bi roi tram.', SceneStatus.done),
+      _SceneSpec('Dau chan tren bun', 'Hung phat hien dau vet cua nguoi mat tich.', SceneStatus.inProgress),
+      _SceneSpec('Phong phau thuat tam', 'Bac si Tuan xu ly ca chan thuong dau tien.', SceneStatus.todo),
+      _SceneSpec('Vuot doc sat lo', 'Doan cuu ho vuot qua con doc nguy hiem.', SceneStatus.todo),
+      _SceneSpec('Tin hieu tu ban lang', 'Thao bat duoc lien lac bi dut quang.', SceneStatus.todo),
+      _SceneSpec('Binh minh sau mua', 'Nguoi dan duoc dua ra khoi vung nguy hiem.', SceneStatus.todo),
+    ],
+    3: [
+      _SceneSpec('Ban demo dau tien', 'Bao Ngoc thu am ca khuc chu de.', SceneStatus.done),
+      _SceneSpec('Buoi dien tap', 'Dang Khoa huong dan tong duyet tren san khau.', SceneStatus.done),
+      _SceneSpec('Hop dong doc quyen', 'Quang Huy de nghi mot thoa thuan mao hiem.', SceneStatus.done),
+      _SceneSpec('Anh den san khau', 'Bao Ngoc doi mat voi ap luc danh tieng.', SceneStatus.done),
+      _SceneSpec('Dem mat ngu', 'Dang Khoa viet lai phan cao trao.', SceneStatus.done),
+      _SceneSpec('Concert bung no', 'Dem dien khep lai hanh trinh ruc ro.', SceneStatus.done),
+    ],
+    4: [
+      _SceneSpec('Kich hoat co may', 'Tri bat dau thu nghiem thoi gian.', SceneStatus.done),
+      _SceneSpec('Cua hang bang dia', 'Tri dat chan den nam 1995.', SceneStatus.done),
+      _SceneSpec('Nhat ky thoi gian', 'Du lieu tuong lai bat dau bien doi.', SceneStatus.done),
+      _SceneSpec('Gap lai Linh', 'Tri gap Linh tren con pho cu.', SceneStatus.inProgress),
+      _SceneSpec('Canh bao nghich ly', 'Tro ly An phat hien su co vong lap.', SceneStatus.inProgress),
+      _SceneSpec('Chuyen xe cuoi ngay', 'Tri phai lua chon giua qua khu va hien tai.', SceneStatus.todo),
+    ],
+    5: [
+      _SceneSpec('Kiem tra day neo', 'Son chuan bi cho chuyen ra khoi.', SceneStatus.todo),
+      _SceneSpec('Dong co bat thuong', 'Kiet nghe thay am thanh la trong khoang may.', SceneStatus.todo),
+      _SceneSpec('Song lon dau tien', 'Con tau bat dau rung lac manh.', SceneStatus.todo),
+      _SceneSpec('Mat dien toan bo', 'Hoa tieu Linh chuyen sang dieu huong thu cong.', SceneStatus.todo),
+      _SceneSpec('Tin hieu hai dang', 'Anh sang cuu ho xuat hien phia chan troi.', SceneStatus.todo),
+      _SceneSpec('Giu trai tim tau', 'Kiet co gang khoi dong lai dong co.', SceneStatus.todo),
+    ],
+    6: [
+      _SceneSpec('Net ve dau tien', 'Hoang bat dau buc tranh mua thu.', SceneStatus.done),
+      _SceneSpec('Duong mon suong som', 'Mai dan Hoang den doi thong vang.', SceneStatus.done),
+      _SceneSpec('La thu chua gui', 'Hoang tim thay la thu cu trong hop go.', SceneStatus.inProgress),
+      _SceneSpec('Cuoc hen bi lo', 'Mai tranh ne loi noi that.', SceneStatus.todo),
+      _SceneSpec('Mau sac cuoi cung', 'Buc tranh gan hoan thanh.', SceneStatus.todo),
+      _SceneSpec('Vet sang dem thu', 'Hai nguoi gap lai duoi anh hoang hon.', SceneStatus.todo),
+    ],
+    7: [
+      _SceneSpec('Ban do tien ao', 'Khoa tim ra dong tien bat thuong.', SceneStatus.done),
+      _SceneSpec('Doi dau trong mua', 'Nhi theo dau vi dien tu trong hem toi.', SceneStatus.inProgress),
+      _SceneSpec('May chu bi khoa', 'He thong an ninh bi tan cong.', SceneStatus.inProgress),
+      _SceneSpec('Giao dich luc 2 gio', 'Zero sap xep cuoc giao dich ngam.', SceneStatus.todo),
+      _SceneSpec('Noi gian', 'Khoa nghi ngo mot dong doi.', SceneStatus.todo),
+      _SceneSpec('Mat na Zero', 'Ke chu muu lo dien giua man mua.', SceneStatus.todo),
+    ],
+    8: [
+      _SceneSpec('Chuyen tau tre', 'An tro ve nha ga cu sau chien tranh.', SceneStatus.done),
+      _SceneSpec('Cay cau dong bang', 'Hoa dung cho ben cau sat.', SceneStatus.done),
+      _SceneSpec('Buc thu trong vali', 'Ong bao ve giao lai buc thu cu.', SceneStatus.done),
+      _SceneSpec('Tieng coi tau dem', 'Qua khu hien ve trong tieng coi tau.', SceneStatus.done),
+      _SceneSpec('Phong cho vang', 'An doc loi hua da bo lo.', SceneStatus.inProgress),
+      _SceneSpec('Tram cuoi mua dong', 'Hoa quyet dinh len chuyen tau cuoi.', SceneStatus.todo),
+    ],
+    9: [
+      _SceneSpec('Buoi mo phong dau tien', 'Lan trien khai giao an huan luyen.', SceneStatus.todo),
+      _SceneSpec('Rover qua doi cat', 'Minh dieu khien rover vuot dia hinh do.', SceneStatus.todo),
+      _SceneSpec('Canh bao oxy', 'Chi so oxy trong khoang lai tut nhanh.', SceneStatus.todo),
+      _SceneSpec('Bao cat mo phong', 'Phi hanh doan mat lien lac voi trung tam.', SceneStatus.todo),
+      _SceneSpec('Lenh phong thu nghiem', 'Lan phai bao cao hoi dong.', SceneStatus.todo),
+      _SceneSpec('Binh minh Sao Hoa', 'Minh nhin thay thanh cong dau tien.', SceneStatus.todo),
+    ],
+    10: [
+      _SceneSpec('Ngay tro ve', 'Minh ve nha sau nhieu nam xa cach.', SceneStatus.done),
+      _SceneSpec('Thanh pho len den', 'Ba Hanh cho con tren san thuong.', SceneStatus.done),
+      _SceneSpec('Chiec hop cu', 'Gia dinh tim lai nhung ky vat cu.', SceneStatus.done),
+      _SceneSpec('Loi xin loi muon', 'Minh noi loi xin loi voi me.', SceneStatus.done),
+      _SceneSpec('Bua com tat nien', 'Moi nguoi cung quay lai ban an.', SceneStatus.done),
+      _SceneSpec('Phap hoa sau mai nha', 'Gia dinh don nam moi trong yen binh.', SceneStatus.done),
+    ],
+  };
+}
+
+class _SceneSpec {
+  final String title;
+  final String summary;
+  final SceneStatus status;
+
+  const _SceneSpec(this.title, this.summary, this.status);
 }

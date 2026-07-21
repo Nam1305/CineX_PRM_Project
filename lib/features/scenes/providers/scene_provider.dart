@@ -24,10 +24,16 @@ class SceneProvider extends ChangeNotifier {
       _scenesByAct[actId] = await _api.getScenesForAct(actId);
     } catch (e) {
       _error = 'Không thể tải cảnh quay từ server, dùng dữ liệu cục bộ: $e';
-      final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
-      _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
+      final mockScenesForAct = MockData.mockScenes
+          .where((s) => s.actId == actId)
+          .toList();
+      _scenesByAct[actId] = mockScenesForAct.isNotEmpty
+          ? mockScenesForAct
+          : MockData.mockScenes;
     } finally {
-      _scenesByAct[actId]?.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+      _scenesByAct[actId]?.sort(
+        (a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber),
+      );
       _isLoading = false;
       notifyListeners();
     }
@@ -39,7 +45,9 @@ class SceneProvider extends ChangeNotifier {
       if (created == null) return false;
       _scenesByAct.putIfAbsent(scene.actId, () => []);
       _scenesByAct[scene.actId]!.add(created);
-      _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+      _scenesByAct[scene.actId]!.sort(
+        (a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber),
+      );
       notifyListeners();
       return true;
     } catch (e) {
@@ -66,13 +74,15 @@ class SceneProvider extends ChangeNotifier {
       if (updated == null) return false;
       final list = _scenesByAct[scene.actId];
       if (list != null) {
-        final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
+        final index = list.indexWhere(
+          (s) => s.id == scene.id || s.id == updated.id,
+        );
         if (index >= 0) {
           list[index] = updated;
         } else {
           list.add(updated);
         }
-        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+        list.sort((a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber));
       }
       notifyListeners();
       return true;
@@ -110,10 +120,10 @@ class SceneProvider extends ChangeNotifier {
     }
   }
 
-  bool isSceneNumberTaken(int actId, int sceneNumber, {int? excludeId}) {
-    return scenesForAct(actId).any(
-      (s) => s.sceneNumber == sceneNumber && s.id != excludeId,
-    );
+  bool isSceneNumberTaken(int actId, String sceneNumber, {int? excludeId}) {
+    return scenesForAct(
+      actId,
+    ).any((s) => s.sceneNumber == sceneNumber && s.id != excludeId);
   }
 
   /// Quick status update — only changes the status field without touching characters.

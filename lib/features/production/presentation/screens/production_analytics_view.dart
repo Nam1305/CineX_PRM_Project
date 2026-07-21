@@ -219,6 +219,62 @@ class ProductionAnalyticsView extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+
+            // Production Progress Bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF2C2C2C)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tiến độ sản xuất',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${(provider.productionProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF571A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: provider.productionProgress,
+                      minHeight: 10,
+                      backgroundColor: const Color(0xFF2C2C2C),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        provider.productionProgress >= 1.0
+                            ? Colors.green
+                            : const Color(0xFFFF571A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${provider.completedScenesCount} / ${provider.allScenes.length} cảnh đã hoàn thành quay',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             
             // Int vs Ext Chart

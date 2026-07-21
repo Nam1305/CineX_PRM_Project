@@ -50,13 +50,19 @@ class _ActFormScreenState extends State<ActFormScreen> {
             TextFormField(
               controller: _titleCtrl,
               decoration: const InputDecoration(labelText: 'Tên hồi *'),
-              validator: (v) => AppValidators.required(v, field: 'Tên hồi'),
+              validator: (v) =>
+                  AppValidators.text(v, field: 'Tên hồi', min: 2, max: 200),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _summaryCtrl,
               decoration: const InputDecoration(labelText: 'Tóm tắt hồi *'),
-              validator: (v) => AppValidators.required(v, field: 'Tóm tắt hồi'),
+              validator: (v) => AppValidators.text(
+                v,
+                field: 'Tóm tắt hồi',
+                min: 2,
+                max: 5000,
+              ),
               maxLines: 4,
             ),
             const SizedBox(height: 24),
@@ -79,22 +85,34 @@ class _ActFormScreenState extends State<ActFormScreen> {
       projectId: widget.projectId,
       title: _titleCtrl.text.trim(),
       sequenceOrder: widget.act?.sequenceOrder ?? provider.acts.length + 1,
-      summary: _summaryCtrl.text.trim().isEmpty ? null : _summaryCtrl.text.trim(),
+      summary: _summaryCtrl.text.trim().isEmpty
+          ? null
+          : _summaryCtrl.text.trim(),
       status: widget.act?.status ?? 'WAITING',
     );
-    final ok = _isEditing ? await provider.editAct(act) : await provider.addAct(act);
+    final ok = _isEditing
+        ? await provider.editAct(act)
+        : await provider.addAct(act);
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
       context.read<NotificationProvider>().addNotification(
-            projectId: widget.projectId,
-            projectTitle: 'Dự án CineX #${widget.projectId}',
-            actId: act.id,
-            title: _isEditing ? 'Cập nhật Hồi: ${act.title}' : 'Thêm Hồi mới: ${act.title}',
-            body: 'Hồi số ${act.sequenceOrder} đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
-            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
-          );
-      AppSnackbar.success(context, _isEditing ? 'Đã cập nhật hồi' : 'Đã thêm hồi');
+        projectId: widget.projectId,
+        projectTitle: 'Dự án CineX #${widget.projectId}',
+        actId: act.id,
+        title: _isEditing
+            ? 'Cập nhật Hồi: ${act.title}'
+            : 'Thêm Hồi mới: ${act.title}',
+        body:
+            'Hồi số ${act.sequenceOrder} đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
+        actionType: _isEditing
+            ? NotificationActionType.update
+            : NotificationActionType.create,
+      );
+      AppSnackbar.success(
+        context,
+        _isEditing ? 'Đã cập nhật hồi' : 'Đã thêm hồi',
+      );
       Navigator.pop(context);
     } else {
       AppSnackbar.error(context, provider.error ?? 'Có lỗi xảy ra');

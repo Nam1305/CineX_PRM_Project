@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cinex_application/features/acts/data/models/act.dart';
@@ -11,11 +11,47 @@ import 'package:cinex_application/data/mock_data.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final Object? cause;
+
+  const ApiException(this.message, {this.statusCode, this.cause});
+
+  @override
+  String toString() => message;
+}
+
+class _TimeoutClient extends http.BaseClient {
+  final http.Client _inner;
+  final Duration timeout;
+
+  _TimeoutClient(this._inner, {required this.timeout});
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    try {
+      return await _inner.send(request).timeout(timeout);
+    } on TimeoutException {
+      throw const ApiException('Yêu cầu quá thời gian chờ. Vui lòng thử lại.');
+    }
+  }
+
+  @override
+  void close() => _inner.close();
+}
+
 class ApiService {
-  static const String baseUrl =
-      'https://cinex-api.onrender.com/odata'; // local test
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://cinex-api.onrender.com/odata',
+  );
   static String? token;
-  static final http.Client _client = http.Client();
+  static final http.Client _client = _TimeoutClient(
+    http.Client(),
+    timeout: requestTimeout,
+  );
+  static final http.Client _uploadClient = http.Client();
 
   static Map<String, String> get _headers {
     final map = {'Content-Type': 'application/json'};
@@ -23,6 +59,86 @@ class ApiService {
       map['Authorization'] = 'Bearer $token';
     }
     return map;
+  }
+
+  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration uploadTimeout = Duration(seconds: 60);
+  static const int maxImageBytes = 5 * 1024 * 1024;
+  static const Set<String> _allowedImageTypes = {
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  };
+
+  static String get _apiBaseUrl => baseUrl.replaceAll('/odata', '');
+
+  Future<T> _withTimeout<T>(
+    Future<T> future,
+    String operation, {
+    Duration timeout = requestTimeout,
+  }) async {
+    try {
+      return await future.timeout(timeout);
+    } on TimeoutException {
+      throw ApiException('$operation quá thời gian chờ. Vui lòng thử lại.');
+    }
+  }
+
+  ApiException _responseError(int statusCode, String body, String operation) {
+    var detail = body.trim();
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        detail =
+            (decoded['Message'] ??
+                    decoded['message'] ??
+                    decoded['title'] ??
+                    decoded['error'])
+                ?.toString() ??
+            detail;
+      }
+        final validationErrors = decoded['errors'];
+        if (validationErrors is List && validationErrors.isNotEmpty) {
+          detail = validationErrors.first.toString();
+        } else if (validationErrors is Map && validationErrors.isNotEmpty) {
+          final firstValue = validationErrors.values.first;
+          if (firstValue is List && firstValue.isNotEmpty) {
+            detail = firstValue.first.toString();
+          }
+        }
+    } catch (_) {
+      // Non-JSON response: retain the short response text below.
+    }
+    if (detail.length > 240) detail = detail.substring(0, 240);
+    final suffix = detail.isEmpty ? '' : ': $detail';
+    return ApiException(
+      '$operation thất bại (HTTP $statusCode)$suffix',
+      statusCode: statusCode,
+    );
+  }
+
+  Never _rethrowAsApiException(Object error, String operation) {
+    if (error is ApiException) throw error;
+    throw ApiException('$operation thất bại. Vui lòng thử lại.', cause: error);
+  }
+
+  String _imageContentType(XFile file) {
+    var contentType = file.mimeType?.split(';').first.trim().toLowerCase();
+    if (contentType == 'image/jpg') contentType = 'image/jpeg';
+    if (contentType == null || !_allowedImageTypes.contains(contentType)) {
+      final name = file.name.toLowerCase();
+      if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (name.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (name.endsWith('.webp')) {
+        contentType = 'image/webp';
+      }
+    }
+    if (contentType == null || !_allowedImageTypes.contains(contentType)) {
+      throw const ApiException('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.');
+    }
+    return contentType;
   }
 
   // ─── PROJECTS ─────────────────────────────────────────────────────────────
@@ -35,15 +151,16 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final projects = values
             .map((e) => Project.fromMap(e as Map<String, dynamic>))
             .toList();
+        return projects.isNotEmpty ? projects : MockData.projectsCopy();
       } else {
         throw Exception('Failed to load projects: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getProjects error: $e');
-      return [];
+      print('ApiService.getProjects error: $e');
+      return MockData.projectsCopy();
     }
   }
 
@@ -68,11 +185,10 @@ class ApiService {
         final data = jsonDecode(response.body);
         return Project.fromMap(data as Map<String, dynamic>);
       } else {
-        throw Exception('Failed to create project: ${response.statusCode}');
+        throw _responseError(response.statusCode, response.body, 'Tạo dự án');
       }
     } catch (e) {
-      debugPrint('ApiService.createProject error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo dự án');
     }
   }
 
@@ -101,43 +217,114 @@ class ApiService {
         final data = jsonDecode(response.body);
         return Project.fromMap(data as Map<String, dynamic>);
       } else {
-        throw Exception('Failed to update project: ${response.statusCode}');
+        throw _responseError(
+          response.statusCode,
+          response.body,
+          'Cập nhật dự án',
+        );
       }
     } catch (e) {
-      debugPrint('ApiService.updateProject error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Cập nhật dự án');
     }
   }
 
-  /// Tải tệp tin lên Cloudflare R2 thông qua API Upload (Hỗ trợ cả Mobile & Web)
-  Future<String?> uploadFile(String filePath, String prefix) async {
-    final base = baseUrl.replaceAll('/odata', '');
-    final uploadUrl = Uri.parse('$base/api/FileUpload/upload');
+  /// Validate ảnh, lấy presigned URL rồi stream trực tiếp từ thiết bị lên R2.
+  Future<String> uploadImage(
+    XFile file,
+    String prefix, {
+    void Function(double progress)? onProgress,
+  }) async {
     try {
-      final bytes = await XFile(filePath).readAsBytes();
-      final filename = filePath.split('/').last.split('\\').last;
-
-      final request = http.MultipartRequest('POST', uploadUrl)
-        ..fields['prefix'] = prefix
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            bytes,
-            filename: filename.isNotEmpty ? filename : 'upload.png',
-          ),
-        );
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['Url'] ?? data['url']) as String?;
-      } else {
-        throw Exception('Failed to upload file: ${response.statusCode}');
+      final fileSize = await file.length();
+      if (fileSize <= 0) {
+        throw const ApiException('Ảnh đã chọn không có dữ liệu.');
       }
+      if (fileSize > maxImageBytes) {
+        throw const ApiException('Ảnh không được vượt quá 5 MB.');
+      }
+      final contentType = _imageContentType(file);
+      final presignUrl = Uri.parse('$_apiBaseUrl/api/FileUpload/presign');
+      final presignResponse = await _withTimeout(
+        _client.post(
+          presignUrl,
+          headers: _headers,
+          body: jsonEncode({
+            'fileName': file.name,
+            'contentType': contentType,
+            'fileSize': fileSize,
+            'prefix': prefix,
+          }),
+        ),
+        'Chuẩn bị tải ảnh',
+      );
+      if (presignResponse.statusCode < 200 ||
+          presignResponse.statusCode >= 300) {
+        throw _responseError(
+          presignResponse.statusCode,
+          presignResponse.body,
+          'Chuẩn bị tải ảnh',
+        );
+      }
+
+      final data = jsonDecode(presignResponse.body) as Map<String, dynamic>;
+      final uploadUrl = (data['uploadUrl'] ?? data['UploadUrl'])?.toString();
+      final publicUrl = (data['publicUrl'] ?? data['PublicUrl'])?.toString();
+      if (uploadUrl == null ||
+          uploadUrl.isEmpty ||
+          publicUrl == null ||
+          publicUrl.isEmpty) {
+        throw const ApiException(
+          'Máy chủ trả về thông tin upload không hợp lệ.',
+        );
+      }
+
+      await _withTimeout(
+        _streamFileToR2(
+          file,
+          Uri.parse(uploadUrl),
+          contentType,
+          fileSize,
+          onProgress,
+        ),
+        'Tải ảnh lên R2',
+        timeout: uploadTimeout,
+      );
+      onProgress?.call(1);
+      return publicUrl;
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      debugPrint('ApiService.uploadFile error: $e');
-      return null;
+      throw ApiException('Không thể tải ảnh lên. Vui lòng thử lại.', cause: e);
+    }
+  }
+
+  Future<void> _streamFileToR2(
+    XFile file,
+    Uri uploadUrl,
+    String contentType,
+    int fileSize,
+    void Function(double progress)? onProgress,
+  ) async {
+    final request = http.StreamedRequest('PUT', uploadUrl)
+      ..headers['Content-Type'] = contentType
+      ..contentLength = fileSize;
+    final responseFuture = _uploadClient.send(request);
+    var sentBytes = 0;
+
+    try {
+      await for (final chunk in file.openRead()) {
+        request.sink.add(chunk);
+        sentBytes += chunk.length;
+        onProgress?.call(sentBytes / fileSize);
+      }
+    } finally {
+      await request.sink.close();
+    }
+
+    final response = await responseFuture;
+    final body = await response.stream.bytesToString();
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _responseError(response.statusCode, body, 'Tải ảnh lên R2');
     }
   }
 
@@ -148,7 +335,7 @@ class ApiService {
       final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
-      debugPrint('ApiService.deleteProject error: $e');
+      print('ApiService.deleteProject error: $e');
       return false;
     }
   }
@@ -166,15 +353,16 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final acts = values
             .map((e) => Act.fromMap(e as Map<String, dynamic>))
             .toList();
+        return acts.isNotEmpty ? acts : MockData.actsForProject(projectId);
       } else {
         throw Exception('Failed to load acts: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getActsForProject error: $e');
-      return [];
+      print('ApiService.getActsForProject error: $e');
+      return MockData.actsForProject(projectId);
     }
   }
 
@@ -189,10 +377,9 @@ class ApiService {
       if (response.statusCode == 201) {
         return Act.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
       }
-      throw Exception('Failed to create act: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo hồi');
     } catch (e) {
-      debugPrint('ApiService.createAct error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo hồi');
     }
   }
 
@@ -205,10 +392,12 @@ class ApiService {
         headers: _headers,
         body: jsonEncode(act.toMap()),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(response.statusCode, response.body, 'Cập nhật hồi');
     } catch (e) {
-      debugPrint('ApiService.updateAct error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật hồi');
     }
   }
 
@@ -218,7 +407,7 @@ class ApiService {
       final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
-      debugPrint('ApiService.deleteAct error: $e');
+      print('ApiService.deleteAct error: $e');
       return false;
     }
   }
@@ -234,15 +423,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final locations = values
             .map((e) => Location.fromMap(e as Map<String, dynamic>))
             .toList();
+        return locations.isNotEmpty
+            ? locations
+            : MockData.locationsForProject(projectId);
       } else {
         throw Exception('Failed to load locations: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getLocations error: $e');
-      return [];
+      print('ApiService.getLocations error: $e');
+      return MockData.locationsForProject(projectId);
     }
   }
 
@@ -259,10 +451,9 @@ class ApiService {
           jsonDecode(response.body) as Map<String, dynamic>,
         );
       }
-      throw Exception('Failed to create location: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo bối cảnh');
     } catch (e) {
-      debugPrint('ApiService.createLocation error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo bối cảnh');
     }
   }
 
@@ -275,10 +466,16 @@ class ApiService {
         headers: _headers,
         body: jsonEncode(location.toMap()),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Cập nhật bối cảnh',
+      );
     } catch (e) {
-      debugPrint('ApiService.updateLocation error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật bối cảnh');
     }
   }
 
@@ -288,7 +485,7 @@ class ApiService {
       final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
-      debugPrint('ApiService.deleteLocation error: $e');
+      print('ApiService.deleteLocation error: $e');
       return false;
     }
   }
@@ -304,15 +501,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final characters = values
             .map((e) => Character.fromMap(e as Map<String, dynamic>))
             .toList();
+        return characters.isNotEmpty
+            ? characters
+            : MockData.charactersForProject(projectId);
       } else {
         throw Exception('Failed to load characters: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getCharacters error: $e');
-      return [];
+      print('ApiService.getCharacters error: $e');
+      return MockData.charactersForProject(projectId);
     }
   }
 
@@ -329,10 +529,9 @@ class ApiService {
           jsonDecode(response.body) as Map<String, dynamic>,
         );
       }
-      throw Exception('Failed to create character: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo nhân vật');
     } catch (e) {
-      debugPrint('ApiService.createCharacter error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo nhân vật');
     }
   }
 
@@ -345,10 +544,16 @@ class ApiService {
         headers: _headers,
         body: jsonEncode(character.toMap()),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Cập nhật nhân vật',
+      );
     } catch (e) {
-      debugPrint('ApiService.updateCharacter error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật nhân vật');
     }
   }
 
@@ -358,12 +563,17 @@ class ApiService {
       final response = await _client.delete(url, headers: _headers);
       return response.statusCode == 204;
     } catch (e) {
-      debugPrint('ApiService.deleteCharacter error: $e');
+      print('ApiService.deleteCharacter error: $e');
       return false;
     }
   }
 
   // ─── SCENES ───────────────────────────────────────────────────────────────
+  // Lưu ý: backend không hỗ trợ PUT cho Scenes (405), phải dùng PATCH.
+  // Lưu ý: trường `sceneCharacters` lồng trong body POST/PATCH chỉ CỘNG THÊM
+  // liên kết nhân vật, KHÔNG thay thế/xoá liên kết cũ (đã verify trực tiếp
+  // với server) — vì backend không có endpoint xoá SceneCharacter, muốn đổi
+  // toàn bộ danh sách nhân vật của 1 cảnh phải xoá cảnh cũ và tạo cảnh mới.
 
   Scene _sceneFromJson(Map<String, dynamic> e) {
     Location? loc;
@@ -380,14 +590,7 @@ class ApiService {
       }
     }
 
-    int sNum = 0;
-    if (e['SceneNumber'] != null) {
-      sNum =
-          int.tryParse(
-            e['SceneNumber'].toString().replaceAll(RegExp(r'[^0-9]'), ''),
-          ) ??
-          0;
-    }
+    final sNum = (e['SceneNumber']?.toString() ?? '').trim().toUpperCase();
 
     final String dbSetting =
         e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';
@@ -421,15 +624,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
+        return scenes.isNotEmpty
+            ? scenes
+            : MockData.scenesForProject(projectId);
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getScenesForProject error: $e');
-      return [];
+      print('ApiService.getScenesForProject error: $e');
+      return MockData.scenesForProject(projectId);
     }
   }
 
@@ -443,15 +649,16 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
+        return scenes.isNotEmpty ? scenes : MockData.scenesForAct(actId);
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ApiService.getScenesForAct error: $e');
-      return [];
+      print('ApiService.getScenesForAct error: $e');
+      return MockData.scenesForAct(actId);
     }
   }
 
@@ -478,28 +685,13 @@ class ApiService {
       if (response.statusCode == 201) {
         final createdJson = jsonDecode(response.body) as Map<String, dynamic>;
         final createdId = createdJson['Id'] ?? createdJson['id'];
-        final intId = createdId is int
-            ? createdId
-            : int.tryParse(createdId.toString());
-
-        // Fetch full scene with expanded characters
-        if (intId != null) {
-          final getUrl = Uri.parse(
-            '$baseUrl/Scenes($intId)?\$expand=Location,SceneCharacters(\$expand=Character)',
-          );
-          final getRes = await _client.get(getUrl, headers: _headers);
-          if (getRes.statusCode == 200) {
-            return _sceneFromJson(
-              jsonDecode(getRes.body) as Map<String, dynamic>,
-            );
-          }
-        }
-        return scene.copyWith(id: intId);
+        return scene.copyWith(
+          id: createdId is int ? createdId : int.tryParse(createdId.toString()),
+        );
       }
-      throw Exception('Failed to create scene: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo cảnh');
     } catch (e) {
-      print('ApiService.createScene error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo cảnh');
     }
   }
 
@@ -514,10 +706,21 @@ class ApiService {
       final response = await _client.patch(
         url,
         headers: _headers,
-        body: jsonEncode(_sceneBody(scene, characterIds)),
+        body: jsonEncode({
+          'actId': scene.actId,
+          'locationId': scene.locationId,
+          'sceneNumber': scene.sceneNumber.toString(),
+          'title': scene.title,
+          'summary': scene.summary,
+          'status': scene.status.dbValue,
+          'setting': scene.setting.dbValue,
+          'time': scene.timeOfDay.dbValue,
+          'sceneCharacters': characterIds
+              .map((id) => {'characterId': id})
+              .toList(),
+        }),
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // Fetch full scene with expanded characters after update
         final getUrl = Uri.parse(
           '$baseUrl/Scenes(${scene.id})?\$expand=Location,SceneCharacters(\$expand=Character)',
         );
@@ -529,10 +732,9 @@ class ApiService {
         }
         return scene;
       }
-      throw Exception('Failed to update scene: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Cập nhật cảnh');
     } catch (e) {
-      print('ApiService.updateScene error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Cập nhật cảnh');
     }
   }
 
@@ -554,12 +756,15 @@ class ApiService {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
-        return list.map((e) => Act.fromMap(e)).toList();
+        final acts = list.map((e) => Act.fromMap(e)).toList();
+        return acts.isNotEmpty
+            ? acts
+            : MockData.deletedActsForProject(projectId);
       }
-      return [];
+      return MockData.deletedActsForProject(projectId);
     } catch (e) {
       print('ApiService.getDeletedActs error: $e');
-      return [];
+      return MockData.deletedActsForProject(projectId);
     }
   }
 
@@ -570,12 +775,15 @@ class ApiService {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
-        return list.map((e) => _sceneFromJson(e)).toList();
+        final scenes = list.map((e) => _sceneFromJson(e)).toList();
+        return scenes.isNotEmpty
+            ? scenes
+            : MockData.deletedScenesForProject(projectId);
       }
-      return [];
+      return MockData.deletedScenesForProject(projectId);
     } catch (e) {
       print('ApiService.getDeletedScenes error: $e');
-      return [];
+      return MockData.deletedScenesForProject(projectId);
     }
   }
 
@@ -613,15 +821,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final notifications = values
             .map((e) => NotificationModel.fromMap(e as Map<String, dynamic>))
             .toList();
+        return notifications.isNotEmpty
+            ? notifications
+            : MockData.notificationsCopy();
       } else {
         throw Exception('Failed to load notifications: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getNotifications error: $e');
-      return [];
+      return MockData.notificationsCopy();
     }
   }
 
