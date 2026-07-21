@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class CharacterProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _cache = LocalCacheService.instance;
 
   List<Character> _characters = [];
   bool _isLoading = false;
@@ -19,14 +20,24 @@ class CharacterProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+    List<Character> cached = [];
     try {
-      _characters = await _api.getCharacters(projectId: projectId);
+      cached = await _cache.getCharacters(projectId);
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _characters = cached;
+      _isLoading = false;
+      notifyListeners();
+    }
+    try {
+      final fetched = await _api.getCharacters(projectId: projectId);
+      try {
+        await _cache.replaceCharacters(projectId, fetched);
+      } catch (_) {}
+      _characters = fetched;
     } catch (e) {
       _error = 'Không thể tải nhân vật từ server, dùng dữ liệu cục bộ: $e';
-      _characters = MockData.mockCharacters.where((c) => c.projectId == projectId || c.projectId == null).toList();
-      if (_characters.isEmpty) {
-        _characters = List.from(MockData.mockCharacters);
-      }
+      if (cached.isEmpty) _characters = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -37,6 +48,9 @@ class CharacterProvider extends ChangeNotifier {
     try {
       final created = await _api.createCharacter(character);
       if (created == null) return false;
+      try {
+        await _cache.upsertCharacter(created);
+      } catch (_) {}
       _characters.add(created);
       notifyListeners();
       return true;
@@ -51,6 +65,9 @@ class CharacterProvider extends ChangeNotifier {
     try {
       final ok = await _api.updateCharacter(character);
       if (ok) {
+        try {
+          await _cache.upsertCharacter(character);
+        } catch (_) {}
         final index = _characters.indexWhere((c) => c.id == character.id);
         if (index >= 0) {
           _characters[index] = character;
@@ -81,6 +98,9 @@ class CharacterProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      try {
+        await _cache.deleteCharacter(id);
+      } catch (_) {}
       return true;
     } catch (e) {
       _characters.insert(index, backup);

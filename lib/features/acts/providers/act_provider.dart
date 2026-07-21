@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class ActProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _cache = LocalCacheService.instance;
 
   List<Act> _acts = [];
   bool _isLoading = false;
@@ -18,14 +19,24 @@ class ActProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+    List<Act> cached = [];
     try {
-      _acts = await _api.getActsForProject(projectId);
+      cached = await _cache.getActs(projectId);
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _acts = cached;
+      _isLoading = false;
+      notifyListeners();
+    }
+    try {
+      final fetched = await _api.getActsForProject(projectId);
+      try {
+        await _cache.replaceActs(projectId, fetched);
+      } catch (_) {}
+      _acts = fetched;
     } catch (e) {
       _error = 'Không thể tải hồi từ server, dùng dữ liệu cục bộ: $e';
-      _acts = MockData.mockActs.where((a) => a.projectId == projectId).toList();
-      if (_acts.isEmpty) {
-        _acts = List.from(MockData.mockActs);
-      }
+      if (cached.isEmpty) _acts = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -36,6 +47,9 @@ class ActProvider extends ChangeNotifier {
     try {
       final created = await _api.createAct(act);
       if (created == null) return false;
+      try {
+        await _cache.upsertAct(created);
+      } catch (_) {}
       _acts.add(created);
       notifyListeners();
       return true;
@@ -50,6 +64,9 @@ class ActProvider extends ChangeNotifier {
     try {
       final ok = await _api.updateAct(act);
       if (ok) {
+        try {
+          await _cache.upsertAct(act);
+        } catch (_) {}
         final index = _acts.indexWhere((a) => a.id == act.id);
         if (index >= 0) {
           _acts[index] = act;
@@ -80,6 +97,9 @@ class ActProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      try {
+        await _cache.deleteAct(id);
+      } catch (_) {}
       return true;
     } catch (e) {
       _acts.insert(index, backup);

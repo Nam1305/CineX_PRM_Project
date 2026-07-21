@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'adaptive_image.dart';
 
 class ImageCard extends StatelessWidget {
   final String? imageUrl;
@@ -34,18 +34,15 @@ class ImageCard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: imageUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl!,
+                ? AdaptiveImage(
+                    source: imageUrl!,
                     fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 200),
-                    placeholder: (context, url) => Center(
+                    placeholderBuilder: (_) => Center(
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                    errorWidget: (context, url, error) =>
-                        _buildPlaceholder(theme),
                   )
                 : _buildPlaceholder(theme),
           ),

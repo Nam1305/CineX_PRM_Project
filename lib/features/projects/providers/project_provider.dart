@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/core/services/api_service.dart';
-import 'package:cinex_application/data/mock_data.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 
 class ProjectProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
+  final _cache = LocalCacheService.instance;
 
   List<Project> _projects = [];
   bool _isLoading = false;
@@ -20,16 +21,25 @@ class ProjectProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
+
+    List<Project> cached = [];
+    try {
+      cached = await _cache.getProjects();
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _projects = cached;
+      _isLoading = false;
+      notifyListeners();
+    }
     try {
       final fetched = await _api.getProjects();
-      if (fetched.isNotEmpty) {
-        _projects = fetched;
-      } else {
-        _projects = List.from(MockData.mockProjects);
-      }
+      try {
+        await _cache.replaceProjects(fetched);
+      } catch (_) {}
+      _projects = fetched;
     } catch (e) {
       _error = 'Không thể tải dự án: $e';
-      _projects = List.from(MockData.mockProjects);
+      if (cached.isEmpty) _projects = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -41,6 +51,9 @@ class ProjectProvider extends ChangeNotifier {
     try {
       final created = await _api.createProject(project);
       if (created != null) {
+        try {
+          await _cache.upsertProject(created);
+        } catch (_) {}
         _projects.add(created);
         notifyListeners();
         return created.id;
@@ -49,12 +62,8 @@ class ProjectProvider extends ChangeNotifier {
       _error = 'Không thể tạo dự án: $e';
     }
 
-    // Fallback nếu server lỗi/offline
-    final newId = DateTime.now().millisecondsSinceEpoch % 10000;
-    final fallbackProject = project.copyWith(id: newId);
-    _projects.add(fallbackProject);
     notifyListeners();
-    return newId;
+    return null;
   }
 
   /// Cập nhật dự án qua API, cập nhật danh sách local sau khi thành công
@@ -64,6 +73,9 @@ class ProjectProvider extends ChangeNotifier {
     try {
       final updated = await _api.updateProject(project);
       if (updated != null) {
+        try {
+          await _cache.upsertProject(updated);
+        } catch (_) {}
         final index = _projects.indexWhere((p) => p.id == updated.id);
         if (index >= 0) {
           _projects[index] = updated;
@@ -77,15 +89,6 @@ class ProjectProvider extends ChangeNotifier {
       _error = 'Không thể cập nhật dự án: $e';
     }
 
-    // Fallback: Nếu API không thành công (offline / mock data), cập nhật dữ liệu cục bộ
-    final index = _projects.indexWhere((p) => p.id == project.id);
-    if (index >= 0) {
-      _projects[index] = project;
-      notifyListeners();
-      return true;
-    }
-
-    _error = 'Không thể tìm thấy dự án để cập nhật';
     notifyListeners();
     return false;
   }
@@ -107,6 +110,9 @@ class ProjectProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      try {
+        await _cache.deleteProject(id);
+      } catch (_) {}
       return true;
     } catch (e) {
       _projects.insert(index, backup);

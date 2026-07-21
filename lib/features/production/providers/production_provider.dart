@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 
 class ProductionProvider extends ChangeNotifier {
   final _apiService = ApiService();
+  final _cache = LocalCacheService.instance;
 
   List<Scene> _allScenes = [];
   List<Scene> _filtered = [];
@@ -114,7 +116,24 @@ class ProductionProvider extends ChangeNotifier {
   Future<void> loadForProject(int projectId) async {
     _isLoading = true;
     notifyListeners();
-    _allScenes = await _apiService.getScenesForProject(projectId);
+    List<Scene> cached = [];
+    try {
+      cached = await _cache.getScenesForProject(projectId);
+    } catch (_) {}
+    if (cached.isNotEmpty) {
+      _allScenes = cached;
+      _applyFilters();
+      _isLoading = false;
+      notifyListeners();
+    }
+    try {
+      _allScenes = await _apiService.getScenesForProject(projectId);
+      try {
+        await _cache.replaceScenesForProject(projectId, _allScenes);
+      } catch (_) {}
+    } catch (_) {
+      if (cached.isEmpty) _allScenes = [];
+    }
 
     // Load custom dates and shooting statuses from SharedPreferences
     _customDates = {};
