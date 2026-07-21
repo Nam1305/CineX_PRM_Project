@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/core/services/api_service.dart';
-import 'package:cinex_application/core/services/database_helper.dart';
 import 'package:cinex_application/data/mock_data.dart';
 
 class ProjectProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
-  final DatabaseHelper _db = DatabaseHelper.instance;
 
   List<Project> _projects = [];
   bool _isLoading = false;
@@ -16,7 +14,7 @@ class ProjectProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Load danh sách dự án từ server, tự động lưu vào SQLite và fallback SQLite khi offline
+  /// Load danh sách dự án từ server, tự động nạp dữ liệu cục bộ mẫu nếu rỗng hoặc lỗi
   Future<void> loadProjects() async {
     _isLoading = true;
     _error = null;
@@ -26,56 +24,40 @@ class ProjectProvider extends ChangeNotifier {
       final fetched = await _api.getProjects();
       if (fetched.isNotEmpty) {
         _projects = fetched;
-        await _db.saveProjects(fetched);
-      } else {
-        // Fallback SQLite
-        final local = await _db.getProjects();
-        if (local.isNotEmpty) {
-          _projects = local;
-        } else {
-          _projects = List.from(MockData.mockProjects);
-          await _db.saveProjects(_projects);
-        }
-      }
-    } catch (e) {
-      _error = 'Không thể tải dự án từ server, đọc từ SQLite: $e';
-      final local = await _db.getProjects();
-      if (local.isNotEmpty) {
-        _projects = local;
       } else {
         _projects = List.from(MockData.mockProjects);
-        await _db.saveProjects(_projects);
       }
+    } catch (e) {
+      _error = 'Không thể tải dự án: $e';
+      _projects = List.from(MockData.mockProjects);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Tạo dự án mới qua API, lưu SQLite và local state
+  /// Tạo dự án mới qua API, thêm vào danh sách local sau khi thành công
   Future<int?> addProject(Project project) async {
     try {
       final created = await _api.createProject(project);
       if (created != null) {
         _projects.add(created);
-        await _db.saveSingleProject(created);
         notifyListeners();
         return created.id;
       }
     } catch (e) {
-      _error = 'Không thể tạo dự án lên server: $e';
+      _error = 'Không thể tạo dự án: $e';
     }
 
-    // Fallback nếu server lỗi/offline -> Lưu SQLite local
+    // Fallback nếu server lỗi/offline
     final newId = DateTime.now().millisecondsSinceEpoch % 10000;
     final fallbackProject = project.copyWith(id: newId);
     _projects.add(fallbackProject);
-    await _db.saveSingleProject(fallbackProject);
     notifyListeners();
     return newId;
   }
 
-  /// Cập nhật dự án qua API, lưu SQLite
+  /// Cập nhật dự án qua API, cập nhật danh sách local sau khi thành công
   Future<bool> editProject(Project project) async {
     if (project.id == null) return false;
     _error = null;
@@ -88,19 +70,17 @@ class ProjectProvider extends ChangeNotifier {
         } else {
           _projects.add(updated);
         }
-        await _db.saveSingleProject(updated);
         notifyListeners();
         return true;
       }
     } catch (e) {
-      _error = 'Không thể cập nhật dự án trên server: $e';
+      _error = 'Không thể cập nhật dự án: $e';
     }
 
-    // Fallback offline -> Lưu SQLite local
+    // Fallback: Nếu API không thành công (offline / mock data), cập nhật dữ liệu cục bộ
     final index = _projects.indexWhere((p) => p.id == project.id);
     if (index >= 0) {
       _projects[index] = project;
-      await _db.saveSingleProject(project);
       notifyListeners();
       return true;
     }
@@ -110,29 +90,29 @@ class ProjectProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Xóa dự án qua API và khỏi SQLite
+  /// Xóa dự án qua API, xóa khỏi danh sách local sau khi thành công
   Future<bool> removeProject(int id) async {
     final index = _projects.indexWhere((p) => p.id == id);
     if (index < 0) return false;
     final backup = _projects[index];
 
     _projects.removeAt(index);
-    await _db.deleteProject(id);
     notifyListeners();
 
     try {
       final success = await _api.deleteProject(id);
       if (!success) {
         _projects.insert(index, backup);
-        await _db.saveSingleProject(backup);
         _error = 'Không thể xóa dự án từ máy chủ';
         notifyListeners();
         return false;
       }
       return true;
     } catch (e) {
-      // Giữ xoá offline trong SQLite nếu mất mạng
-      return true;
+      _projects.insert(index, backup);
+      _error = 'Không thể xóa dự án: $e';
+      notifyListeners();
+      return false;
     }
   }
 

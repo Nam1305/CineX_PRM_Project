@@ -105,7 +105,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                       },
                       onSceneStatusChanged: (scene, newStatus) async {
                         final ok = await context.read<SceneProvider>().updateSceneStatus(scene, newStatus);
-                        if (ok && mounted) {
+                        if (ok && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Đã cập nhật trạng thái cảnh sang ${newStatus.label}'),
