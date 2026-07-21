@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/widgets/section_card.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
-class LocationDetailScreen extends StatelessWidget {
+class LocationDetailScreen extends StatefulWidget {
   final Location location;
 
   const LocationDetailScreen({
@@ -13,8 +16,51 @@ class LocationDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<LocationDetailScreen> createState() => _LocationDetailScreenState();
+}
+
+class _LocationDetailScreenState extends State<LocationDetailScreen> {
+  final _api = ApiService();
+  List<Scene> _scenes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocationScenes();
+  }
+
+  Future<void> _loadLocationScenes() async {
+    final projId = widget.location.projectId ?? 1;
+    try {
+      final allScenes = await _api.getScenesForProject(projId);
+      final locId = widget.location.id;
+
+      final filtered = allScenes.where((s) => s.locationId == locId || (locId != null && s.location?.id == locId)).toList();
+
+      if (mounted) {
+        setState(() {
+          _scenes = filtered;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('LocationDetailScreen._loadLocationScenes error: $e');
+      final locId = widget.location.id;
+      final mockFiltered = MockData.mockScenes.where((s) => s.locationId == locId || (locId != null && s.location?.id == locId)).toList();
+      if (mounted) {
+        setState(() {
+          _scenes = mockFiltered;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final location = widget.location;
 
     return Scaffold(
       body: CustomScrollView(
@@ -45,9 +91,8 @@ class LocationDetailScreen extends StatelessWidget {
                 // Quick Tags
                 Wrap(
                   spacing: 8,
-                  children: [
-                    _TagChip(label: location.setting.label),
-                    _TagChip(label: location.timeOfDay.label),
+                  children: const [
+                    _TagChip(label: 'Bối cảnh địa lý'),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -58,9 +103,15 @@ class LocationDetailScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _TechInfoItem(
-                        icon: Icons.lightbulb_outline,
-                        label: 'Ánh sáng',
-                        value: location.timeOfDay.label,
+                        icon: Icons.place_outlined,
+                        label: 'Tên bối cảnh',
+                        value: location.name,
+                      ),
+                      const SizedBox(height: 12),
+                      _TechInfoItem(
+                        icon: Icons.straighten,
+                        label: 'Vị trí & Thời gian quay',
+                        value: '${location.setting.fullLabel} - ${location.timeOfDay.fullLabel}',
                       ),
                       const SizedBox(height: 12),
                       _TechInfoItem(
@@ -68,61 +119,54 @@ class LocationDetailScreen extends StatelessWidget {
                         label: 'Âm thanh',
                         value: 'Yên tĩnh',
                       ),
-                      const SizedBox(height: 12),
-                      _TechInfoItem(
-                        icon: Icons.power_outlined,
-                        label: 'Điện',
-                        value: 'Có',
-                      ),
-                      const SizedBox(height: 12),
-                      _TechInfoItem(
-                        icon: Icons.straighten,
-                        label: 'Không gian',
-                        value: 'Rộng',
-                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 // Notes
-                if (location.notes != null)
+                if (location.notes != null && location.notes!.isNotEmpty) ...[
                   SectionCard(
-                    title: 'Ghi Chú',
+                    title: 'Ghi Chú Bối Cảnh',
                     child: Text(
                       location.notes!,
-                      style: theme.textTheme.bodyMedium,
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                     ),
                   ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
 
                 // Associated Scenes
                 SectionCard(
-                  title: 'Các Cảnh Liên Quan',
-                  child: Column(
-                    children: [
-                      _SceneItem(
-                        sceneNumber: '01',
-                        title: 'Gặp gỡ đầu tiên',
-                        duration: '3:45',
-                        pages: 5,
-                      ),
-                      const SizedBox(height: 12),
-                      _SceneItem(
-                        sceneNumber: '03',
-                        title: 'Cuộc gặp bí mật',
-                        duration: '2:15',
-                        pages: 3,
-                      ),
-                      const SizedBox(height: 12),
-                      _SceneItem(
-                        sceneNumber: '05',
-                        title: 'Xung đột cao trào',
-                        duration: '5:30',
-                        pages: 7,
-                      ),
-                    ],
-                  ),
+                  title: 'Các Cảnh Liên Quan (${_scenes.length})',
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _scenes.isEmpty
+                          ? const Text(
+                              'Chưa có cảnh quay nào đăng ký tại bối cảnh này.',
+                              style: TextStyle(color: Colors.grey, fontSize: 13),
+                            )
+                          : Column(
+                              children: _scenes.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final scene = entry.value;
+                                final sceneNum = scene.sceneNumber.toString().padLeft(2, '0');
+                                final charCount = scene.characters.length;
+
+                                return Column(
+                                  children: [
+                                    if (idx > 0) const SizedBox(height: 12),
+                                    _SceneItem(
+                                      sceneNumber: sceneNum,
+                                      title: scene.title,
+                                      summary: scene.summary ?? 'Chưa có tóm tắt cảnh',
+                                      charCount: charCount,
+                                      statusLabel: scene.status.label,
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                 ),
                 const SizedBox(height: 16),
 
@@ -132,23 +176,13 @@ class LocationDetailScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _ManagementItem(
-                        label: 'Người liên hệ',
-                        value: 'Nguyễn Văn A',
+                        label: 'Tên bối cảnh',
+                        value: location.name,
                       ),
                       const SizedBox(height: 12),
-                      _ManagementItem(
-                        label: 'Điện thoại',
-                        value: '0123 456 789',
-                      ),
-                      const SizedBox(height: 12),
-                      _ManagementItem(
-                        label: 'Chi phí thuê',
-                        value: '5.000.000 VNĐ',
-                      ),
-                      const SizedBox(height: 12),
-                      _ManagementItem(
+                      const _ManagementItem(
                         label: 'Tình trạng',
-                        value: 'Sẵn sàng',
+                        value: 'Sẵn sàng ghi hình',
                       ),
                     ],
                   ),
@@ -232,14 +266,16 @@ class _TechInfoItem extends StatelessWidget {
 class _SceneItem extends StatelessWidget {
   final String sceneNumber;
   final String title;
-  final String duration;
-  final int pages;
+  final String summary;
+  final int charCount;
+  final String statusLabel;
 
   const _SceneItem({
     required this.sceneNumber,
     required this.title,
-    required this.duration,
-    required this.pages,
+    required this.summary,
+    required this.charCount,
+    required this.statusLabel,
   });
 
   @override
@@ -248,17 +284,20 @@ class _SceneItem extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 40,
+          width: 44,
           height: 60,
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
           ),
           child: Center(
             child: Text(
               sceneNumber,
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+                fontSize: 13,
               ),
             ),
           ),
@@ -273,11 +312,15 @@ class _SceneItem extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
-                '$duration • $pages trang',
-                style: theme.textTheme.labelSmall,
+                '$summary • $charCount nhân vật • $statusLabel',
+                style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

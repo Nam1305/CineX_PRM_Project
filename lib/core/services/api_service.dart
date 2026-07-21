@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cinex_application/features/acts/data/models/act.dart';
@@ -6,12 +7,51 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/data/mock_data.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final Object? cause;
+
+  const ApiException(this.message, {this.statusCode, this.cause});
+
+  @override
+  String toString() => message;
+}
+
+class _TimeoutClient extends http.BaseClient {
+  final http.Client _inner;
+  final Duration timeout;
+
+  _TimeoutClient(this._inner, {required this.timeout});
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    try {
+      return await _inner.send(request).timeout(timeout);
+    } on TimeoutException {
+      throw const ApiException('Yêu cầu quá thời gian chờ. Vui lòng thử lại.');
+    }
+  }
+
+  @override
+  void close() => _inner.close();
+}
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5274/odata'; // local test
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:5274/odata',
+  );
   static String? token;
-  static final http.Client _client = http.Client();
+  static final http.Client _client = _TimeoutClient(
+    http.Client(),
+    timeout: requestTimeout,
+  );
+  static final http.Client _uploadClient = http.Client();
 
   static Map<String, String> get _headers {
     final map = {'Content-Type': 'application/json'};
@@ -19,6 +59,77 @@ class ApiService {
       map['Authorization'] = 'Bearer $token';
     }
     return map;
+  }
+
+  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration uploadTimeout = Duration(seconds: 60);
+  static const int maxImageBytes = 5 * 1024 * 1024;
+  static const Set<String> _allowedImageTypes = {
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  };
+
+  static String get _apiBaseUrl => baseUrl.replaceAll('/odata', '');
+
+  Future<T> _withTimeout<T>(
+    Future<T> future,
+    String operation, {
+    Duration timeout = requestTimeout,
+  }) async {
+    try {
+      return await future.timeout(timeout);
+    } on TimeoutException {
+      throw ApiException('$operation quá thời gian chờ. Vui lòng thử lại.');
+    }
+  }
+
+  ApiException _responseError(int statusCode, String body, String operation) {
+    var detail = body.trim();
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        detail =
+            (decoded['Message'] ??
+                    decoded['message'] ??
+                    decoded['title'] ??
+                    decoded['error'])
+                ?.toString() ??
+            detail;
+      }
+    } catch (_) {
+      // Non-JSON response: retain the short response text below.
+    }
+    if (detail.length > 240) detail = detail.substring(0, 240);
+    final suffix = detail.isEmpty ? '' : ': $detail';
+    return ApiException(
+      '$operation thất bại (HTTP $statusCode)$suffix',
+      statusCode: statusCode,
+    );
+  }
+
+  Never _rethrowAsApiException(Object error, String operation) {
+    if (error is ApiException) throw error;
+    throw ApiException('$operation thất bại. Vui lòng thử lại.', cause: error);
+  }
+
+  String _imageContentType(XFile file) {
+    var contentType = file.mimeType?.split(';').first.trim().toLowerCase();
+    if (contentType == 'image/jpg') contentType = 'image/jpeg';
+    if (contentType == null || !_allowedImageTypes.contains(contentType)) {
+      final name = file.name.toLowerCase();
+      if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (name.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (name.endsWith('.webp')) {
+        contentType = 'image/webp';
+      }
+    }
+    if (contentType == null || !_allowedImageTypes.contains(contentType)) {
+      throw const ApiException('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.');
+    }
+    return contentType;
   }
 
   // ─── PROJECTS ─────────────────────────────────────────────────────────────
@@ -31,15 +142,16 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final projects = values
             .map((e) => Project.fromMap(e as Map<String, dynamic>))
             .toList();
+        return projects.isNotEmpty ? projects : MockData.projectsCopy();
       } else {
         throw Exception('Failed to load projects: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getProjects error: $e');
-      return [];
+      return MockData.projectsCopy();
     }
   }
 
@@ -64,11 +176,10 @@ class ApiService {
         final data = jsonDecode(response.body);
         return Project.fromMap(data as Map<String, dynamic>);
       } else {
-        throw Exception('Failed to create project: ${response.statusCode}');
+        throw _responseError(response.statusCode, response.body, 'Tạo dự án');
       }
     } catch (e) {
-      print('ApiService.createProject error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo dự án');
     }
   }
 
@@ -97,43 +208,114 @@ class ApiService {
         final data = jsonDecode(response.body);
         return Project.fromMap(data as Map<String, dynamic>);
       } else {
-        throw Exception('Failed to update project: ${response.statusCode}');
+        throw _responseError(
+          response.statusCode,
+          response.body,
+          'Cập nhật dự án',
+        );
       }
     } catch (e) {
-      print('ApiService.updateProject error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Cập nhật dự án');
     }
   }
 
-  /// Tải tệp tin lên Cloudflare R2 thông qua API Upload (Hỗ trợ cả Mobile & Web)
-  Future<String?> uploadFile(String filePath, String prefix) async {
-    final base = baseUrl.replaceAll('/odata', '');
-    final uploadUrl = Uri.parse('$base/api/FileUpload/upload');
+  /// Validate ảnh, lấy presigned URL rồi stream trực tiếp từ thiết bị lên R2.
+  Future<String> uploadImage(
+    XFile file,
+    String prefix, {
+    void Function(double progress)? onProgress,
+  }) async {
     try {
-      final bytes = await XFile(filePath).readAsBytes();
-      final filename = filePath.split('/').last.split('\\').last;
-      
-      final request = http.MultipartRequest('POST', uploadUrl)
-        ..fields['prefix'] = prefix
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            bytes,
-            filename: filename.isNotEmpty ? filename : 'upload.png',
-          ),
-        );
-      
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['Url'] ?? data['url']) as String?;
-      } else {
-        throw Exception('Failed to upload file: ${response.statusCode}');
+      final fileSize = await file.length();
+      if (fileSize <= 0) {
+        throw const ApiException('Ảnh đã chọn không có dữ liệu.');
       }
+      if (fileSize > maxImageBytes) {
+        throw const ApiException('Ảnh không được vượt quá 5 MB.');
+      }
+      final contentType = _imageContentType(file);
+      final presignUrl = Uri.parse('$_apiBaseUrl/api/FileUpload/presign');
+      final presignResponse = await _withTimeout(
+        _client.post(
+          presignUrl,
+          headers: _headers,
+          body: jsonEncode({
+            'fileName': file.name,
+            'contentType': contentType,
+            'fileSize': fileSize,
+            'prefix': prefix,
+          }),
+        ),
+        'Chuẩn bị tải ảnh',
+      );
+      if (presignResponse.statusCode < 200 ||
+          presignResponse.statusCode >= 300) {
+        throw _responseError(
+          presignResponse.statusCode,
+          presignResponse.body,
+          'Chuẩn bị tải ảnh',
+        );
+      }
+
+      final data = jsonDecode(presignResponse.body) as Map<String, dynamic>;
+      final uploadUrl = (data['uploadUrl'] ?? data['UploadUrl'])?.toString();
+      final publicUrl = (data['publicUrl'] ?? data['PublicUrl'])?.toString();
+      if (uploadUrl == null ||
+          uploadUrl.isEmpty ||
+          publicUrl == null ||
+          publicUrl.isEmpty) {
+        throw const ApiException(
+          'Máy chủ trả về thông tin upload không hợp lệ.',
+        );
+      }
+
+      await _withTimeout(
+        _streamFileToR2(
+          file,
+          Uri.parse(uploadUrl),
+          contentType,
+          fileSize,
+          onProgress,
+        ),
+        'Tải ảnh lên R2',
+        timeout: uploadTimeout,
+      );
+      onProgress?.call(1);
+      return publicUrl;
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      print('ApiService.uploadFile error: $e');
-      return null;
+      throw ApiException('Không thể tải ảnh lên. Vui lòng thử lại.', cause: e);
+    }
+  }
+
+  Future<void> _streamFileToR2(
+    XFile file,
+    Uri uploadUrl,
+    String contentType,
+    int fileSize,
+    void Function(double progress)? onProgress,
+  ) async {
+    final request = http.StreamedRequest('PUT', uploadUrl)
+      ..headers['Content-Type'] = contentType
+      ..contentLength = fileSize;
+    final responseFuture = _uploadClient.send(request);
+    var sentBytes = 0;
+
+    try {
+      await for (final chunk in file.openRead()) {
+        request.sink.add(chunk);
+        sentBytes += chunk.length;
+        onProgress?.call(sentBytes / fileSize);
+      }
+    } finally {
+      await request.sink.close();
+    }
+
+    final response = await responseFuture;
+    final body = await response.stream.bytesToString();
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _responseError(response.statusCode, body, 'Tải ảnh lên R2');
     }
   }
 
@@ -162,30 +344,33 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final acts = values
             .map((e) => Act.fromMap(e as Map<String, dynamic>))
             .toList();
+        return acts.isNotEmpty ? acts : MockData.actsForProject(projectId);
       } else {
         throw Exception('Failed to load acts: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getActsForProject error: $e');
-      return [];
+      return MockData.actsForProject(projectId);
     }
   }
 
   Future<Act?> createAct(Act act) async {
     final url = Uri.parse('$baseUrl/Acts');
     try {
-      final response =
-          await _client.post(url, headers: _headers, body: jsonEncode(act.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(act.toMap()),
+      );
       if (response.statusCode == 201) {
         return Act.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
       }
-      throw Exception('Failed to create act: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo hồi');
     } catch (e) {
-      print('ApiService.createAct error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo hồi');
     }
   }
 
@@ -193,12 +378,17 @@ class ApiService {
     if (act.id == null) return false;
     final url = Uri.parse('$baseUrl/Acts(${act.id})');
     try {
-      final response =
-          await _client.patch(url, headers: _headers, body: jsonEncode(act.toMap()));
-      return response.statusCode == 200 || response.statusCode == 204;
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(act.toMap()),
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(response.statusCode, response.body, 'Cập nhật hồi');
     } catch (e) {
-      print('ApiService.updateAct error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật hồi');
     }
   }
 
@@ -216,36 +406,45 @@ class ApiService {
   // ─── LOCATIONS ────────────────────────────────────────────────────────────
 
   Future<List<Location>> getLocations(int projectId) async {
-    final url = Uri.parse('$baseUrl/Locations?\$filter=ProjectId eq $projectId');
+    final url = Uri.parse(
+      '$baseUrl/Locations?\$filter=ProjectId eq $projectId',
+    );
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final locations = values
             .map((e) => Location.fromMap(e as Map<String, dynamic>))
             .toList();
+        return locations.isNotEmpty
+            ? locations
+            : MockData.locationsForProject(projectId);
       } else {
         throw Exception('Failed to load locations: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getLocations error: $e');
-      return [];
+      return MockData.locationsForProject(projectId);
     }
   }
 
   Future<Location?> createLocation(Location location) async {
     final url = Uri.parse('$baseUrl/Locations');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(location.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(location.toMap()),
+      );
       if (response.statusCode == 201) {
-        return Location.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+        return Location.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
       }
-      throw Exception('Failed to create location: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo bối cảnh');
     } catch (e) {
-      print('ApiService.createLocation error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo bối cảnh');
     }
   }
 
@@ -253,12 +452,21 @@ class ApiService {
     if (location.id == null) return false;
     final url = Uri.parse('$baseUrl/Locations(${location.id})');
     try {
-      final response = await _client.patch(url,
-          headers: _headers, body: jsonEncode(location.toMap()));
-      return response.statusCode == 200 || response.statusCode == 204;
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(location.toMap()),
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Cập nhật bối cảnh',
+      );
     } catch (e) {
-      print('ApiService.updateLocation error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật bối cảnh');
     }
   }
 
@@ -284,30 +492,37 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final characters = values
             .map((e) => Character.fromMap(e as Map<String, dynamic>))
             .toList();
+        return characters.isNotEmpty
+            ? characters
+            : MockData.charactersForProject(projectId);
       } else {
         throw Exception('Failed to load characters: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getCharacters error: $e');
-      return [];
+      return MockData.charactersForProject(projectId);
     }
   }
 
   Future<Character?> createCharacter(Character character) async {
     final url = Uri.parse('$baseUrl/Characters');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(character.toMap()));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(character.toMap()),
+      );
       if (response.statusCode == 201) {
-        return Character.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+        return Character.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
       }
-      throw Exception('Failed to create character: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo nhân vật');
     } catch (e) {
-      print('ApiService.createCharacter error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo nhân vật');
     }
   }
 
@@ -315,12 +530,21 @@ class ApiService {
     if (character.id == null) return false;
     final url = Uri.parse('$baseUrl/Characters(${character.id})');
     try {
-      final response = await _client.patch(url,
-          headers: _headers, body: jsonEncode(character.toMap()));
-      return response.statusCode == 200 || response.statusCode == 204;
+      final response = await _client.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode(character.toMap()),
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Cập nhật nhân vật',
+      );
     } catch (e) {
-      print('ApiService.updateCharacter error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Cập nhật nhân vật');
     }
   }
 
@@ -359,11 +583,19 @@ class ApiService {
 
     int sNum = 0;
     if (e['SceneNumber'] != null) {
-      sNum = int.tryParse(
+      sNum =
+          int.tryParse(
             e['SceneNumber'].toString().replaceAll(RegExp(r'[^0-9]'), ''),
           ) ??
           0;
     }
+
+    final String dbSetting =
+        e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';
+    final String dbTime =
+        e['Time'] as String? ?? loc?.timeOfDay.dbValue ?? 'DAY';
+    final setting = LocationSettingExt.fromDb(dbSetting);
+    final timeOfDay = SceneTimeExt.fromDb(dbTime);
 
     return Scene(
       id: e['Id'],
@@ -373,12 +605,14 @@ class ApiService {
       title: e['Title'] as String? ?? '',
       summary: e['Summary'] as String?,
       status: SceneStatusExt.fromDb(e['Status'] as String? ?? 'TODO'),
+      setting: setting,
+      timeOfDay: timeOfDay,
       location: loc,
       characters: chars,
     );
   }
 
-  /// Lấy danh sách cảnh quay theo projectId (dùng cho Production Planner)
+  /// Lấy danh sách cảnh quay theo projectId (dùng cho Production Planner & Detail screens)
   Future<List<Scene>> getScenesForProject(int projectId) async {
     final url = Uri.parse(
       '$baseUrl/Scenes?\$expand=Location,SceneCharacters(\$expand=Character)&\$filter=Act/ProjectId eq $projectId',
@@ -388,15 +622,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
+        return scenes.isNotEmpty
+            ? scenes
+            : MockData.scenesForProject(projectId);
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getScenesForProject error: $e');
-      return [];
+      return MockData.scenesForProject(projectId);
     }
   }
 
@@ -410,59 +647,57 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> values = data['value'] ?? [];
-        return values
+        final scenes = values
             .map((e) => _sceneFromJson(e as Map<String, dynamic>))
             .toList();
+        return scenes.isNotEmpty ? scenes : MockData.scenesForAct(actId);
       } else {
         throw Exception('Failed to load scenes: ${response.statusCode}');
       }
     } catch (e) {
       print('ApiService.getScenesForAct error: $e');
-      return [];
+      return MockData.scenesForAct(actId);
     }
   }
 
   Map<String, dynamic> _sceneBody(Scene scene, List<int> characterIds) => {
-        'actId': scene.actId,
-        'locationId': scene.locationId,
-        'sceneNumber': scene.sceneNumber.toString(),
-        'title': scene.title,
-        'summary': scene.summary,
-        'status': scene.status.dbValue,
-        'sceneCharacters': characterIds.map((id) => {'characterId': id}).toList(),
-      };
+    'ActId': scene.actId,
+    'LocationId': scene.locationId,
+    'SceneNumber': scene.sceneNumber.toString(),
+    'Title': scene.title,
+    'Summary': scene.summary,
+    'Status': scene.status.dbValue,
+    'Setting': scene.setting.dbValue,
+    'Time': scene.timeOfDay.dbValue,
+    'SceneCharacters': characterIds.map((id) => {'CharacterId': id}).toList(),
+  };
 
   Future<Scene?> createScene(Scene scene, List<int> characterIds) async {
     final url = Uri.parse('$baseUrl/Scenes');
     try {
-      final response = await _client.post(url,
-          headers: _headers, body: jsonEncode(_sceneBody(scene, characterIds)));
+      final response = await _client.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(_sceneBody(scene, characterIds)),
+      );
       if (response.statusCode == 201) {
-        return _sceneFromJson(jsonDecode(response.body) as Map<String, dynamic>);
+        final createdJson = jsonDecode(response.body) as Map<String, dynamic>;
+        final createdId = createdJson['Id'] ?? createdJson['id'];
+        return scene.copyWith(
+          id: createdId is int ? createdId : int.tryParse(createdId.toString()),
+        );
       }
-      throw Exception('Failed to create scene: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Tạo cảnh');
     } catch (e) {
-      print('ApiService.createScene error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo cảnh');
     }
   }
 
-  /// Cập nhật cảnh quay. Vì backend chỉ hỗ trợ CỘNG THÊM sceneCharacters (không
-  /// xoá được), nếu danh sách nhân vật mong muốn khác danh sách hiện có thì
-  /// phải xoá cảnh cũ và tạo lại cảnh mới với đầy đủ nhân vật (sẽ có Id mới).
   Future<Scene?> updateScene(
     Scene scene,
     List<int> characterIds, {
     required List<int> previousCharacterIds,
   }) async {
-    final sameCharacters = Set<int>.from(characterIds).length == previousCharacterIds.length &&
-        Set<int>.from(characterIds).containsAll(previousCharacterIds);
-
-    if (!sameCharacters) {
-      if (scene.id != null) await deleteScene(scene.id!);
-      return createScene(scene, characterIds);
-    }
-
     if (scene.id == null) return null;
     final url = Uri.parse('$baseUrl/Scenes(${scene.id})');
     try {
@@ -476,15 +711,28 @@ class ApiService {
           'title': scene.title,
           'summary': scene.summary,
           'status': scene.status.dbValue,
+          'setting': scene.setting.dbValue,
+          'time': scene.timeOfDay.dbValue,
+          'sceneCharacters': characterIds
+              .map((id) => {'characterId': id})
+              .toList(),
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
+        final getUrl = Uri.parse(
+          '$baseUrl/Scenes(${scene.id})?\$expand=Location,SceneCharacters(\$expand=Character)',
+        );
+        final getRes = await _client.get(getUrl, headers: _headers);
+        if (getRes.statusCode == 200) {
+          return _sceneFromJson(
+            jsonDecode(getRes.body) as Map<String, dynamic>,
+          );
+        }
         return scene;
       }
-      throw Exception('Failed to update scene: ${response.statusCode}');
+      throw _responseError(response.statusCode, response.body, 'Cập nhật cảnh');
     } catch (e) {
-      print('ApiService.updateScene error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Cập nhật cảnh');
     }
   }
 
@@ -500,37 +748,46 @@ class ApiService {
   }
 
   Future<List<Act>> getDeletedActs(int projectId) async {
-    final url = Uri.parse('$baseUrl/api/Acts/Deleted/$projectId');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Acts/Deleted/$projectId');
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
-        return list.map((e) => Act.fromMap(e)).toList();
+        final acts = list.map((e) => Act.fromMap(e)).toList();
+        return acts.isNotEmpty
+            ? acts
+            : MockData.deletedActsForProject(projectId);
       }
-      return [];
+      return MockData.deletedActsForProject(projectId);
     } catch (e) {
       print('ApiService.getDeletedActs error: $e');
-      return [];
+      return MockData.deletedActsForProject(projectId);
     }
   }
 
   Future<List<Scene>> getDeletedScenes(int projectId) async {
-    final url = Uri.parse('$baseUrl/api/Scenes/Deleted/$projectId');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Scenes/Deleted/$projectId');
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
-        return list.map((e) => _sceneFromJson(e)).toList();
+        final scenes = list.map((e) => _sceneFromJson(e)).toList();
+        return scenes.isNotEmpty
+            ? scenes
+            : MockData.deletedScenesForProject(projectId);
       }
-      return [];
+      return MockData.deletedScenesForProject(projectId);
     } catch (e) {
       print('ApiService.getDeletedScenes error: $e');
-      return [];
+      return MockData.deletedScenesForProject(projectId);
     }
   }
 
   Future<bool> restoreAct(int id) async {
-    final url = Uri.parse('$baseUrl/api/Acts/Restore/$id');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Acts/Restore/$id');
     try {
       final response = await _client.post(url, headers: _headers);
       return response.statusCode == 200;
@@ -541,12 +798,102 @@ class ApiService {
   }
 
   Future<bool> restoreScene(int id) async {
-    final url = Uri.parse('$baseUrl/api/Scenes/Restore/$id');
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Scenes/Restore/$id');
     try {
       final response = await _client.post(url, headers: _headers);
       return response.statusCode == 200;
     } catch (e) {
       print('ApiService.restoreScene error: $e');
+      return false;
+    }
+  }
+
+  // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+
+  /// Lấy danh sách tất cả thông báo từ database
+  Future<List<NotificationModel>> getNotifications() async {
+    final url = Uri.parse('$baseUrl/Notifications?\$orderby=Timestamp desc');
+    try {
+      final response = await _client.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> values = data['value'] ?? [];
+        final notifications = values
+            .map((e) => NotificationModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+        return notifications.isNotEmpty
+            ? notifications
+            : MockData.notificationsCopy();
+      } else {
+        throw Exception('Failed to load notifications: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('ApiService.getNotifications error: $e');
+      return MockData.notificationsCopy();
+    }
+  }
+
+  /// Tạo thông báo mới và lưu vào database
+  Future<NotificationModel?> createNotification(
+    NotificationModel notification,
+  ) async {
+    final url = Uri.parse('$baseUrl/Notifications');
+    try {
+      final body = jsonEncode(notification.toMap());
+      final response = await _client.post(url, headers: _headers, body: body);
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return NotificationModel.fromMap(data);
+      } else {
+        print(
+          'ApiService.createNotification failed: ${response.statusCode} - ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      print('ApiService.createNotification error: $e');
+      return null;
+    }
+  }
+
+  /// Đánh dấu một thông báo là đã đọc
+  Future<bool> markNotificationAsRead(int id) async {
+    final url = Uri.parse('$baseUrl/Notifications($id)');
+    try {
+      final body = jsonEncode({'IsRead': true});
+      final response = await _client.patch(url, headers: _headers, body: body);
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markNotificationAsRead error: $e');
+      return false;
+    }
+  }
+
+  /// Đánh dấu tất cả thông báo là đã đọc
+  Future<bool> markAllNotificationsAsRead() async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Notifications/MarkAllAsRead');
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markAllNotificationsAsRead error: $e');
+      return false;
+    }
+  }
+
+  /// Đánh dấu thông báo của một dự án là đã đọc
+  Future<bool> markProjectNotificationsAsRead(int projectId) async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse(
+      '$apiBaseUrl/api/Notifications/MarkProjectAsRead/$projectId',
+    );
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markProjectNotificationsAsRead error: $e');
       return false;
     }
   }

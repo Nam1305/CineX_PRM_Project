@@ -10,6 +10,8 @@ import 'features/production/providers/production_provider.dart';
 
 import 'features/auth/providers/auth_provider.dart';
 
+import 'features/notifications/providers/notification_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
@@ -22,6 +24,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => SceneProvider()),
         ChangeNotifierProvider(create: (_) => ProductionProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const CineXApp(),
     ),

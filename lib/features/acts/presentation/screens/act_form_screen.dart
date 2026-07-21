@@ -4,6 +4,8 @@ import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
 import 'package:cinex_application/features/acts/providers/act_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class ActFormScreen extends StatefulWidget {
   final int projectId;
@@ -53,7 +55,8 @@ class _ActFormScreenState extends State<ActFormScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _summaryCtrl,
-              decoration: const InputDecoration(labelText: 'Tóm tắt'),
+              decoration: const InputDecoration(labelText: 'Tóm tắt hồi *'),
+              validator: (v) => AppValidators.required(v, field: 'Tóm tắt hồi'),
               maxLines: 4,
             ),
             const SizedBox(height: 24),
@@ -83,6 +86,14 @@ class _ActFormScreenState extends State<ActFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      context.read<NotificationProvider>().addNotification(
+            projectId: widget.projectId,
+            projectTitle: 'Dự án CineX #${widget.projectId}',
+            actId: act.id,
+            title: _isEditing ? 'Cập nhật Hồi: ${act.title}' : 'Thêm Hồi mới: ${act.title}',
+            body: 'Hồi số ${act.sequenceOrder} đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
+            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
+          );
       AppSnackbar.success(context, _isEditing ? 'Đã cập nhật hồi' : 'Đã thêm hồi');
       Navigator.pop(context);
     } else {

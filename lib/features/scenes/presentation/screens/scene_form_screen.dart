@@ -6,6 +6,8 @@ import 'package:cinex_application/features/characters/providers/character_provid
 import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class SceneFormScreen extends StatefulWidget {
@@ -30,6 +32,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
   late final TextEditingController _summaryCtrl;
   int? _selectedLocationId;
   SceneStatus _status = SceneStatus.todo;
+  LocationSetting _setting = LocationSetting.interior;
+  SceneTime _timeOfDay = SceneTime.day;
   final Set<int> _selectedCharacterIds = {};
   bool _saving = false;
 
@@ -44,6 +48,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     _summaryCtrl = TextEditingController(text: widget.scene?.summary);
     _selectedLocationId = widget.scene?.locationId;
     _status = widget.scene?.status ?? SceneStatus.todo;
+    _setting = widget.scene?.setting ?? LocationSetting.interior;
+    _timeOfDay = widget.scene?.timeOfDay ?? SceneTime.day;
     if (widget.scene != null) {
       _selectedCharacterIds.addAll(
         widget.scene!.characters.map((c) => c.id!),
@@ -61,6 +67,14 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     _titleCtrl.dispose();
     _summaryCtrl.dispose();
     super.dispose();
+  }
+
+  int? get _effectiveLocationId {
+    final locs = context.read<LocationProvider>().locations;
+    if (_selectedLocationId != null && locs.any((l) => l.id == _selectedLocationId)) {
+      return _selectedLocationId;
+    }
+    return null;
   }
 
   @override
@@ -90,16 +104,48 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
-              initialValue: _selectedLocationId,
-              decoration: const InputDecoration(labelText: 'Bối cảnh *'),
+              value: _effectiveLocationId,
+              decoration: const InputDecoration(labelText: 'Bối cảnh địa lý *'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('— Chọn bối cảnh —')),
-                ...locationProvider.locations.map((l) =>
-                    DropdownMenuItem(value: l.id, child: Text(l.sceneLabel))),
+                ...locationProvider.locations.map((l) => DropdownMenuItem(
+                      value: l.id,
+                      child: Text('${l.name} (${l.setting.label} · ${l.timeOfDay.label})'),
+                    )),
               ],
               validator: (v) => v == null ? 'Vui lòng chọn bối cảnh' : null,
-              onChanged: (v) => setState(() => _selectedLocationId = v),
+              onChanged: (v) {
+                setState(() {
+                  _selectedLocationId = v;
+                  if (v != null) {
+                    final selectedLoc = locationProvider.locations.firstWhere((l) => l.id == v);
+                    _setting = selectedLoc.setting;
+                    _timeOfDay = selectedLoc.timeOfDay;
+                  }
+                });
+              },
             ),
+            if (_selectedLocationId != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF252525),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF333333)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 16, color: Color(0xFFFF571A)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Thuộc tính bối cảnh: ${_setting.fullLabel} · ${_timeOfDay.fullLabel}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text('Nhân vật tham gia', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -139,7 +185,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _summaryCtrl,
-              decoration: const InputDecoration(labelText: 'Tóm tắt hành động'),
+              decoration: const InputDecoration(labelText: 'Tóm tắt hành động *'),
+              validator: (v) => AppValidators.required(v, field: 'Tóm tắt hành động'),
               maxLines: 5,
             ),
             const SizedBox(height: 24),
@@ -166,6 +213,36 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       AppSnackbar.error(context, 'Số cảnh $sceneNumber đã tồn tại trong hồi này');
       return;
     }
+    if (_isEditing) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('Cảnh báo thay đổi Lịch quay', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: const Text(
+            'Việc chỉnh sửa thông tin phân cảnh (số cảnh, bối cảnh, nhân vật) sẽ làm thay đổi lịch bấm máy của toàn bộ đoàn phim.\n\nBạn có chắc chắn muốn cập nhật không?',
+            style: TextStyle(color: Colors.grey),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Xác nhận lưu', style: TextStyle(color: Color(0xFFFF571A))),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
     setState(() => _saving = true);
     final scene = Scene(
       id: widget.scene?.id,
@@ -175,6 +252,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       title: _titleCtrl.text.trim(),
       summary: _summaryCtrl.text.trim().isEmpty ? null : _summaryCtrl.text.trim(),
       status: _status,
+      setting: _setting,
+      timeOfDay: _timeOfDay,
     );
     final ok = _isEditing
         ? await sceneProvider.editScene(
@@ -187,6 +266,17 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      context.read<NotificationProvider>().addNotification(
+            projectId: widget.projectId,
+            projectTitle: 'Dự án CineX #${widget.projectId}',
+            actId: widget.actId,
+            sceneId: scene.id,
+            title: _isEditing
+                ? 'Đã cập nhật Cảnh $sceneNumber'
+                : 'Đã thêm phân cảnh mới: Cảnh $sceneNumber',
+            body: 'Cảnh $sceneNumber (${_setting.label}. ${_titleCtrl.text.trim().toUpperCase()} - ${_timeOfDay.label}) đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
+            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
+          );
       AppSnackbar.success(context, _isEditing ? 'Đã cập nhật cảnh' : 'Đã thêm cảnh');
       Navigator.pop(context);
     } else {

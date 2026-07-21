@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
-import 'package:cinex_application/data/mock_data.dart';
+import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import '../widgets/cinematic_character_card.dart';
 import 'character_form_screen.dart';
 import 'character_detail_screen.dart';
@@ -25,13 +28,34 @@ class _CharactersTabState extends State<CharactersTab> {
   String _searchQuery = '';
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
+  Map<int, int> _characterSceneCounts = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CharacterProvider>().loadCharacters(widget.projectId);
+      _loadSceneCounts();
     });
+  }
+
+  Future<void> _loadSceneCounts() async {
+    try {
+      final scenes = await ApiService().getScenesForProject(widget.projectId);
+      final Map<int, int> counts = {};
+      for (final scene in scenes) {
+        for (final char in scene.characters) {
+          if (char.id != null) {
+            counts[char.id!] = (counts[char.id!] ?? 0) + 1;
+          }
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _characterSceneCounts = counts;
+        });
+      }
+    } catch (_) {}
   }
 
   List<dynamic> _getFilteredCharacters(List<dynamic> characters) {
@@ -177,9 +201,9 @@ class _CharactersTabState extends State<CharactersTab> {
                         delegate: SliverChildBuilderDelegate(
                           (context, i) {
                             final char = paginated[i];
-                            final sceneCount = MockData.characterSceneCount[char.id] ?? 0;
-                            final status = MockData.characterStatus[char.id] ?? '';
-                            final isGreen = MockData.characterStatusGreen[char.id] ?? false;
+                            final sceneCount = _characterSceneCounts[char.id] ?? 0;
+                            final status = char.castingStatus ?? 'Đang tuyển';
+                            final isGreen = status == 'Đã duyệt' || status == 'APPROVED' || status == 'Approved';
 
                             return CinematicCharacterCard(
                               character: char,
@@ -190,9 +214,20 @@ class _CharactersTabState extends State<CharactersTab> {
                               onTap: () => _openDetail(context, char),
                               onEdit: () => _openForm(context, character: char),
                               onDelete: () async {
-                                await context
+                                final ok = await context
                                     .read<CharacterProvider>()
                                     .removeCharacter(char.id!);
+                                if (ok && context.mounted) {
+                                  context.read<NotificationProvider>().addNotification(
+                                        projectId: widget.projectId,
+                                        projectTitle: 'Dự án CineX #${widget.projectId}',
+                                        title: 'Xóa nhân vật: ${char.name}',
+                                        body: 'Nhân vật "${char.name}" (${char.roleType.label}) đã bị xóa khỏi dự án.',
+                                        actionType: NotificationActionType.delete,
+                                      );
+                                  AppSnackbar.success(context, 'Đã xóa nhân vật thành công');
+                                  _loadSceneCounts();
+                                }
                               },
                             );
                           },

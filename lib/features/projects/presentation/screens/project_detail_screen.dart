@@ -15,6 +15,8 @@ import 'package:cinex_application/features/production/presentation/screens/proje
 import 'package:cinex_application/features/workspace/presentation/screens/workspace_screen.dart';
 import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/utils/pdf_exporter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -76,23 +78,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       int todo = 0;
 
       for (var s in scenes) {
-        if (s.status != SceneStatus.done) {
-          // If script is not done, shooting status is waiting to be written
-          todo++;
+        final savedStatus = prefs.getString('proj_${_project.id}_scene_${s.id}_shooting_status');
+        // Mặc định là chờ quay (todo) chứ không dựa trên trạng thái viết kịch bản
+        final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
+        if (shootingStatus == SceneStatus.done) {
+          done++;
+        } else if (shootingStatus == SceneStatus.inProgress) {
+          inProg++;
         } else {
-          final savedStatus = prefs.getString('proj_${_project.id}_scene_${s.id}_shooting_status');
-          final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
-          if (shootingStatus == SceneStatus.done) {
-            done++;
-          } else if (shootingStatus == SceneStatus.inProgress) {
-            inProg++;
-          } else {
-            todo++;
-          }
+          todo++;
         }
       }
 
-      final progressVal = total == 0 ? 0.0 : done / total;
+      final progressVal = total == 0
+          ? (_project.status == 'COMPLETED' ? 1.0 : 0.0)
+          : (done / total);
       await prefs.setDouble('proj_${_project.id}_last_known_shooting_progress', progressVal);
 
       // Extract unique characters and locations appearing in scenes
@@ -149,6 +149,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final ok = await context.read<ProjectProvider>().removeProject(_project.id!);
     if (mounted) {
       if (ok) {
+        context.read<NotificationProvider>().addNotification(
+              projectId: _project.id,
+              projectTitle: _project.title,
+              title: 'Xóa dự án: ${_project.title}',
+              body: 'Dự án "${_project.title}" và toàn bộ tài nguyên đi kèm đã bị xóa khỏi hệ thống.',
+              actionType: NotificationActionType.delete,
+            );
         AppSnackbar.success(context, 'Xóa dự án thành công');
         Navigator.pop(context);
       } else {
@@ -312,8 +319,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final isWritable = auth.isScreenwriter;
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final metadataCols = screenWidth > 800 ? 4 : (screenWidth > 500 ? 2 : 1);
-    final metadataRatio = screenWidth > 800 ? 3.5 : (screenWidth > 500 ? 2.5 : 2.0);
 
     return Scaffold(
       body: Center(

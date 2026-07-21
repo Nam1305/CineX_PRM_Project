@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,7 @@ class AuthProvider extends ChangeNotifier {
     _username = prefs.getString('username');
     _fullName = prefs.getString('fullName');
     _role = prefs.getString('role');
-    
+
     // Đăng ký token với ApiService (để đính kèm vào mọi header)
     if (_token != null) {
       ApiService.token = _token;
@@ -48,15 +49,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       final base = ApiService.baseUrl.replaceAll('/odata', '');
       final url = Uri.parse('$base/api/Auth/login');
-      
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-        }),
-      );
+
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username, 'password': password}),
+          )
+          .timeout(ApiService.requestTimeout);
 
       final data = jsonDecode(response.body);
 
@@ -65,7 +65,7 @@ class AuthProvider extends ChangeNotifier {
         _username = data['Username'] ?? data['username'];
         _fullName = data['FullName'] ?? data['fullName'];
         _role = data['Role'] ?? data['role'];
-        
+
         // Đăng ký token với ApiService
         ApiService.token = _token;
 
@@ -85,6 +85,11 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+    } on TimeoutException {
+      _error = 'Đăng nhập quá thời gian chờ. Vui lòng thử lại.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = 'Kết nối server thất bại: $e';
       _isLoading = false;
@@ -94,7 +99,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Đăng ký tài khoản mới
-  Future<bool> register(String username, String password, String fullName, String role) async {
+  Future<bool> register(
+    String username,
+    String password,
+    String fullName,
+    String role,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -103,16 +113,18 @@ class AuthProvider extends ChangeNotifier {
       final base = ApiService.baseUrl.replaceAll('/odata', '');
       final url = Uri.parse('$base/api/Auth/register');
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-          'fullName': fullName,
-          'role': role, // SCREENWRITER or PRODUCER
-        }),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': username,
+              'password': password,
+              'fullName': fullName,
+              'role': role, // SCREENWRITER or PRODUCER
+            }),
+          )
+          .timeout(ApiService.requestTimeout);
 
       final data = jsonDecode(response.body);
 
@@ -126,6 +138,11 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+    } on TimeoutException {
+      _error = 'Đăng ký quá thời gian chờ. Vui lòng thử lại.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = 'Kết nối server thất bại: $e';
       _isLoading = false;

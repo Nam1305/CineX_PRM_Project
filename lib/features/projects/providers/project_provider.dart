@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class ProjectProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -13,17 +14,22 @@ class ProjectProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Load danh sách dự án từ server
+  /// Load danh sách dự án từ server, tự động nạp dữ liệu cục bộ mẫu nếu rỗng hoặc lỗi
   Future<void> loadProjects() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _projects = await _api.getProjects();
+      final fetched = await _api.getProjects();
+      if (fetched.isNotEmpty) {
+        _projects = fetched;
+      } else {
+        _projects = List.from(MockData.mockProjects);
+      }
     } catch (e) {
       _error = 'Không thể tải dự án: $e';
-      _projects = [];
+      _projects = List.from(MockData.mockProjects);
     } finally {
       _isLoading = false;
       notifyListeners();

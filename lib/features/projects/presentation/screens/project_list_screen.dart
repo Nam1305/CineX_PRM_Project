@@ -12,7 +12,6 @@ import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
-import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProjectListScreen extends StatefulWidget {
@@ -163,7 +162,6 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                                       _isSearching = true;
                                     });
                                   },
-                                  onNotification: () {},
                                   onAdd: isWritable
                                       ? () {
                                           Navigator.push(
@@ -405,16 +403,17 @@ class _ProjectCardState extends State<_ProjectCard> {
       final total = scenes.length;
       int done = 0;
       for (var s in scenes) {
-        if (s.status == SceneStatus.done) {
-          final savedStatus = prefs.getString('proj_${widget.project.id}_scene_${s.id}_shooting_status');
-          final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
-          if (shootingStatus == SceneStatus.done) {
-            done++;
-          }
+        final savedStatus = prefs.getString('proj_${widget.project.id}_scene_${s.id}_shooting_status');
+        // Mặc định là chờ quay (todo) chứ không dựa trên trạng thái viết kịch bản
+        final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
+        if (shootingStatus == SceneStatus.done) {
+          done++;
         }
       }
 
-      final calculatedProgress = total == 0 ? 0.0 : done / total;
+      final calculatedProgress = total == 0
+          ? (widget.project.status == 'COMPLETED' ? 1.0 : 0.0)
+          : (done / total);
       await prefs.setDouble('proj_${widget.project.id}_last_known_shooting_progress', calculatedProgress);
 
       if (mounted) {

@@ -97,3 +97,6 @@ extension SceneStatusExt on SceneStatus {
     }
   }
 }
+
+enum ProductionGroupMode { byLocation, byCharacter }
+

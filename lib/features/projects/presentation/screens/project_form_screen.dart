@@ -7,6 +7,8 @@ import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 
 class ProjectFormScreen extends StatefulWidget {
@@ -28,11 +30,16 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   String _selectedGenre = 'Drama';
   String _selectedStatus = 'PLANNING';
-  
+
   DateTime? _startDate;
   DateTime? _endDate;
-  
+
   String? _posterPath; // Can be a local path or network URL
+  XFile? _pendingPoster;
+  String? _uploadedPosterUrl;
+  bool _uploadingPoster = false;
+  double _posterUploadProgress = 0;
+  String? _posterUploadError;
   bool _saving = false;
 
   bool get _isEditing => widget.project != null;
@@ -68,22 +75,78 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   }
 
   Future<void> _pickPoster() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1200,
-      imageQuality: 80,
-    );
-    if (file != null) {
-      setState(() => _posterPath = file.path);
+    if (_uploadingPoster) {
+      AppSnackbar.error(context, 'Ảnh hiện tại đang được tải lên.');
+      return;
+    }
+
+    try {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1800,
+        imageQuality: 75,
+      );
+      if (file == null || !mounted) return;
+      setState(() {
+        _posterPath = file.path;
+        _pendingPoster = file;
+        _uploadedPosterUrl = null;
+        _posterUploadError = null;
+        _posterUploadProgress = 0;
+      });
+      await _uploadPoster(file);
+    } catch (e) {
+      if (mounted) AppSnackbar.error(context, e.toString());
     }
   }
 
+  Future<void> _uploadPoster(XFile file) async {
+    setState(() {
+      _uploadingPoster = true;
+      _posterUploadError = null;
+      _posterUploadProgress = 0;
+    });
+    try {
+      final url = await _api.uploadImage(
+        file,
+        'poster',
+        onProgress: (progress) {
+          if (mounted && identical(_pendingPoster, file)) {
+            setState(() => _posterUploadProgress = progress);
+          }
+        },
+      );
+      if (!mounted || !identical(_pendingPoster, file)) return;
+      setState(() {
+        _uploadedPosterUrl = url;
+        _posterUploadProgress = 1;
+      });
+    } catch (e) {
+      if (!mounted || !identical(_pendingPoster, file)) return;
+      setState(() => _posterUploadError = e.toString());
+      AppSnackbar.error(context, e.toString());
+    } finally {
+      if (mounted && identical(_pendingPoster, file)) {
+        setState(() => _uploadingPoster = false);
+      }
+    }
+  }
+
+  Future<void> _retryPosterUpload() async {
+    final file = _pendingPoster;
+    if (file != null && !_uploadingPoster) await _uploadPoster(file);
+  }
+
   Future<void> _selectStartDate() async {
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    final firstAllowed = _isEditing ? DateTime(2020) : todayMidnight;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
+      initialDate: _startDate ?? (_isEditing ? DateTime.now() : todayMidnight),
+      firstDate: firstAllowed,
       lastDate: DateTime(2030),
       helpText: 'Chọn ngày bắt đầu',
     );
@@ -137,7 +200,8 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       'POST_PRODUCTION',
       'COMPLETED',
     ];
-    if (_selectedStatus.isNotEmpty && !statusOptions.contains(_selectedStatus)) {
+    if (_selectedStatus.isNotEmpty &&
+        !statusOptions.contains(_selectedStatus)) {
       statusOptions.add(_selectedStatus);
     }
 
@@ -174,7 +238,10 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   child: Container(
                     height: 240,
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF393939), width: 2),
+                      border: Border.all(
+                        color: const Color(0xFF393939),
+                        width: 2,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                       color: theme.colorScheme.surface,
                     ),
@@ -183,12 +250,17 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                             borderRadius: BorderRadius.circular(10),
                             child: AdaptiveImage(
                               source: _posterPath!,
-                              placeholderBuilder: (_) => _buildUploadPlaceholder(theme),
+                              placeholderBuilder: (_) =>
+                                  _buildUploadPlaceholder(theme),
                             ),
                           )
                         : _buildUploadPlaceholder(theme),
                   ),
                 ),
+                if (_pendingPoster != null) ...[
+                  const SizedBox(height: 8),
+                  _buildPosterUploadStatus(theme),
+                ],
                 const SizedBox(height: 24),
 
                 // Project Title
@@ -199,18 +271,21 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Nhập tên dự án...',
                   ),
-                  validator: (v) => AppValidators.required(v, field: 'Tên dự án'),
+                  validator: (v) =>
+                      AppValidators.required(v, field: 'Tên dự án'),
                 ),
                 const SizedBox(height: 16),
 
                 // Director
-                _fieldLabel(theme, 'ĐẠO DIỄN'),
+                _fieldLabel(theme, 'ĐẠO DIỄN *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _directorCtrl,
                   decoration: const InputDecoration(
                     hintText: 'Tên đạo diễn...',
                   ),
+                  validator: (v) =>
+                      AppValidators.required(v, field: 'Tên đạo diễn'),
                 ),
                 const SizedBox(height: 16),
 
@@ -225,8 +300,17 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             value: _selectedGenre,
-                            items: genreOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                            onChanged: (value) => setState(() => _selectedGenre = value ?? 'Drama'),
+                            items: genreOptions
+                                .map(
+                                  (g) => DropdownMenuItem(
+                                    value: g,
+                                    child: Text(g),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) => setState(
+                              () => _selectedGenre = value ?? 'Drama',
+                            ),
                           ),
                         ],
                       ),
@@ -240,8 +324,17 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             value: _selectedStatus,
-                            items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(getStatusLabel(s)))).toList(),
-                            onChanged: (value) => setState(() => _selectedStatus = value ?? 'PLANNING'),
+                            items: statusOptions
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(getStatusLabel(s)),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) => setState(
+                              () => _selectedStatus = value ?? 'PLANNING',
+                            ),
                           ),
                         ],
                       ),
@@ -262,20 +355,32 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                           InkWell(
                             onTap: _selectStartDate,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
-                                border: Border.all(color: const Color(0xFF393939)),
+                                border: Border.all(
+                                  color: const Color(0xFF393939),
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _startDate != null ? dateFormat.format(_startDate!) : 'Chọn ngày',
+                                    _startDate != null
+                                        ? dateFormat.format(_startDate!)
+                                        : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
                                   ),
-                                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ],
                               ),
                             ),
@@ -293,20 +398,32 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                           InkWell(
                             onTap: _selectEndDate,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
-                                border: Border.all(color: const Color(0xFF393939)),
+                                border: Border.all(
+                                  color: const Color(0xFF393939),
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _endDate != null ? dateFormat.format(_endDate!) : 'Chọn ngày',
+                                    _endDate != null
+                                        ? dateFormat.format(_endDate!)
+                                        : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
                                   ),
-                                  const Icon(Icons.event, size: 16, color: Colors.grey),
+                                  const Icon(
+                                    Icons.event,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ],
                               ),
                             ),
@@ -327,30 +444,36 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Số lượng người...',
                   ),
-                  validator: (v) => AppValidators.positiveInt(v, field: 'Số đoàn viên'),
+                  validator: (v) =>
+                      AppValidators.positiveInt(v, field: 'Số đoàn viên'),
                 ),
                 const SizedBox(height: 16),
 
                 // Description / Logline
-                _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE)'),
+                _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE) *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _descCtrl,
                   decoration: const InputDecoration(
                     hintText: 'Mô tả cốt truyện chi tiết...',
                   ),
+                  validator: (v) =>
+                      AppValidators.required(v, field: 'Mô tả kịch bản'),
                   maxLines: 5,
                 ),
                 const SizedBox(height: 32),
 
                 // Submit Button
                 FilledButton.icon(
-                  onPressed: _saving ? null : _save,
+                  onPressed: (_saving || _uploadingPoster) ? null : _save,
                   icon: _saving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
                         )
                       : const Icon(Icons.save),
                   label: Text(_isEditing ? 'LƯU THAY ĐỔI' : 'TẠO DỰ ÁN'),
@@ -358,7 +481,10 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: Colors.black,
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -370,12 +496,54 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     );
   }
 
-  Widget _fieldLabel(ThemeData theme, String label) => Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
+  Widget _buildPosterUploadStatus(ThemeData theme) {
+    if (_uploadingPoster) {
+      final percent = (_posterUploadProgress * 100).round();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(value: _posterUploadProgress),
+          const SizedBox(height: 4),
+          Text(
+            'Đang tải ảnh lên: $percent%',
+            style: theme.textTheme.labelSmall,
+          ),
+        ],
       );
+    }
+    if (_posterUploadError != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(
+              _posterUploadError!,
+              style: theme.textTheme.labelSmall?.copyWith(color: Colors.red),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _retryPosterUpload,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Thử lại'),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+        const SizedBox(width: 6),
+        Text(
+          'Ảnh đã được tải lên',
+          style: theme.textTheme.labelSmall?.copyWith(color: Colors.green),
+        ),
+      ],
+    );
+  }
+
+  Widget _fieldLabel(ThemeData theme, String label) => Text(
+    label,
+    style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+  );
 
   Widget _buildUploadPlaceholder(ThemeData theme) {
     return Column(
@@ -398,24 +566,56 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   }
 
   Future<void> _save() async {
+    if (_uploadingPoster) {
+      AppSnackbar.error(context, 'Vui lòng chờ ảnh tải lên hoàn tất.');
+      return;
+    }
+    if (_pendingPoster != null && _uploadedPosterUrl == null) {
+      AppSnackbar.error(context, 'Ảnh chưa tải lên được. Hãy bấm Thử lại.');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-
-    String? finalPosterUrl = widget.project?.posterUrl ?? 
-        'https://placehold.co/300x450/FF4D00/FFFFFF?text=Poster';
-
-    // If a new local image is picked, upload it to R2 first
-    if (_posterPath != null && !_posterPath!.startsWith('http')) {
-      final uploadedUrl = await _api.uploadFile(_posterPath!, 'poster');
-      if (uploadedUrl != null) {
-        finalPosterUrl = uploadedUrl;
+    if (_startDate == null) {
+      AppSnackbar.error(context, 'Vui lòng chọn ngày bắt đầu dự án');
+      return;
+    }
+    if (_endDate == null) {
+      AppSnackbar.error(context, 'Vui lòng chọn ngày kết thúc dự án');
+      return;
+    }
+    if (_endDate!.isBefore(_startDate!)) {
+      AppSnackbar.error(context, 'Ngày kết thúc không được trước ngày bắt đầu');
+      return;
+    }
+    if (!_isEditing) {
+      final now = DateTime.now();
+      final todayMidnight = DateTime(now.year, now.month, now.day);
+      final startMidnight = DateTime(
+        _startDate!.year,
+        _startDate!.month,
+        _startDate!.day,
+      );
+      if (startMidnight.isBefore(todayMidnight)) {
+        AppSnackbar.error(
+          context,
+          'Ngày bắt đầu dự án mới không được ở trong quá khứ',
+        );
+        return;
       }
     }
+    setState(() => _saving = true);
+
+    final finalPosterUrl =
+        _uploadedPosterUrl ??
+        widget.project?.posterUrl ??
+        'https://placehold.co/300x450/FF4D00/FFFFFF?text=Poster';
 
     final project = Project(
       id: widget.project?.id,
       title: _titleCtrl.text.trim(),
-      director: _directorCtrl.text.trim().isEmpty ? null : _directorCtrl.text.trim(),
+      director: _directorCtrl.text.trim().isEmpty
+          ? null
+          : _directorCtrl.text.trim(),
       genre: _selectedGenre,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       startDate: _startDate?.toUtc().toIso8601String(),
@@ -424,7 +624,8 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       progress: widget.project?.progress ?? 0.0,
       status: _selectedStatus,
       crewCount: int.tryParse(_crewCountCtrl.text) ?? 0,
-      createdAt: widget.project?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
+      createdAt:
+          widget.project?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
     );
 
     final provider = context.read<ProjectProvider>();
@@ -439,6 +640,18 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     if (mounted) {
       setState(() => _saving = false);
       if (success) {
+        context.read<NotificationProvider>().addNotification(
+          projectId: project.id,
+          projectTitle: project.title,
+          title: _isEditing
+              ? 'Cập nhật dự án: ${project.title}'
+              : 'Tạo dự án mới: ${project.title}',
+          body:
+              'Trạng thái: ${project.status} · Thể loại: ${project.genre ?? "N/A"} · Đạo diễn: ${project.director ?? "N/A"}',
+          actionType: _isEditing
+              ? NotificationActionType.update
+              : NotificationActionType.create,
+        );
         AppSnackbar.success(
           context,
           _isEditing ? 'Cập nhật dự án thành công' : 'Đã tạo dự án thành công',

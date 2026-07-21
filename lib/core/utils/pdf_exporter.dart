@@ -64,7 +64,7 @@ class PdfExporter {
       // Gom nhóm lịch bấm máy dự kiến theo bối cảnh
       final groupedMap = <String, List<Scene>>{};
       for (final scene in chronologicalScenes) {
-        final key = scene.location?.sceneLabel ?? 'Chưa có bối cảnh';
+        final key = scene.location?.name ?? 'Chưa có bối cảnh';
         groupedMap.putIfAbsent(key, () => []).add(scene);
       }
 
@@ -73,7 +73,7 @@ class PdfExporter {
       final customDates = <String, String>{};
       final sceneShootingStatuses = <int, SceneStatus>{};
       for (final scene in chronologicalScenes) {
-        final key = scene.location?.sceneLabel ?? 'Chưa có bối cảnh';
+        final key = scene.location?.name ?? 'Chưa có bối cảnh';
         final savedVal = prefs.getString('proj_${project.id}_loc_${key}_date');
         if (savedVal != null) {
           customDates[key] = savedVal;
@@ -115,8 +115,8 @@ class PdfExporter {
       final progressPercent = totalScenes == 0 ? 0 : (doneScenes / totalScenes * 100).round();
 
       final totalLocations = chronologicalScenes.map((s) => s.locationId).whereType<int>().toSet().length;
-      final intCount = chronologicalScenes.where((s) => s.location?.setting == LocationSetting.interior).length;
-      final extCount = chronologicalScenes.where((s) => s.location?.setting == LocationSetting.exterior).length;
+      final intCount = chronologicalScenes.where((s) => s.setting == LocationSetting.interior).length;
+      final extCount = chronologicalScenes.where((s) => s.setting == LocationSetting.exterior).length;
       final intPercent = totalScenes == 0 ? 0 : (intCount / totalScenes * 100).round();
       final extPercent = totalScenes == 0 ? 0 : (extCount / totalScenes * 100).round();
 
