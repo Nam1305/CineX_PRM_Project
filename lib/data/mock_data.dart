@@ -356,7 +356,7 @@ class MockData {
             id: sceneId,
             actId: baseActId + (i ~/ 2),
             locationId: location.id,
-            sceneNumber: sceneOrder,
+            sceneNumber: sceneOrder.toString(),
             title: spec.title,
             summary: spec.summary,
             status: spec.status,

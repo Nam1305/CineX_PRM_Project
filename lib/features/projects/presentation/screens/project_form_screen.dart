@@ -141,13 +141,20 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   Future<void> _selectStartDate() async {
     final now = DateTime.now();
     final todayMidnight = DateTime(now.year, now.month, now.day);
-    final firstAllowed = _isEditing ? DateTime(2020) : todayMidnight;
+    final firstAllowed = _isEditing ? DateTime(1900) : todayMidnight;
+
+    final preferred = _startDate ?? (_isEditing ? DateTime.now() : todayMidnight);
+    final lastYear = preferred.year > now.year + 20
+        ? preferred.year + 20
+        : now.year + 20;
+    final lastAllowed = DateTime(lastYear, 12, 31);
+    final initialDate = preferred.isBefore(firstAllowed) ? firstAllowed : preferred;
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? (_isEditing ? DateTime.now() : todayMidnight),
+      initialDate: initialDate,
       firstDate: firstAllowed,
-      lastDate: DateTime(2030),
+      lastDate: lastAllowed,
       helpText: 'Chọn ngày bắt đầu',
     );
     if (picked != null) {
@@ -165,11 +172,19 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       AppSnackbar.error(context, 'Hãy chọn ngày bắt đầu trước');
       return;
     }
+    final now = DateTime.now();
+    final preferred = _endDate ?? _startDate!.add(const Duration(days: 30));
+    final lastYear = preferred.year > now.year + 20
+        ? preferred.year + 20
+        : now.year + 20;
+    final lastAllowed = DateTime(lastYear, 12, 31);
+    final initialDate = preferred.isBefore(_startDate!) ? _startDate! : preferred;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? _startDate!.add(const Duration(days: 30)),
+      initialDate: initialDate,
       firstDate: _startDate!,
-      lastDate: DateTime(2030),
+      lastDate: lastAllowed,
       helpText: 'Chọn ngày hoàn thành',
     );
     if (picked != null) {
@@ -271,8 +286,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Nhập tên dự án...',
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Tên dự án'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Tên dự án',
+                    min: 2,
+                    max: 200,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -284,8 +303,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Tên đạo diễn...',
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Tên đạo diễn'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Tên đạo diễn',
+                    min: 2,
+                    max: 200,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -444,8 +467,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Số lượng người...',
                   ),
-                  validator: (v) =>
-                      AppValidators.positiveInt(v, field: 'Số đoàn viên'),
+                  validator: (v) => AppValidators.boundedInt(
+                    v,
+                    field: 'Số đoàn viên',
+                    min: 0,
+                    max: 100000,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -457,8 +484,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Mô tả cốt truyện chi tiết...',
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Mô tả kịch bản'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Mô tả kịch bản',
+                    min: 2,
+                    max: 5000,
+                  ),
                   maxLines: 5,
                 ),
                 const SizedBox(height: 32),

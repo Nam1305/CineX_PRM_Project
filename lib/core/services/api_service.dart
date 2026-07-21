@@ -97,6 +97,15 @@ class ApiService {
                 ?.toString() ??
             detail;
       }
+        final validationErrors = decoded['errors'];
+        if (validationErrors is List && validationErrors.isNotEmpty) {
+          detail = validationErrors.first.toString();
+        } else if (validationErrors is Map && validationErrors.isNotEmpty) {
+          final firstValue = validationErrors.values.first;
+          if (firstValue is List && firstValue.isNotEmpty) {
+            detail = firstValue.first.toString();
+          }
+        }
     } catch (_) {
       // Non-JSON response: retain the short response text below.
     }
@@ -581,14 +590,7 @@ class ApiService {
       }
     }
 
-    int sNum = 0;
-    if (e['SceneNumber'] != null) {
-      sNum =
-          int.tryParse(
-            e['SceneNumber'].toString().replaceAll(RegExp(r'[^0-9]'), ''),
-          ) ??
-          0;
-    }
+    final sNum = (e['SceneNumber']?.toString() ?? '').trim().toUpperCase();
 
     final String dbSetting =
         e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';

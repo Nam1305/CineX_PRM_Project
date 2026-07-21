@@ -32,7 +32,9 @@ class ProductionProvider extends ChangeNotifier {
   /// Tiến độ sản xuất (%) dựa trên số cảnh đã quay xong / tổng cảnh
   double get productionProgress {
     if (_allScenes.isEmpty) return 0.0;
-    final completed = _allScenes.where((s) => getShootingStatus(s) == SceneStatus.done).length;
+    final completed = _allScenes
+        .where((s) => getShootingStatus(s) == SceneStatus.done)
+        .length;
     return completed / _allScenes.length;
   }
 
@@ -95,7 +97,7 @@ class ProductionProvider extends ChangeNotifier {
       }
       // Sắp xếp theo số thứ tự phân cảnh
       for (final list in map.values) {
-        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+        list.sort((a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber));
       }
       return map;
     }
@@ -113,7 +115,7 @@ class ProductionProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     _allScenes = await _apiService.getScenesForProject(projectId);
-    
+
     // Load custom dates and shooting statuses from SharedPreferences
     _customDates = {};
     _sceneShootingStatuses = {};
@@ -127,9 +129,13 @@ class ProductionProvider extends ChangeNotifier {
         }
 
         if (scene.id != null) {
-          final savedStatus = prefs.getString('proj_${projectId}_scene_${scene.id}_shooting_status');
+          final savedStatus = prefs.getString(
+            'proj_${projectId}_scene_${scene.id}_shooting_status',
+          );
           if (savedStatus != null) {
-            _sceneShootingStatuses[scene.id!] = SceneStatusExt.fromDb(savedStatus);
+            _sceneShootingStatuses[scene.id!] = SceneStatusExt.fromDb(
+              savedStatus,
+            );
           } else {
             _sceneShootingStatuses[scene.id!] = SceneStatus.todo;
           }
@@ -144,10 +150,17 @@ class ProductionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCustomDate(int projectId, String locationLabel, String dateStr) async {
+  Future<void> setCustomDate(
+    int projectId,
+    String locationLabel,
+    String dateStr,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('proj_${projectId}_loc_${locationLabel}_date', dateStr);
+      await prefs.setString(
+        'proj_${projectId}_loc_${locationLabel}_date',
+        dateStr,
+      );
       _customDates[locationLabel] = dateStr;
       notifyListeners();
     } catch (e) {
@@ -155,10 +168,17 @@ class ProductionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateShootingStatus(int projectId, int sceneId, SceneStatus status) async {
+  Future<void> updateShootingStatus(
+    int projectId,
+    int sceneId,
+    SceneStatus status,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('proj_${projectId}_scene_${sceneId}_shooting_status', status.dbValue);
+      await prefs.setString(
+        'proj_${projectId}_scene_${sceneId}_shooting_status',
+        status.dbValue,
+      );
       _sceneShootingStatuses[sceneId] = status;
       notifyListeners();
     } catch (e) {

@@ -16,7 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _fullNameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  
+
   String _selectedRole = 'SCREENWRITER';
   bool _obscureText = true;
 
@@ -41,7 +41,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (mounted) {
       if (success) {
-        AppSnackbar.success(context, 'Đăng ký tài khoản thành công! Hãy đăng nhập.');
+        AppSnackbar.success(
+          context,
+          'Đăng ký tài khoản thành công! Hãy đăng nhập.',
+        );
         Navigator.pop(context);
       } else {
         AppSnackbar.error(context, authProvider.error ?? 'Đăng ký thất bại');
@@ -78,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   color: const Color(0xFFFF571A).withValues(alpha: 0.1),
                   blurRadius: 30,
                   spreadRadius: 2,
-                )
+                ),
               ],
             ),
             child: Form(
@@ -122,7 +125,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: InputDecoration(
                       hintText: 'Nhập họ và tên...',
                       hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(Icons.badge_outlined, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.badge_outlined,
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF121212),
                       enabledBorder: OutlineInputBorder(
@@ -134,12 +140,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderSide: const BorderSide(color: Color(0xFFFF571A)),
                       ),
                     ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Hãy điền họ và tên';
-                      }
-                      return null;
-                    },
+                    validator: (v) => AppValidators.text(
+                      v,
+                      field: 'Họ và tên',
+                      min: 2,
+                      max: 200,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -159,7 +165,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: InputDecoration(
                       hintText: 'Nhập username...',
                       hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF121212),
                       enabledBorder: OutlineInputBorder(
@@ -192,13 +201,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: InputDecoration(
                       hintText: 'Nhập mật khẩu (từ 6 kí tự)...',
                       hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                        color: Colors.grey,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscureText
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: Colors.grey,
                         ),
-                        onPressed: () => setState(() => _obscureText = !_obscureText),
+                        onPressed: () =>
+                            setState(() => _obscureText = !_obscureText),
                       ),
                       filled: true,
                       fillColor: const Color(0xFF121212),
@@ -212,12 +227,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) {
+                      if (v == null || v.trim().isEmpty) {
                         return 'Hãy nhập mật khẩu';
                       }
-                      if (v.length < 6) {
-                        return 'Mật khẩu phải dài từ 6 kí tự';
-                      }
+                      if (v.length < 6 || v.length > 128)
+                        return 'Mật khẩu phải từ 6 đến 128 kí tự';
+                      if (v.trim() != v)
+                        return 'Mật khẩu không được bắt đầu hoặc kết thúc bằng khoảng trắng';
                       return null;
                     },
                   ),
@@ -238,7 +254,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     dropdownColor: const Color(0xFF1E1E1E),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.work_outline, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.work_outline,
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF121212),
                       enabledBorder: OutlineInputBorder(

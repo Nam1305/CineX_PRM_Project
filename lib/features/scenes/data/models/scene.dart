@@ -6,7 +6,7 @@ class Scene {
   final int? id;
   final int actId;
   final int? locationId;
-  final int sceneNumber;
+  final String sceneNumber;
   final String title;
   final String? summary;
   final SceneStatus status;
@@ -35,7 +35,7 @@ class Scene {
     int? id,
     int? actId,
     int? locationId,
-    int? sceneNumber,
+    String? sceneNumber,
     String? title,
     String? summary,
     SceneStatus? status,
@@ -43,20 +43,19 @@ class Scene {
     SceneTime? timeOfDay,
     Location? location,
     List<Character>? characters,
-  }) =>
-      Scene(
-        id: id ?? this.id,
-        actId: actId ?? this.actId,
-        locationId: locationId ?? this.locationId,
-        sceneNumber: sceneNumber ?? this.sceneNumber,
-        title: title ?? this.title,
-        summary: summary ?? this.summary,
-        status: status ?? this.status,
-        setting: setting ?? this.setting,
-        timeOfDay: timeOfDay ?? this.timeOfDay,
-        location: location ?? this.location,
-        characters: characters ?? this.characters,
-      );
+  }) => Scene(
+    id: id ?? this.id,
+    actId: actId ?? this.actId,
+    locationId: locationId ?? this.locationId,
+    sceneNumber: sceneNumber ?? this.sceneNumber,
+    title: title ?? this.title,
+    summary: summary ?? this.summary,
+    status: status ?? this.status,
+    setting: setting ?? this.setting,
+    timeOfDay: timeOfDay ?? this.timeOfDay,
+    location: location ?? this.location,
+    characters: characters ?? this.characters,
+  );
 
   String get displaySceneLabel {
     final effSetting = location?.setting ?? setting;
@@ -70,5 +69,21 @@ class Scene {
     final effTime = (location?.timeOfDay ?? timeOfDay).label.toUpperCase();
     return 'CẢNH $sceneNumber: $effSetting. $locName - $effTime';
   }
-}
 
+  static int compareNumbers(String left, String right) {
+    final pattern = RegExp(r'^([0-9]+)([A-Z]?)$', caseSensitive: false);
+    final leftMatch = pattern.firstMatch(left.trim());
+    final rightMatch = pattern.firstMatch(right.trim());
+    if (leftMatch == null || rightMatch == null) {
+      return left.toUpperCase().compareTo(right.toUpperCase());
+    }
+    final leftBase = int.parse(leftMatch.group(1)!);
+    final rightBase = int.parse(rightMatch.group(1)!);
+    final baseResult = leftBase.compareTo(rightBase);
+    if (baseResult != 0) return baseResult;
+    return leftMatch
+        .group(2)!
+        .toUpperCase()
+        .compareTo(rightMatch.group(2)!.toUpperCase());
+  }
+}

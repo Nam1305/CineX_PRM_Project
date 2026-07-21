@@ -100,8 +100,12 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                     hintText: 'Nhập tên nhân vật...',
                     suffixIcon: Icon(Icons.person_outline),
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Tên nhân vật'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Tên nhân vật',
+                    min: 1,
+                    max: 200,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _fieldLabel(theme, 'VAI TRÒ (ROLE)'),
@@ -128,8 +132,12 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                     hintText: 'Nhập tên diễn viên...',
                     suffixIcon: Icon(Icons.contact_page_outlined),
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Tên diễn viên'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Tên diễn viên',
+                    min: 2,
+                    max: 200,
+                  ),
                   onChanged: (_) => setState(() {}),
                 ),
                 if (_actorCtrl.text.trim().isNotEmpty) ...[
@@ -160,8 +168,12 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                     hintText:
                         'Mô tả về tâm lý, nền tảng và các nét nhân vật...',
                   ),
-                  validator: (v) =>
-                      AppValidators.required(v, field: 'Mô tả nhân vật'),
+                  validator: (v) => AppValidators.text(
+                    v,
+                    field: 'Mô tả nhân vật',
+                    min: 2,
+                    max: 5000,
+                  ),
                   maxLines: 5,
                 ),
                 if (_isEditing) ...[

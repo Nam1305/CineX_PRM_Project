@@ -15,7 +15,7 @@ class SceneCharactersChart extends StatelessWidget {
 
     // Sắp xếp các cảnh theo số phân cảnh để biểu đồ tuần tự khoa học
     final sortedScenes = List<Scene>.from(scenes)
-      ..sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+      ..sort((a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber));
 
     // Lấy tối đa 10 cảnh để tránh biểu đồ quá dày
     final displayScenes = sortedScenes.take(10).toList();
@@ -109,7 +109,10 @@ class SceneCharactersChart extends StatelessWidget {
                         if (value == value.roundToDouble() && value >= 0) {
                           return Text(
                             value.toInt().toString(),
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
                           );
                         }
                         return const SizedBox();
@@ -126,10 +129,8 @@ class SceneCharactersChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   horizontalInterval: 1,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFF2A2A2A),
-                    strokeWidth: 0.5,
-                  ),
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: const Color(0xFF2A2A2A), strokeWidth: 0.5),
                   drawVerticalLine: false,
                 ),
                 borderData: FlBorderData(show: false),
@@ -138,8 +139,9 @@ class SceneCharactersChart extends StatelessWidget {
                     getTooltipColor: (_) => const Color(0xFF2A2A2A),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final scene = displayScenes[groupIndex];
-                      final charList =
-                          scene.characters.map((c) => c.name).join(', ');
+                      final charList = scene.characters
+                          .map((c) => c.name)
+                          .join(', ');
                       return BarTooltipItem(
                         'Cảnh ${scene.sceneNumber}\n',
                         const TextStyle(
@@ -156,7 +158,9 @@ class SceneCharactersChart extends StatelessWidget {
                             ),
                           ),
                           TextSpan(
-                            text: charList.isNotEmpty ? '($charList)' : '(Trống)',
+                            text: charList.isNotEmpty
+                                ? '($charList)'
+                                : '(Trống)',
                             style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 9,
