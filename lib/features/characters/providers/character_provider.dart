@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/services/database_helper.dart';
+import 'package:cinex_application/core/services/sync_manager.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class CharacterProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _db = DatabaseHelper.instance;
+  final _sync = SyncManager.instance;
 
   List<Character> _characters = [];
   bool _isLoading = false;
@@ -14,18 +17,27 @@ class CharacterProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Load danh sách nhân vật từ server, fallback sang dữ liệu cục bộ khi không có kết nối
   Future<void> loadCharacters(int projectId) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     try {
-      _characters = await _api.getCharacters(projectId: projectId);
+      if (_sync.isOnline) {
+        final fetched = await _api.getCharacters(projectId: projectId);
+        if (fetched.isNotEmpty) {
+          for (var c in fetched) {
+            await _db.insertCharacter(c, syncStatus: 'synced');
+          }
+        }
+      }
+      _characters = await _db.getCharacters(projectId);
     } catch (e) {
-      _error = 'Không thể tải nhân vật từ server, dùng dữ liệu cục bộ: $e';
-      _characters = MockData.mockCharacters.where((c) => c.projectId == projectId || c.projectId == null).toList();
-      if (_characters.isEmpty) {
-        _characters = List.from(MockData.mockCharacters);
+      debugPrint('CharacterProvider.loadCharacters error: $e');
+      try {
+        _characters = await _db.getCharacters(projectId);
+      } catch (_) {
+        _error = 'Không thể tải nhân vật: $e';
+        _characters = [];
       }
     } finally {
       _isLoading = false;
@@ -35,34 +47,55 @@ class CharacterProvider extends ChangeNotifier {
 
   Future<bool> addCharacter(Character character) async {
     try {
-      final created = await _api.createCharacter(character);
-      if (created == null) return false;
-      _characters.add(created);
-      notifyListeners();
-      return true;
+      if (_sync.isOnline) {
+        final created = await _api.createCharacter(character);
+        if (created != null) {
+          await _db.insertCharacter(created, syncStatus: 'synced');
+          _characters.add(created);
+          notifyListeners();
+          return true;
+        }
+      }
     } catch (e) {
-      _error = 'Không thể thêm nhân vật: $e';
-      notifyListeners();
-      return false;
+      debugPrint('CharacterProvider.addCharacter API error: $e');
     }
+
+    // Offline hoặc API lỗi: lưu vào SQLite với pending_create
+    final localId = await _db.insertCharacter(character, syncStatus: 'pending_create');
+    final savedCharacter = character.copyWith(id: localId);
+    _characters.add(savedCharacter);
+    notifyListeners();
+    return true;
   }
 
   Future<bool> editCharacter(Character character) async {
-    try {
-      final ok = await _api.updateCharacter(character);
-      if (ok) {
-        final index = _characters.indexWhere((c) => c.id == character.id);
-        if (index >= 0) {
-          _characters[index] = character;
-        }
-        notifyListeners();
-      }
-      return ok;
-    } catch (e) {
-      _error = 'Không thể cập nhật nhân vật: $e';
-      notifyListeners();
-      return false;
+    if (character.id == null) return false;
+    _error = null;
+
+    final syncStatus = _sync.isOnline ? 'synced' : 'pending_update';
+    await _db.updateCharacter(character, syncStatus: syncStatus);
+
+    final index = _characters.indexWhere((c) => c.id == character.id);
+    if (index >= 0) {
+      _characters[index] = character;
     }
+    notifyListeners();
+
+    if (_sync.isOnline) {
+      try {
+        final ok = await _api.updateCharacter(character);
+        if (ok) {
+          await _db.updateCharacter(character, syncStatus: 'synced');
+        } else {
+          await _db.updateCharacter(character, syncStatus: 'pending_update');
+        }
+      } catch (e) {
+        await _db.updateCharacter(character, syncStatus: 'pending_update');
+        debugPrint('CharacterProvider.editCharacter API error: $e');
+      }
+    }
+
+    return true;
   }
 
   Future<bool> removeCharacter(int id) async {
@@ -73,20 +106,23 @@ class CharacterProvider extends ChangeNotifier {
     _characters.removeAt(index);
     notifyListeners();
 
-    try {
-      final ok = await _api.deleteCharacter(id);
-      if (!ok) {
-        _characters.insert(index, backup);
-        _error = 'Không thể xoá nhân vật từ máy chủ';
-        notifyListeners();
-        return false;
+    await _db.deleteCharacter(id);
+
+    if (_sync.isOnline) {
+      try {
+        final ok = await _api.deleteCharacter(id);
+        if (!ok) {
+          _characters.insert(index, backup);
+          await _db.insertCharacter(backup, syncStatus: 'synced');
+          _error = 'Không thể xoá nhân vật từ máy chủ';
+          notifyListeners();
+          return false;
+        }
+      } catch (e) {
+        debugPrint('CharacterProvider.removeCharacter API error: $e');
       }
-      return true;
-    } catch (e) {
-      _characters.insert(index, backup);
-      _error = 'Không thể xoá nhân vật: $e';
-      notifyListeners();
-      return false;
     }
+
+    return true;
   }
 }

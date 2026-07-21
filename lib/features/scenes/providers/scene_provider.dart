@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/services/database_helper.dart';
+import 'package:cinex_application/core/services/sync_manager.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
-import 'package:cinex_application/data/mock_data.dart';
 
 class SceneProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _db = DatabaseHelper.instance;
+  final _sync = SyncManager.instance;
 
-  // Map of actId → scenes list for quick lookup per act
   final Map<int, List<Scene>> _scenesByAct = {};
   bool _isLoading = false;
   String? _error;
@@ -21,66 +24,116 @@ class SceneProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _scenesByAct[actId] = await _api.getScenesForAct(actId);
+      if (_sync.isOnline) {
+        final fetched = await _api.getScenesForAct(actId);
+        if (fetched.isNotEmpty) {
+          for (var s in fetched) {
+            await _db.insertScene(s, syncStatus: 'synced');
+          }
+        }
+      }
+      final loaded = await _db.getScenesForAct(actId);
+      loaded.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+      _scenesByAct[actId] = loaded;
     } catch (e) {
-      _error = 'Không thể tải cảnh quay từ server, dùng dữ liệu cục bộ: $e';
-      final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
-      _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
+      debugPrint('SceneProvider.loadScenesForAct error: $e');
+      try {
+        final loaded = await _db.getScenesForAct(actId);
+        loaded.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+        _scenesByAct[actId] = loaded;
+      } catch (_) {
+        _error = 'Không thể tải cảnh quay: $e';
+        _scenesByAct[actId] = [];
+      }
     } finally {
-      _scenesByAct[actId]?.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
       _isLoading = false;
       notifyListeners();
     }
   }
 
   Future<bool> addScene(Scene scene, List<int> characterIds) async {
+    final populatedScene = scene.copyWith(
+      characters: characterIds.map((id) => Character(id: id, name: '')).toList(),
+    );
+
     try {
-      final created = await _api.createScene(scene, characterIds);
-      if (created == null) return false;
-      _scenesByAct.putIfAbsent(scene.actId, () => []);
-      _scenesByAct[scene.actId]!.add(created);
-      _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
-      notifyListeners();
-      return true;
+      if (_sync.isOnline) {
+        final created = await _api.createScene(scene, characterIds);
+        if (created != null) {
+          // Lấy location phong phú hơn nếu có
+          final enriched = created.copyWith(location: scene.location);
+          await _db.insertScene(enriched, syncStatus: 'synced');
+          _scenesByAct.putIfAbsent(scene.actId, () => []);
+          _scenesByAct[scene.actId]!.add(enriched);
+          _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+          notifyListeners();
+          return true;
+        }
+      }
     } catch (e) {
-      _error = 'Không thể thêm cảnh: $e';
-      notifyListeners();
-      return false;
+      debugPrint('SceneProvider.addScene API error: $e');
     }
+
+    // Offline hoặc API lỗi: lưu vào SQLite với pending_create
+    final localId = await _db.insertScene(populatedScene, syncStatus: 'pending_create');
+    final savedScene = populatedScene.copyWith(id: localId, location: scene.location);
+    _scenesByAct.putIfAbsent(scene.actId, () => []);
+    _scenesByAct[scene.actId]!.add(savedScene);
+    _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+    notifyListeners();
+    return true;
   }
 
-  /// [previousCharacterIds] là danh sách nhân vật đang gán cho cảnh trước khi
-  /// sửa — cần để phát hiện có cần xoá liên kết cũ hay không (xem ghi chú ở
-  /// ApiService.updateScene).
   Future<bool> editScene(
     Scene scene,
     List<int> characterIds, {
     required List<int> previousCharacterIds,
   }) async {
-    try {
-      final updated = await _api.updateScene(
-        scene,
-        characterIds,
-        previousCharacterIds: previousCharacterIds,
-      );
-      if (updated == null) return false;
-      final list = _scenesByAct[scene.actId];
-      if (list != null) {
-        final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
-        if (index >= 0) {
-          list[index] = updated;
-        } else {
-          list.add(updated);
-        }
-        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+    final populatedScene = scene.copyWith(
+      characters: characterIds.map((id) => Character(id: id, name: '')).toList(),
+    );
+
+    final syncStatus = _sync.isOnline ? 'synced' : 'pending_update';
+    await _db.updateScene(populatedScene, syncStatus: syncStatus);
+
+    final list = _scenesByAct[scene.actId];
+    if (list != null) {
+      final index = list.indexWhere((s) => s.id == scene.id);
+      if (index >= 0) {
+        list[index] = populatedScene.copyWith(location: scene.location);
+      } else {
+        list.add(populatedScene.copyWith(location: scene.location));
       }
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = 'Không thể cập nhật cảnh: $e';
-      notifyListeners();
-      return false;
+      list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
     }
+    notifyListeners();
+
+    if (_sync.isOnline) {
+      try {
+        final updated = await _api.updateScene(
+          scene,
+          characterIds,
+          previousCharacterIds: previousCharacterIds,
+        );
+        if (updated != null) {
+          final enriched = updated.copyWith(location: scene.location);
+          await _db.insertScene(enriched, syncStatus: 'synced');
+          if (list != null) {
+            final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
+            if (index >= 0) {
+              list[index] = enriched;
+            }
+            list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+          }
+          notifyListeners();
+        }
+      } catch (e) {
+        await _db.updateScene(populatedScene, syncStatus: 'pending_update');
+        debugPrint('SceneProvider.editScene API error: $e');
+      }
+    }
+
+    return true;
   }
 
   Future<bool> removeScene(int id, int actId) async {
@@ -93,21 +146,24 @@ class SceneProvider extends ChangeNotifier {
     list.removeAt(index);
     notifyListeners();
 
-    try {
-      final ok = await _api.deleteScene(id);
-      if (!ok) {
-        _scenesByAct[actId]?.insert(index, backup);
-        _error = 'Không thể xoá cảnh từ máy chủ';
-        notifyListeners();
-        return false;
+    await _db.deleteScene(id);
+
+    if (_sync.isOnline) {
+      try {
+        final ok = await _api.deleteScene(id);
+        if (!ok) {
+          _scenesByAct[actId]?.insert(index, backup);
+          await _db.insertScene(backup, syncStatus: 'synced');
+          _error = 'Không thể xoá cảnh từ máy chủ';
+          notifyListeners();
+          return false;
+        }
+      } catch (e) {
+        debugPrint('SceneProvider.removeScene API error: $e');
       }
-      return true;
-    } catch (e) {
-      _scenesByAct[actId]?.insert(index, backup);
-      _error = 'Không thể xoá cảnh: $e';
-      notifyListeners();
-      return false;
     }
+
+    return true;
   }
 
   bool isSceneNumberTaken(int actId, int sceneNumber, {int? excludeId}) {
@@ -116,46 +172,74 @@ class SceneProvider extends ChangeNotifier {
     );
   }
 
-  /// Quick status update — only changes the status field without touching characters.
   Future<bool> updateSceneStatus(Scene scene, SceneStatus newStatus) async {
-    try {
-      final updated = scene.copyWith(status: newStatus);
-      final result = await _api.updateScene(
-        updated,
-        scene.characters.map((c) => c.id!).toList(),
-        previousCharacterIds: scene.characters.map((c) => c.id!).toList(),
-      );
-      if (result == null) return false;
-      final list = _scenesByAct[scene.actId];
-      if (list != null) {
-        final index = list.indexWhere((s) => s.id == scene.id);
-        if (index >= 0) {
-          list[index] = result.copyWith(
+    final updated = scene.copyWith(status: newStatus);
+    final syncStatus = _sync.isOnline ? 'synced' : 'pending_update';
+    await _db.updateScene(updated, syncStatus: syncStatus);
+
+    final list = _scenesByAct[scene.actId];
+    if (list != null) {
+      final index = list.indexWhere((s) => s.id == scene.id);
+      if (index >= 0) {
+        list[index] = updated;
+      }
+    }
+    notifyListeners();
+
+    if (_sync.isOnline) {
+      try {
+        final characterIds = scene.characters.map((c) => c.id!).toList();
+        final result = await _api.updateScene(
+          updated,
+          characterIds,
+          previousCharacterIds: characterIds,
+        );
+        if (result != null) {
+          final enriched = result.copyWith(
             location: scene.location,
             characters: scene.characters,
           );
+          await _db.insertScene(enriched, syncStatus: 'synced');
+          if (list != null) {
+            final index = list.indexWhere((s) => s.id == scene.id);
+            if (index >= 0) {
+              list[index] = enriched;
+            }
+          }
+          notifyListeners();
         }
+      } catch (e) {
+        await _db.updateScene(updated, syncStatus: 'pending_update');
+        debugPrint('SceneProvider.updateSceneStatus API error: $e');
       }
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = 'Không thể cập nhật trạng thái: $e';
-      notifyListeners();
-      return false;
     }
+
+    return true;
   }
 
   Future<bool> restoreScene(int id, int actId) async {
     try {
-      final ok = await _api.restoreScene(id);
-      if (ok) {
-        await loadScenesForAct(actId);
+      if (_sync.isOnline) {
+        final ok = await _api.restoreScene(id);
+        if (ok) {
+          await loadScenesForAct(actId);
+          return true;
+        }
       }
-      return ok;
     } catch (e) {
-      _error = 'Không thể khôi phục phân cảnh: $e';
-      notifyListeners();
-      return false;
+      debugPrint('SceneProvider.restoreScene API error: $e');
     }
+
+    // Nếu offline, phục hồi cục bộ
+    final list = _scenesByAct[actId];
+    if (list != null) {
+      final index = list.indexWhere((s) => s.id == id);
+      if (index >= 0) {
+        await _db.updateScene(list[index], syncStatus: 'synced');
+        await loadScenesForAct(actId);
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -21,17 +21,17 @@ class Character {
     this.castingStatus,
   });
 
-  /// Parse từ JSON OData server (PascalCase)
+  /// Parse từ JSON OData server (PascalCase) hoặc SQLite local (snake_case)
   factory Character.fromMap(Map<String, dynamic> map) => Character(
         id: map['Id'] as int? ?? map['id'] as int?,
-        projectId: map['ProjectId'] as int? ?? map['projectId'] as int?,
+        projectId: map['ProjectId'] as int? ?? map['projectId'] as int? ?? map['project_id'] as int?,
         name: (map['Name'] ?? map['name'] ?? '') as String,
         roleType: RoleTypeExt.fromDb(
           map['Role'] as String? ?? map['role_type'] as String? ?? 'MAIN',
         ),
         actorName: map['ActorName'] as String? ?? map['actor_name'] as String?,
         description: map['Description'] as String? ?? map['description'] as String?,
-        imagePath: map['ImageUrl'] as String? ?? map['image_path'] as String?,
+        imagePath: map['ImageUrl'] as String? ?? map['image_path'] as String? ?? map['imagePath'] as String?,
         castingStatus: map['CastingStatus'] as String? ?? map['casting_status'] as String?,
       );
 

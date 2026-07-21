@@ -16,7 +16,7 @@ class Act {
     this.status = 'WAITING',
   });
 
-  /// Parse từ JSON OData server (PascalCase) hoặc local map (snake_case)
+  /// Parse từ JSON OData server (PascalCase) hoặc SQLite local (snake_case)
   factory Act.fromMap(Map<String, dynamic> map) => Act(
         id: map['Id'] as int? ?? map['id'] as int?,
         projectId: map['ProjectId'] as int? ?? map['project_id'] as int? ?? 0,
@@ -28,9 +28,10 @@ class Act {
 
   /// Body gửi lên server khi tạo/cập nhật
   Map<String, dynamic> toMap() => {
-        'projectId': projectId,
+        if (id != null) 'id': id,
+        'project_id': projectId,
         'title': title,
-        'sequenceOrder': sequenceOrder,
+        'sequence_order': sequenceOrder,
         'summary': summary,
         'status': status,
       };

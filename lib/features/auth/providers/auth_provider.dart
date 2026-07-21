@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/services/sync_manager.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? _token;
@@ -35,6 +36,8 @@ class AuthProvider extends ChangeNotifier {
     // Đăng ký token với ApiService (để đính kèm vào mọi header)
     if (_token != null) {
       ApiService.token = _token;
+      // Tải toàn bộ dữ liệu từ server (Neon) về SQLite cục bộ khi tự động đăng nhập
+      SyncManager.instance.pullAllFromServer();
     }
     notifyListeners();
   }
@@ -180,6 +183,10 @@ class AuthProvider extends ChangeNotifier {
 
         _isLoading = false;
         notifyListeners();
+        
+        // Tải toàn bộ dữ liệu từ server (Neon) về SQLite cục bộ sau khi đăng nhập thành công
+        SyncManager.instance.pullAllFromServer();
+        
         return true;
       } else {
         _error = data['Message'] ?? data['message'] ?? 'Đăng nhập thất bại';
