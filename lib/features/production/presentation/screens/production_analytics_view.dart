@@ -107,51 +107,117 @@ class ProductionAnalyticsView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Thống kê Sản xuất',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const Flexible(
+                  child: Text(
+                    'Thống kê Sản xuất',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () => _exportReport(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF571A),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   icon: const Icon(Icons.download, size: 18),
-                  label: const Text('Tải báo cáo'),
+                  label: const Text('Export'),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             
             // Stats Grid
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Đã quay',
-                    provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length.toString(),
-                    Icons.check_circle,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final doneCount = provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length;
+                if (constraints.maxWidth < 360) {
+                  return Column(
+                    children: [
+                      _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation),
+                      const SizedBox(height: 8),
+                      _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on),
+                      const SizedBox(height: 8),
+                      _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle)),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Production Progress Bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF2C2C2C)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tiến độ sản xuất',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${(provider.productionProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF571A),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: provider.productionProgress,
+                      minHeight: 10,
+                      backgroundColor: const Color(0xFF2C2C2C),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        provider.productionProgress >= 1.0
+                            ? Colors.green
+                            : const Color(0xFFFF571A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${provider.completedScenesCount} / ${provider.allScenes.length} cảnh đã hoàn thành quay',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             
@@ -237,7 +303,7 @@ class ProductionAnalyticsView extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi tải báo cáo PDF: $e'),
+            content: Text('Lỗi tải báo cáo PDF: ${e}'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -289,7 +355,7 @@ class ProductionAnalyticsView extends StatelessWidget {
             title: 'Nhân vật chủ chốt',
             value: keyCharacter != 'N/A' ? keyCharacter : 'Chưa có',
             subtitle: keyCharacter != 'N/A' 
-                ? 'Xuất hiện trong $maxCharScenes cảnh (${charCoverage.toStringAsFixed(0)}% thời lượng kịch bản)'
+                ? 'Xuất hiện trong ${maxCharScenes} cảnh (${charCoverage.toStringAsFixed(0)}% thời lượng kịch bản)'
                 : 'Thêm nhân vật vào cảnh để thống kê',
           ),
           const Divider(color: Color(0xFF2C2C2C), height: 24),
@@ -299,7 +365,7 @@ class ProductionAnalyticsView extends StatelessWidget {
             title: 'Bối cảnh quay trọng điểm',
             value: keyLocation != 'N/A' ? keyLocation : 'Chưa có',
             subtitle: keyLocation != 'N/A'
-                ? 'Được sử dụng cho $maxLocScenes phân cảnh kịch bản'
+                ? 'Được sử dụng cho ${maxLocScenes} phân cảnh kịch bản'
                 : 'Thêm bối cảnh vào cảnh để thống kê',
           ),
           const Divider(color: Color(0xFF2C2C2C), height: 24),
@@ -315,9 +381,9 @@ class ProductionAnalyticsView extends StatelessWidget {
             _buildInsightRow(
               icon: Icons.report_problem_outlined,
               iconColor: Colors.redAccent,
-              title: 'Cảnh phức tạp nhất (Cảnh $complexSceneNum)',
+              title: 'Cảnh phức tạp nhất (Cảnh ${complexSceneNum})',
               value: complexSceneTitle,
-              subtitle: 'Đòi hỏi sự xuất hiện của $maxSceneChars diễn viên cùng lúc:\n(${complexSceneChars.join(', ')})',
+              subtitle: 'Đòi hỏi sự xuất hiện của ${maxSceneChars} diễn viên cùng lúc:\n(${complexSceneChars.join(', ')})',
             ),
           ],
         ],
@@ -393,6 +459,8 @@ class ProductionAnalyticsView extends StatelessWidget {
       }
     }
 
+    final hasManyDays = groups.length > 3;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -414,88 +482,108 @@ class ProductionAnalyticsView extends StatelessWidget {
                   color: const Color(0xFFFF571A),
                 ),
               ),
-              const Icon(Icons.calendar_today_outlined, color: Color(0xFFFF571A), size: 20),
+              Row(
+                children: [
+                  if (hasManyDays)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Text(
+                        'Cuộn để xem thêm',
+                        style: TextStyle(color: Colors.grey, fontSize: 10),
+                      ),
+                    ),
+                  const Icon(Icons.calendar_today_outlined, color: Color(0xFFFF571A), size: 20),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: groups.length,
-            separatorBuilder: (context, index) => const Divider(color: Color(0xFF2C2C2C), height: 24),
-            itemBuilder: (context, index) {
-              final group = groups[index];
-              final date = getShootingDate(index);
-              final dateStr = date != null ? DateFormat('dd/MM/yyyy').format(date) : 'Chưa thiết lập ngày';
-              final firstLoc = group.value.first.location;
-              final settingStr = (firstLoc?.setting.toString() == LocationSetting.interior.toString() ||
-                      firstLoc?.setting.toString() == 'LocationSetting.interior' ||
-                      firstLoc?.setting.toString() == 'INT')
-                  ? 'Nội (INT)'
-                  : 'Ngoại (EXT)';
+          Container(
+            constraints: BoxConstraints(
+              maxHeight: hasManyDays ? 340 : double.infinity,
+            ),
+            child: Scrollbar(
+              thumbVisibility: hasManyDays,
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: hasManyDays
+                    ? const AlwaysScrollableScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                itemCount: groups.length,
+                separatorBuilder: (context, index) => const Divider(color: Color(0xFF2C2C2C), height: 24),
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  final date = getShootingDate(index);
+                  final dateStr = date != null ? DateFormat('dd/MM/yyyy').format(date) : 'Chưa thiết lập ngày';
+                  final firstLoc = group.value.first.location;
+                  final settingStr = (firstLoc?.setting.toString() == LocationSetting.interior.toString() ||
+                          firstLoc?.setting.toString() == 'LocationSetting.interior' ||
+                          firstLoc?.setting.toString() == 'INT')
+                      ? 'Nội (INT)'
+                      : 'Ngoại (EXT)';
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 90,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF571A).withValues(alpha: 0.1),
-                      border: Border.all(color: const Color(0xFFFF571A).withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'NGÀY ${index + 1}',
-                          style: const TextStyle(
-                            color: Color(0xFFFF571A),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            fontFamily: 'JetBrains Mono',
-                          ),
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 95,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF571A).withValues(alpha: 0.1),
+                          border: Border.all(color: const Color(0xFFFF571A).withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 9,
-                            fontFamily: 'JetBrains Mono',
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Column(
+                          children: [
+                            Text(
+                              'NGÀY ${index + 1}',
+                              style: const TextStyle(
+                                color: Color(0xFFFF571A),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              dateStr,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 9,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          group.key.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              group.key.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$settingStr · ${group.value.length} phân cảnh (Cảnh: ${group.value.map((s) => s.sceneNumber).join(', ')})',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$settingStr · ${group.value.length} phân cảnh (Cảnh: ${group.value.map((s) => s.sceneNumber).join(', ')})',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -521,7 +609,6 @@ class ProductionAnalyticsView extends StatelessWidget {
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              fontFamily: 'JetBrains Mono',
             ),
           ),
           const SizedBox(height: 4),

@@ -7,8 +7,6 @@ import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 class CinematicCharacterCard extends StatelessWidget {
   final Character character;
   final int sceneCount;
-  final String status;
-  final bool statusGreen;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -18,8 +16,6 @@ class CinematicCharacterCard extends StatelessWidget {
     super.key,
     required this.character,
     required this.sceneCount,
-    required this.status,
-    required this.statusGreen,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -123,35 +119,9 @@ class CinematicCharacterCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$sceneCount cảnh',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: statusGreen ? Colors.green : Colors.amber,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            status,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: statusGreen
-                                  ? Colors.green
-                                  : Colors.amber,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  Text(
+                    '$sceneCount cảnh',
+                    style: theme.textTheme.labelSmall,
                   ),
                 ],
               ),

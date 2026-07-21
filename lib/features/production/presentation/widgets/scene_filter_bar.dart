@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
 
-class SceneFilterBar extends StatelessWidget {
+class SceneFilterBar extends StatefulWidget {
   final int projectId;
   final ProductionProvider provider;
 
@@ -15,21 +16,60 @@ class SceneFilterBar extends StatelessWidget {
   });
 
   @override
+  State<SceneFilterBar> createState() => _SceneFilterBarState();
+}
+
+class _SceneFilterBarState extends State<SceneFilterBar> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<CharacterProvider>().loadCharacters(widget.projectId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final characters = context.watch<CharacterProvider>().characters;
+    final characterProvider = context.watch<CharacterProvider>();
+    final provider = widget.provider;
+
+    // Tổng hợp danh sách nhân vật từ cả CharacterProvider và các cảnh hiện tại
+    final charMap = <int, Character>{};
+    for (final c in characterProvider.characters) {
+      if (c.id != null) charMap[c.id!] = c;
+    }
+    for (final scene in provider.allScenes) {
+      for (final c in scene.characters) {
+        if (c.id != null) {
+          charMap.putIfAbsent(c.id!, () => c);
+        }
+      }
+    }
+
+    final availableCharacters = charMap.values.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    int? effectiveCharId;
+    if (provider.filterCharacterId != null &&
+        availableCharacters.any((c) => c.id == provider.filterCharacterId)) {
+      effectiveCharId = provider.filterCharacterId;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            // Character Filter
+            // Bộ lọc Nhân vật
             Expanded(
               child: _buildFilterDropdown(
                 label: 'NHÂN VẬT',
-                value: provider.filterCharacterId,
+                value: effectiveCharId,
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Tất cả nhân vật')),
-                  ...characters.map((c) =>
+                  ...availableCharacters.map((c) =>
                       DropdownMenuItem(value: c.id, child: Text(c.name))),
                 ],
                 onChanged: (v) => provider.setFilter(
@@ -39,7 +79,7 @@ class SceneFilterBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Time filter
+            // Bộ lọc Thời gian
             Expanded(
               child: _buildFilterDropdown(
                 label: 'THỜI GIAN',
@@ -52,6 +92,47 @@ class SceneFilterBar extends StatelessWidget {
                 onChanged: (v) => provider.setFilter(
                   characterId: provider.filterCharacterId,
                   timeOfDay: v,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'CHẾ ĐỘ GOM NHÓM',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<ProductionGroupMode>(
+                segments: const [
+                  ButtonSegment<ProductionGroupMode>(
+                    value: ProductionGroupMode.byLocation,
+                    label: Text('Bối cảnh', overflow: TextOverflow.ellipsis),
+                    icon: Icon(Icons.location_on_outlined, size: 16),
+                  ),
+                  ButtonSegment<ProductionGroupMode>(
+                    value: ProductionGroupMode.byCharacter,
+                    label: Text('Nhân vật', overflow: TextOverflow.ellipsis),
+                    icon: Icon(Icons.person_outline, size: 16),
+                  ),
+                ],
+                selected: {provider.groupMode},
+                onSelectionChanged: (Set<ProductionGroupMode> selection) {
+                  provider.setGroupMode(selection.first);
+                },
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
             ),
@@ -87,7 +168,6 @@ class SceneFilterBar extends StatelessWidget {
           style: const TextStyle(
             fontSize: 10,
             color: Colors.grey,
-            fontFamily: 'JetBrains Mono',
             letterSpacing: 0.5,
           ),
         ),

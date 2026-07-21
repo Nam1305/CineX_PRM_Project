@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/acts/data/models/act.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class ActProvider extends ChangeNotifier {
   final _api = ApiService();
@@ -20,8 +21,11 @@ class ActProvider extends ChangeNotifier {
     try {
       _acts = await _api.getActsForProject(projectId);
     } catch (e) {
-      _error = 'Không thể tải hồi: $e';
-      _acts = [];
+      _error = 'Không thể tải hồi từ server, dùng dữ liệu cục bộ: $e';
+      _acts = MockData.mockActs.where((a) => a.projectId == projectId).toList();
+      if (_acts.isEmpty) {
+        _acts = List.from(MockData.mockActs);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

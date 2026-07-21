@@ -44,9 +44,9 @@ class SceneCard extends StatelessWidget {
                   color: _statusColor(scene.status, theme.colorScheme),
                   fontWeight: FontWeight.bold)),
         ),
-        title: Text(scene.location?.sceneLabel ?? 'Chưa có bối cảnh',
+        title: Text(scene.fullFormattedTitle,
             style: theme.textTheme.bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w600)),
+                ?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFFFF571A))),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

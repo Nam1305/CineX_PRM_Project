@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class CharacterProvider extends ChangeNotifier {
   final _api = ApiService();
@@ -13,8 +14,7 @@ class CharacterProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Nhân vật là dữ liệu dùng chung toàn hệ thống trên backend (không thuộc
-  /// riêng 1 project), nên danh sách này không lọc theo project.
+  /// Load danh sách nhân vật từ server, fallback sang dữ liệu cục bộ khi không có kết nối
   Future<void> loadCharacters(int projectId) async {
     _isLoading = true;
     _error = null;
@@ -22,8 +22,11 @@ class CharacterProvider extends ChangeNotifier {
     try {
       _characters = await _api.getCharacters(projectId: projectId);
     } catch (e) {
-      _error = 'Không thể tải nhân vật: $e';
-      _characters = [];
+      _error = 'Không thể tải nhân vật từ server, dùng dữ liệu cục bộ: $e';
+      _characters = MockData.mockCharacters.where((c) => c.projectId == projectId || c.projectId == null).toList();
+      if (_characters.isEmpty) {
+        _characters = List.from(MockData.mockCharacters);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

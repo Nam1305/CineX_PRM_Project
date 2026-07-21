@@ -5,6 +5,8 @@ import 'package:cinex_application/features/projects/providers/project_provider.d
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import '../widgets/project_card.dart';
 import 'project_form_screen.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 import 'project_detail_screen.dart';
 
@@ -131,7 +133,16 @@ class _ProjectLauncherScreenState extends State<ProjectLauncherScreen> {
                       ),
                       onEdit: () => _openForm(context, project: project),
                       onDelete: () async {
-                        await provider.removeProject(project.id!);
+                        final ok = await provider.removeProject(project.id!);
+                        if (ok && context.mounted) {
+                          context.read<NotificationProvider>().addNotification(
+                                projectId: project.id,
+                                projectTitle: project.title,
+                                title: 'Xóa dự án: ${project.title}',
+                                body: 'Dự án "${project.title}" và toàn bộ tài nguyên đi kèm đã bị xóa khỏi hệ thống.',
+                                actionType: NotificationActionType.delete,
+                              );
+                        }
                       },
                     );
                   },

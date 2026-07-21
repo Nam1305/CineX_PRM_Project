@@ -4,6 +4,8 @@ import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/core/widgets/primary_button.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class AddProjectScreen extends StatefulWidget {
   const AddProjectScreen({super.key});
@@ -198,6 +200,13 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     if (mounted) {
       setState(() => _saving = false);
       if (createdId != null) {
+        context.read<NotificationProvider>().addNotification(
+              projectId: createdId,
+              projectTitle: project.title,
+              title: 'Tạo dự án mới: ${project.title}',
+              body: 'Trạng thái: ${project.status} · Thể loại: ${project.genre ?? "N/A"} · Đạo diễn: ${project.director ?? "N/A"}',
+              actionType: NotificationActionType.create,
+            );
         AppSnackbar.success(context, 'Dự án đã được tạo');
         Navigator.pop(context);
       } else {

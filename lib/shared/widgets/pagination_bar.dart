@@ -32,38 +32,51 @@ class PaginationBar extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Hiển thị $startItem - $endItem trong số $totalItems',
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+          Flexible(
+            child: Text(
+              'Hiển thị $startItem - $endItem / $totalItems',
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
+          const SizedBox(width: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left, size: 20),
-                onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_left, size: 20),
+                  onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+                  padding: EdgeInsets.zero,
+                ),
               ),
-              const SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E),
                   border: Border.all(color: const Color(0xFF2C2C2C)),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  'Trang $currentPage / $totalPages',
+                  '$currentPage/$totalPages',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.chevron_right, size: 20),
-                onPressed: currentPage < totalPages ? () => onPageChanged(currentPage + 1) : null,
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_right, size: 20),
+                  onPressed: currentPage < totalPages ? () => onPageChanged(currentPage + 1) : null,
+                  padding: EdgeInsets.zero,
+                ),
               ),
             ],
           ),

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +51,8 @@ class ProductionScheduleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final groupEntries = provider.groupedByLocation.entries.toList();
+
     return Container(
       color: const Color(0xFF131313),
       child: CustomScrollView(
@@ -63,27 +64,31 @@ class ProductionScheduleView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lịch sản xuất',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Flexible(
+                        child: Text(
+                          'Lịch sản xuất',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       ElevatedButton.icon(
                         onPressed: () => _exportSchedule(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF571A),
                           foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         icon: const Icon(Icons.ios_share, size: 18),
-                        label: const Text('Export Lịch'),
+                        label: const Text('Export'),
                       ),
                     ],
                   ),
@@ -96,7 +101,7 @@ class ProductionScheduleView extends StatelessWidget {
               ),
             ),
           ),
-          if (provider.groupedByLocation.isEmpty)
+          if (groupEntries.isEmpty)
             const SliverFillRemaining(
               child: Center(
                 child: Column(
@@ -124,7 +129,7 @@ class ProductionScheduleView extends StatelessWidget {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
-                    final entry = provider.groupedByLocation.entries.elementAt(i);
+                    final entry = groupEntries[i];
                     return ShootingDayGroup(
                       locationLabel: entry.key,
                       scenes: entry.value,
@@ -135,7 +140,7 @@ class ProductionScheduleView extends StatelessWidget {
                       projectEndDate: projectEndDate,
                     );
                   },
-                  childCount: provider.groupedByLocation.length,
+                  childCount: groupEntries.length,
                 ),
               ),
             ),
@@ -185,8 +190,8 @@ class ProductionScheduleView extends StatelessWidget {
             TextCellValue(dayLabel),
             TextCellValue(locationLabel),
             TextCellValue(scene.sceneNumber.toString()),
-            TextCellValue(scene.location?.setting.label ?? ''),
-            TextCellValue(scene.location?.timeOfDay.label ?? ''),
+            TextCellValue(scene.setting.label),
+            TextCellValue(scene.timeOfDay.label),
             TextCellValue(scene.summary ?? 'Cảnh ${scene.sceneNumber}'),
             TextCellValue(scene.status.shootingLabel),
           ]);

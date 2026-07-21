@@ -10,12 +10,13 @@ class ProductionProvider extends ChangeNotifier {
   List<Scene> _allScenes = [];
   List<Scene> _filtered = [];
   bool _isLoading = false;
+  ProductionGroupMode _groupMode = ProductionGroupMode.byLocation;
 
   // Active filters
   int? filterCharacterId;
   SceneTime? filterTimeOfDay;
 
-  // Map of locationLabel -> custom ISO Date String
+  // Map of locationName -> custom ISO Date String
   Map<String, String> _customDates = {};
 
   // Map of sceneId -> custom Shooting SceneStatus
@@ -24,17 +25,80 @@ class ProductionProvider extends ChangeNotifier {
   List<Scene> get allScenes => _allScenes;
   List<Scene> get filteredScenes => _filtered;
   bool get isLoading => _isLoading;
+  ProductionGroupMode get groupMode => _groupMode;
   Map<String, String> get customDates => _customDates;
   Map<int, SceneStatus> get sceneShootingStatuses => _sceneShootingStatuses;
 
-  /// Scenes grouped by location name for the Shooting Day planner (F4.1)
+  /// Tiến độ sản xuất (%) dựa trên số cảnh đã quay xong / tổng cảnh
+  double get productionProgress {
+    if (_allScenes.isEmpty) return 0.0;
+    final completed = _allScenes.where((s) => getShootingStatus(s) == SceneStatus.done).length;
+    return completed / _allScenes.length;
+  }
+
+  /// Số cảnh đã hoàn thành quay
+  int get completedScenesCount =>
+      _allScenes.where((s) => getShootingStatus(s) == SceneStatus.done).length;
+
+  void setGroupMode(ProductionGroupMode mode) {
+    _groupMode = mode;
+    notifyListeners();
+  }
+
+  /// Scenes grouped by location name or character name, sorted chronologically by shooting date
   Map<String, List<Scene>> get groupedByLocation {
     final map = <String, List<Scene>>{};
-    for (final scene in _filtered) {
-      final key = scene.location?.sceneLabel ?? 'Chưa có bối cảnh';
-      map.putIfAbsent(key, () => []).add(scene);
+    if (_groupMode == ProductionGroupMode.byLocation) {
+      for (final scene in _filtered) {
+        final key = scene.location?.name ?? 'Chưa có bối cảnh';
+        map.putIfAbsent(key, () => []).add(scene);
+      }
+      // Sắp xếp cảnh Ban ngày trước, Ban đêm sau trong cùng một bối cảnh
+      for (final list in map.values) {
+        list.sort((a, b) {
+          final aOrder = a.timeOfDay == SceneTime.day ? 0 : 1;
+          final bOrder = b.timeOfDay == SceneTime.day ? 0 : 1;
+          return aOrder.compareTo(bOrder);
+        });
+      }
+
+      // Sắp xếp các nhóm bối cảnh theo Ngày quay (Shooting Date) tăng dần
+      final sortedEntries = map.entries.toList()
+        ..sort((entryA, entryB) {
+          final dateStrA = _customDates[entryA.key];
+          final dateStrB = _customDates[entryB.key];
+          if (dateStrA != null && dateStrB != null) {
+            return dateStrA.compareTo(dateStrB);
+          } else if (dateStrA != null) {
+            return -1;
+          } else if (dateStrB != null) {
+            return 1;
+          }
+          return 0;
+        });
+
+      final sortedMap = <String, List<Scene>>{};
+      for (final e in sortedEntries) {
+        sortedMap[e.key] = e.value;
+      }
+      return sortedMap;
+    } else {
+      // Gom nhóm theo Nhân vật
+      for (final scene in _filtered) {
+        if (scene.characters.isEmpty) {
+          map.putIfAbsent('Không có nhân vật', () => []).add(scene);
+        } else {
+          for (final char in scene.characters) {
+            map.putIfAbsent(char.name, () => []).add(scene);
+          }
+        }
+      }
+      // Sắp xếp theo số thứ tự phân cảnh
+      for (final list in map.values) {
+        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
+      }
+      return map;
     }
-    return map;
   }
 
   SceneStatus getShootingStatus(Scene scene) {
@@ -56,7 +120,7 @@ class ProductionProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       for (final scene in _allScenes) {
-        final key = scene.location?.sceneLabel ?? 'Chưa có bối cảnh';
+        final key = scene.location?.name ?? 'Chưa có bối cảnh';
         final savedVal = prefs.getString('proj_${projectId}_loc_${key}_date');
         if (savedVal != null) {
           _customDates[key] = savedVal;
@@ -118,13 +182,13 @@ class ProductionProvider extends ChangeNotifier {
 
   void _applyFilters() {
     _filtered = _allScenes.where((scene) {
-      if (filterCharacterId != null &&
-          !scene.characters.any((c) => c.id == filterCharacterId)) {
-        return false;
+      if (filterCharacterId != null) {
+        final hasChar = scene.characters.any((c) => c.id == filterCharacterId);
+        if (!hasChar) return false;
       }
-      if (filterTimeOfDay != null &&
-          scene.location?.timeOfDay != filterTimeOfDay) {
-        return false;
+      if (filterTimeOfDay != null) {
+        final effectiveTime = scene.location?.timeOfDay ?? scene.timeOfDay;
+        if (effectiveTime != filterTimeOfDay) return false;
       }
       return true;
     }).toList();

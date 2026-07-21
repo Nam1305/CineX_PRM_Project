@@ -5,6 +5,8 @@ import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class LocationFormScreen extends StatefulWidget {
   final Location? location;
@@ -54,39 +56,46 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
           children: [
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Tên địa điểm *'),
+              decoration: const InputDecoration(
+                labelText: 'Tên địa điểm / Bối cảnh *',
+                hintText: 'Ví dụ: Cà phê Sài Gòn, Nhà Hát Lớn...',
+              ),
               validator: (v) => AppValidators.required(v, field: 'Tên địa điểm'),
             ),
             const SizedBox(height: 16),
-            SegmentedButton<LocationSetting>(
-              segments: LocationSetting.values
-                  .map((s) => ButtonSegment(
-                      value: s,
-                      label: Text(s.fullLabel),
-                      icon: Icon(s == LocationSetting.interior
-                          ? Icons.home_outlined
-                          : Icons.wb_sunny_outlined)))
-                  .toList(),
-              selected: {_setting},
-              onSelectionChanged: (s) => setState(() => _setting = s.first),
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<SceneTime>(
-              segments: SceneTime.values
-                  .map((t) => ButtonSegment(
-                      value: t,
-                      label: Text(t.fullLabel),
-                      icon: Icon(t == SceneTime.day
-                          ? Icons.wb_sunny
-                          : Icons.nightlight_round)))
-                  .toList(),
-              selected: {_timeOfDay},
-              onSelectionChanged: (t) => setState(() => _timeOfDay = t.first),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<LocationSetting>(
+                    value: _setting,
+                    decoration: const InputDecoration(labelText: 'Vị trí (Trong nhà / Ngoài trời)'),
+                    items: LocationSetting.values
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s.fullLabel)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _setting = v!),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<SceneTime>(
+                    value: _timeOfDay,
+                    decoration: const InputDecoration(labelText: 'Thời gian (Ngày / Đêm)'),
+                    items: SceneTime.values
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t.fullLabel)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _timeOfDay = v!),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _notesCtrl,
-              decoration: const InputDecoration(labelText: 'Ghi chú đạo cụ'),
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú chuẩn bị đạo cụ & kỹ thuật *',
+                hintText: 'Ghi chú về đạo cụ, ánh sáng, máy quay, tiếng ồn...',
+              ),
+              validator: (v) => AppValidators.required(v, field: 'Ghi chú đạo cụ'),
               maxLines: 3,
             ),
             const SizedBox(height: 24),
@@ -104,13 +113,31 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final provider = context.read<LocationProvider>();
+    final name = _nameCtrl.text.trim();
+
+    // Check trùng bối cảnh: Tên trùng + Setting trùng + TimeOfDay trùng
+    final isDuplicate = provider.locations.any((loc) {
+      if (_isEditing && loc.id == widget.location?.id) return false;
+      return loc.name.trim().toLowerCase() == name.toLowerCase() &&
+          loc.setting == _setting &&
+          loc.timeOfDay == _timeOfDay;
+    });
+
+    if (isDuplicate) {
+      setState(() => _saving = false);
+      AppSnackbar.error(
+        context,
+        'Bối cảnh "$name" (${_setting.fullLabel} - ${_timeOfDay.fullLabel}) đã tồn tại!',
+      );
+      return;
+    }
+
     final location = Location(
       id: widget.location?.id,
       projectId: widget.location?.projectId ?? widget.projectId,
-      name: _nameCtrl.text.trim(),
+      name: name,
       setting: _setting,
       timeOfDay: _timeOfDay,
-      address: widget.location?.address,
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     );
     final ok = _isEditing
@@ -119,6 +146,15 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      context.read<NotificationProvider>().addNotification(
+            projectId: location.projectId,
+            projectTitle: 'Dự án CineX #${location.projectId}',
+            title: _isEditing
+                ? 'Cập nhật bối cảnh: $name'
+                : 'Thêm bối cảnh mới: $name',
+            body: '${_setting.fullLabel} · ${_timeOfDay.fullLabel}${_notesCtrl.text.trim().isNotEmpty ? " - ${_notesCtrl.text.trim()}" : ""}',
+            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
+          );
       AppSnackbar.success(
         context,
         _isEditing ? 'Đã cập nhật bối cảnh' : 'Đã thêm bối cảnh',

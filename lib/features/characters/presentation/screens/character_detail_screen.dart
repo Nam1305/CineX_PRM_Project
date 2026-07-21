@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
-class CharacterDetailScreen extends StatelessWidget {
+class CharacterDetailScreen extends StatefulWidget {
   final Character character;
 
   const CharacterDetailScreen({
@@ -12,9 +15,60 @@ class CharacterDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<CharacterDetailScreen> createState() => _CharacterDetailScreenState();
+}
+
+class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
+  final _api = ApiService();
+  List<Scene> _scenes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacterScenes();
+  }
+
+  Future<void> _loadCharacterScenes() async {
+    final projId = widget.character.projectId ?? 1;
+    try {
+      final allScenes = await _api.getScenesForProject(projId);
+      final charId = widget.character.id;
+      final charName = widget.character.name.trim().toLowerCase();
+
+      final filtered = allScenes.where((s) {
+        return s.characters.any((c) => (charId != null && c.id == charId) || c.name.trim().toLowerCase() == charName);
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _scenes = filtered;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('CharacterDetailScreen._loadCharacterScenes error: $e');
+      final charId = widget.character.id;
+      final charName = widget.character.name.trim().toLowerCase();
+      final mockFiltered = MockData.mockScenes.where((s) {
+        return s.characters.any((c) => (charId != null && c.id == charId) || c.name.trim().toLowerCase() == charName);
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _scenes = mockFiltered;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final character = widget.character;
     final roleLabel = character.roleType.label;
+    final charIdStr = character.id != null ? '#${character.id.toString().padLeft(3, '0')}' : '#001';
 
     return Scaffold(
       body: CustomScrollView(
@@ -27,7 +81,7 @@ class CharacterDetailScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  character.imagePath != null
+                  character.imagePath != null && character.imagePath!.isNotEmpty
                       ? AdaptiveImage(
                           source: character.imagePath!,
                           placeholderBuilder: (_) => Container(
@@ -75,7 +129,7 @@ class CharacterDetailScreen extends StatelessWidget {
                             children: [
                               Chip(
                                 label: Text(
-                                  character.roleType.label,
+                                  roleLabel,
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -87,9 +141,9 @@ class CharacterDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Chip(
-                                label: const Text(
-                                  'ID: #001',
-                                  style: TextStyle(
+                                label: Text(
+                                  'ID: $charIdStr',
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     color: Colors.white70,
                                   ),
@@ -118,11 +172,11 @@ class CharacterDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _ImageNotesSection(theme: theme),
+                _ImageNotesSection(character: character, theme: theme),
                 const SizedBox(height: 24),
                 _PsychologySection(character: character, theme: theme),
                 const SizedBox(height: 24),
-                _SceneListSection(theme: theme),
+                _SceneListSection(scenes: _scenes, isLoading: _isLoading, theme: theme),
                 const SizedBox(height: 100),
               ]),
             ),
@@ -134,17 +188,21 @@ class CharacterDetailScreen extends StatelessWidget {
 }
 
 class _ImageNotesSection extends StatelessWidget {
+  final Character character;
   final ThemeData theme;
 
-  const _ImageNotesSection({required this.theme});
+  const _ImageNotesSection({
+    required this.character,
+    required this.theme,
+  });
 
   @override
   Widget build(BuildContext context) {
     final notes = [
-      'Trang phục công sở màu tối',
-      'Đồng hồ cổ điển',
-      'Túi hồ sơ màu đen',
-      'Tóc vuốt gọn',
+      'Thủ vai: ${character.actorName ?? 'Chưa phân công diễn viên'}',
+      'Trạng thái tuyển chọn: ${character.castingStatus ?? 'Chờ xét duyệt'}',
+      'Phân loại vai diễn: ${character.roleType.label}',
+      'Tạo hình: Phù hợp kịch bản sản xuất',
     ];
 
     return Card(
@@ -154,7 +212,7 @@ class _ImageNotesSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'GHI CHÚ ẢNH',
+              'THÔNG TIN & GHI CHÚ NHÂN VẬT',
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -197,6 +255,9 @@ class _PsychologySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final desc = character.description;
+    final hasDesc = desc != null && desc.isNotEmpty;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -204,24 +265,15 @@ class _PsychologySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'TÂM LÝ NHÂN VẬT',
+              'TÂM LÝ & MÔ TẢ NHÂN VẬT',
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              character.description ?? 'Không có mô tả',
-              style: theme.textTheme.bodyMedium,
-              maxLines: 6,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Nhân vật này có nền tảng gia đình khó khăn, nhưng quyết tâm vươn lên. Sợ thất bại và bị lừa dối. Mục tiêu là kiếm sống ổn định và bảo vệ gia đình.',
-              style: theme.textTheme.bodyMedium,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
+              hasDesc ? desc : 'Chưa có mô tả tâm lý chi tiết cho nhân vật này.',
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ],
         ),
@@ -231,17 +283,21 @@ class _PsychologySection extends StatelessWidget {
 }
 
 class _SceneListSection extends StatelessWidget {
+  final List<Scene> scenes;
+  final bool isLoading;
   final ThemeData theme;
 
-  const _SceneListSection({required this.theme});
+  const _SceneListSection({
+    required this.scenes,
+    required this.isLoading,
+    required this.theme,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final scenes = [
-      {'number': '01', 'title': 'Gặp gỡ đầu tiên', 'tags': ['INT', 'DAY']},
-      {'number': '03', 'title': 'Cuộc gặp bí mật', 'tags': ['INT', 'NIGHT']},
-      {'number': '05', 'title': 'Xung đột', 'tags': ['EXT', 'NIGHT']},
-    ];
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,111 +306,139 @@ class _SceneListSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'DANH SÁCH CẢNH QUAY (8)',
+              'DANH SÁCH CẢNH QUAY (${scenes.length})',
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              'Xem tất cả',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
+            if (scenes.isNotEmpty)
+              Text(
+                'Tổng số: ${scenes.length} cảnh',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 200,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: scenes.length,
-            itemBuilder: (context, index) {
-              final scene = scenes[index];
-              return Padding(
-                padding: EdgeInsets.only(right: index < scenes.length - 1 ? 12 : 0),
-                child: SizedBox(
-                  width: 140,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.image_outlined,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        if (scenes.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF2C2C2C)),
+            ),
+            child: const Text(
+              'Chưa có cảnh quay nào phân công cho nhân vật này.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          SizedBox(
+            height: 170,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: scenes.length,
+              itemBuilder: (context, index) {
+                final scene = scenes[index];
+                final sceneNum = scene.sceneNumber.toString().padLeft(2, '0');
+                final settingLabel = scene.location?.setting.label ?? 'INT';
+                final timeLabel = scene.location?.timeOfDay.label ?? 'DAY';
+
+                return Padding(
+                  padding: EdgeInsets.only(right: index < scenes.length - 1 ? 12 : 0),
+                  child: SizedBox(
+                    width: 160,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.movie_creation_outlined,
+                                  color: theme.colorScheme.primary,
+                                  size: 28,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Cảnh ${scene['number']}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Cảnh $sceneNum',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            scene['title'] as String,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontSize: 12,
+                            const SizedBox(height: 2),
+                            Text(
+                              scene.title,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: (scene['tags'] as List<String>).map((tag) {
-                              final isInt = tag.toUpperCase() == 'INT' || tag.toUpperCase() == 'NỘI';
-                              final isExt = tag.toUpperCase() == 'EXT' || tag.toUpperCase() == 'NGOẠI';
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isInt 
-                                      ? Colors.blue.shade900.withValues(alpha: 0.3)
-                                      : (isExt ? Colors.orange.shade900.withValues(alpha: 0.3) : const Color(0xFF2C2C2C)),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: isInt 
-                                        ? Colors.blue.shade700
-                                        : (isExt ? Colors.orange.shade700 : const Color(0xFF3C3C3C)),
-                                    width: 0.5,
-                                  ),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: isInt 
-                                        ? Colors.blue.shade200
-                                        : (isExt ? Colors.orange.shade200 : Colors.white70),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: [
+                                _buildTag(settingLabel, theme),
+                                _buildTag(timeLabel, theme),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
-}
 
+  Widget _buildTag(String tag, ThemeData theme) {
+    final isInt = tag.toUpperCase() == 'INT' || tag.toUpperCase() == 'NỘI';
+    final isExt = tag.toUpperCase() == 'EXT' || tag.toUpperCase() == 'NGOẠI';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isInt 
+            ? Colors.blue.shade900.withValues(alpha: 0.3)
+            : (isExt ? Colors.orange.shade900.withValues(alpha: 0.3) : const Color(0xFF2C2C2C)),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isInt 
+              ? Colors.blue.shade700
+              : (isExt ? Colors.orange.shade700 : const Color(0xFF3C3C3C)),
+          width: 0.5,
+        ),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: isInt 
+              ? Colors.blue.shade200
+              : (isExt ? Colors.orange.shade200 : Colors.white70),
+        ),
+      ),
+    );
+  }
+}
