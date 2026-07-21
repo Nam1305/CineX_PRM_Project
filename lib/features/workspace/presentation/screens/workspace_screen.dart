@@ -5,9 +5,8 @@ import 'package:cinex_application/features/scenes/presentation/screens/storyboar
 import 'package:cinex_application/features/characters/presentation/screens/characters_tab.dart';
 import 'package:cinex_application/features/locations/presentation/screens/locations_tab.dart';
 import 'package:cinex_application/features/production/presentation/screens/production_tab.dart';
-import 'package:cinex_application/features/workspace/presentation/screens/trash_bin_screen.dart';
-import 'package:cinex_application/features/acts/providers/act_provider.dart';
-import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/presentation/screens/notification_screen.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   final Project project;
@@ -37,31 +36,52 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.project.title),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Thùng rác',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TrashBinScreen(projectId: widget.project.id!),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationScreen(),
+                  ),
                 ),
-              ).then((_) {
-                // Tải lại dữ liệu sau khi quay lại từ thùng rác
-                final id = widget.project.id!;
-                context.read<ActProvider>().loadActs(id).then((_) {
-                  final sceneProv = context.read<SceneProvider>();
-                  for (final act in context.read<ActProvider>().acts) {
-                    sceneProv.loadScenesForAct(act.id!);
-                  }
-                });
-              });
-            },
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF571A),
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Center(

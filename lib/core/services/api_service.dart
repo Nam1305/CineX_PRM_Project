@@ -6,10 +6,12 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/data/mock_data.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5274/odata'; // local test
+  static const String baseUrl = 'http://127.0.0.1:5274/odata'; // local test
   static String? token;
   static final http.Client _client = http.Client();
 
@@ -336,11 +338,6 @@ class ApiService {
   }
 
   // ─── SCENES ───────────────────────────────────────────────────────────────
-  // Lưu ý: backend không hỗ trợ PUT cho Scenes (405), phải dùng PATCH.
-  // Lưu ý: trường `sceneCharacters` lồng trong body POST/PATCH chỉ CỘNG THÊM
-  // liên kết nhân vật, KHÔNG thay thế/xoá liên kết cũ (đã verify trực tiếp
-  // với server) — vì backend không có endpoint xoá SceneCharacter, muốn đổi
-  // toàn bộ danh sách nhân vật của 1 cảnh phải xoá cảnh cũ và tạo cảnh mới.
 
   Scene _sceneFromJson(Map<String, dynamic> e) {
     Location? loc;
@@ -365,6 +362,11 @@ class ApiService {
           0;
     }
 
+    final String dbSetting = e['Setting'] as String? ?? loc?.setting.dbValue ?? 'INT';
+    final String dbTime = e['Time'] as String? ?? loc?.timeOfDay.dbValue ?? 'DAY';
+    final setting = LocationSettingExt.fromDb(dbSetting);
+    final timeOfDay = SceneTimeExt.fromDb(dbTime);
+
     return Scene(
       id: e['Id'],
       actId: e['ActId'],
@@ -373,12 +375,14 @@ class ApiService {
       title: e['Title'] as String? ?? '',
       summary: e['Summary'] as String?,
       status: SceneStatusExt.fromDb(e['Status'] as String? ?? 'TODO'),
+      setting: setting,
+      timeOfDay: timeOfDay,
       location: loc,
       characters: chars,
     );
   }
 
-  /// Lấy danh sách cảnh quay theo projectId (dùng cho Production Planner)
+  /// Lấy danh sách cảnh quay theo projectId (dùng cho Production Planner & Detail screens)
   Future<List<Scene>> getScenesForProject(int projectId) async {
     final url = Uri.parse(
       '$baseUrl/Scenes?\$expand=Location,SceneCharacters(\$expand=Character)&\$filter=Act/ProjectId eq $projectId',
@@ -396,7 +400,7 @@ class ApiService {
       }
     } catch (e) {
       print('ApiService.getScenesForProject error: $e');
-      return [];
+      return MockData.mockScenes.where((s) => s.location?.projectId == projectId).toList();
     }
   }
 
@@ -423,13 +427,15 @@ class ApiService {
   }
 
   Map<String, dynamic> _sceneBody(Scene scene, List<int> characterIds) => {
-        'actId': scene.actId,
-        'locationId': scene.locationId,
-        'sceneNumber': scene.sceneNumber.toString(),
-        'title': scene.title,
-        'summary': scene.summary,
-        'status': scene.status.dbValue,
-        'sceneCharacters': characterIds.map((id) => {'characterId': id}).toList(),
+        'ActId': scene.actId,
+        'LocationId': scene.locationId,
+        'SceneNumber': scene.sceneNumber.toString(),
+        'Title': scene.title,
+        'Summary': scene.summary,
+        'Status': scene.status.dbValue,
+        'Setting': scene.setting.dbValue,
+        'Time': scene.timeOfDay.dbValue,
+        'SceneCharacters': characterIds.map((id) => {'CharacterId': id}).toList(),
       };
 
   Future<Scene?> createScene(Scene scene, List<int> characterIds) async {
@@ -438,7 +444,19 @@ class ApiService {
       final response = await _client.post(url,
           headers: _headers, body: jsonEncode(_sceneBody(scene, characterIds)));
       if (response.statusCode == 201) {
-        return _sceneFromJson(jsonDecode(response.body) as Map<String, dynamic>);
+        final createdJson = jsonDecode(response.body) as Map<String, dynamic>;
+        final createdId = createdJson['Id'] ?? createdJson['id'];
+        final intId = createdId is int ? createdId : int.tryParse(createdId.toString());
+
+        // Fetch full scene with expanded characters
+        if (intId != null) {
+          final getUrl = Uri.parse('$baseUrl/Scenes($intId)?\$expand=Location,SceneCharacters(\$expand=Character)');
+          final getRes = await _client.get(getUrl, headers: _headers);
+          if (getRes.statusCode == 200) {
+            return _sceneFromJson(jsonDecode(getRes.body) as Map<String, dynamic>);
+          }
+        }
+        return scene.copyWith(id: intId);
       }
       throw Exception('Failed to create scene: ${response.statusCode}');
     } catch (e) {
@@ -447,38 +465,26 @@ class ApiService {
     }
   }
 
-  /// Cập nhật cảnh quay. Vì backend chỉ hỗ trợ CỘNG THÊM sceneCharacters (không
-  /// xoá được), nếu danh sách nhân vật mong muốn khác danh sách hiện có thì
-  /// phải xoá cảnh cũ và tạo lại cảnh mới với đầy đủ nhân vật (sẽ có Id mới).
   Future<Scene?> updateScene(
     Scene scene,
     List<int> characterIds, {
     required List<int> previousCharacterIds,
   }) async {
-    final sameCharacters = Set<int>.from(characterIds).length == previousCharacterIds.length &&
-        Set<int>.from(characterIds).containsAll(previousCharacterIds);
-
-    if (!sameCharacters) {
-      if (scene.id != null) await deleteScene(scene.id!);
-      return createScene(scene, characterIds);
-    }
-
     if (scene.id == null) return null;
     final url = Uri.parse('$baseUrl/Scenes(${scene.id})');
     try {
       final response = await _client.patch(
         url,
         headers: _headers,
-        body: jsonEncode({
-          'actId': scene.actId,
-          'locationId': scene.locationId,
-          'sceneNumber': scene.sceneNumber.toString(),
-          'title': scene.title,
-          'summary': scene.summary,
-          'status': scene.status.dbValue,
-        }),
+        body: jsonEncode(_sceneBody(scene, characterIds)),
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
+        // Fetch full scene with expanded characters after update
+        final getUrl = Uri.parse('$baseUrl/Scenes(${scene.id})?\$expand=Location,SceneCharacters(\$expand=Character)');
+        final getRes = await _client.get(getUrl, headers: _headers);
+        if (getRes.statusCode == 200) {
+          return _sceneFromJson(jsonDecode(getRes.body) as Map<String, dynamic>);
+        }
         return scene;
       }
       throw Exception('Failed to update scene: ${response.statusCode}');
@@ -547,6 +553,86 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) {
       print('ApiService.restoreScene error: $e');
+      return false;
+    }
+  }
+
+  // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+
+  /// Lấy danh sách tất cả thông báo từ database
+  Future<List<NotificationModel>> getNotifications() async {
+    final url = Uri.parse('$baseUrl/Notifications?\$orderby=Timestamp desc');
+    try {
+      final response = await _client.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> values = data['value'] ?? [];
+        return values
+            .map((e) => NotificationModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Failed to load notifications: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('ApiService.getNotifications error: $e');
+      return [];
+    }
+  }
+
+  /// Tạo thông báo mới và lưu vào database
+  Future<NotificationModel?> createNotification(NotificationModel notification) async {
+    final url = Uri.parse('$baseUrl/Notifications');
+    try {
+      final body = jsonEncode(notification.toMap());
+      final response = await _client.post(url, headers: _headers, body: body);
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return NotificationModel.fromMap(data);
+      } else {
+        print('ApiService.createNotification failed: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('ApiService.createNotification error: $e');
+      return null;
+    }
+  }
+
+  /// Đánh dấu một thông báo là đã đọc
+  Future<bool> markNotificationAsRead(int id) async {
+    final url = Uri.parse('$baseUrl/Notifications($id)');
+    try {
+      final body = jsonEncode({'IsRead': true});
+      final response = await _client.patch(url, headers: _headers, body: body);
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markNotificationAsRead error: $e');
+      return false;
+    }
+  }
+
+  /// Đánh dấu tất cả thông báo là đã đọc
+  Future<bool> markAllNotificationsAsRead() async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Notifications/MarkAllAsRead');
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markAllNotificationsAsRead error: $e');
+      return false;
+    }
+  }
+
+  /// Đánh dấu thông báo của một dự án là đã đọc
+  Future<bool> markProjectNotificationsAsRead(int projectId) async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse('$apiBaseUrl/api/Notifications/MarkProjectAsRead/$projectId');
+    try {
+      final response = await _client.post(url, headers: _headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('ApiService.markProjectNotificationsAsRead error: $e');
       return false;
     }
   }

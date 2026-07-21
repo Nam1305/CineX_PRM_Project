@@ -6,7 +6,6 @@ class Location {
   final String name;
   final LocationSetting setting;
   final SceneTime timeOfDay;
-  final String? address;
   final String? notes;
 
   const Location({
@@ -15,7 +14,6 @@ class Location {
     required this.name,
     this.setting = LocationSetting.interior,
     this.timeOfDay = SceneTime.day,
-    this.address,
     this.notes,
   });
 
@@ -30,7 +28,6 @@ class Location {
         timeOfDay: SceneTimeExt.fromDb(
           map['Time'] as String? ?? map['time_of_day'] as String? ?? 'DAY',
         ),
-        address: map['Address'] as String? ?? map['address'] as String?,
         notes: map['Notes'] as String? ?? map['notes'] as String?,
       );
 
@@ -41,7 +38,6 @@ class Location {
         'name': name,
         'setting': setting.dbValue,
         'time': timeOfDay.dbValue,
-        'address': address,
         'notes': notes,
       };
 
@@ -51,7 +47,6 @@ class Location {
     String? name,
     LocationSetting? setting,
     SceneTime? timeOfDay,
-    String? address,
     String? notes,
   }) =>
       Location(
@@ -60,10 +55,9 @@ class Location {
         name: name ?? this.name,
         setting: setting ?? this.setting,
         timeOfDay: timeOfDay ?? this.timeOfDay,
-        address: address ?? this.address,
         notes: notes ?? this.notes,
       );
 
-  /// Formatted label e.g. "INT. QUÁN CÀ PHÊ - NGÀY"
-  String get sceneLabel => '${setting.label}. $name - ${timeOfDay.label}';
+  /// Tên bối cảnh địa lý
+  String get sceneLabel => name;
 }

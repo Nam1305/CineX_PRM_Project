@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
+import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 import '../widgets/location_tile.dart';
 import 'location_form_screen.dart';
 
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/shared/widgets/pagination_bar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:cinex_application/core/utils/enums.dart';
 
 class LocationsTab extends StatefulWidget {
   final int projectId;
@@ -76,7 +82,55 @@ class _LocationsTabState extends State<LocationsTab> {
                           isWritable: isWritable,
                           onTap: () => _openForm(context, location: loc),
                           onDelete: () async {
-                            await provider.removeLocation(loc.id!);
+                            final scenes = await ApiService().getScenesForProject(widget.projectId);
+                            final linkedScenes = scenes.where((s) => s.locationId == loc.id).toList();
+                            if (!context.mounted) return;
+
+                            if (linkedScenes.isNotEmpty) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  title: const Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: Colors.redAccent),
+                                      SizedBox(width: 8),
+                                      Text('Không thể xóa bối cảnh', style: TextStyle(color: Colors.white, fontSize: 16)),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    'Bối cảnh "${loc.name}" đang được sử dụng trong ${linkedScenes.length} phân cảnh kịch bản.\n\nBạn vui lòng thay đổi bối cảnh hoặc xóa các phân cảnh liên quan trước khi xóa bối cảnh địa lý này.',
+                                    style: const TextStyle(color: Colors.grey),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Đóng', style: TextStyle(color: Color(0xFFFF571A))),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+
+                            final confirmed = await ConfirmDialog.show(
+                              context,
+                              title: 'Xoá bối cảnh',
+                              content: 'Xoá bối cảnh "${loc.name}"?',
+                            );
+                            if (confirmed) {
+                              final ok = await provider.removeLocation(loc.id!);
+                              if (ok && context.mounted) {
+                                context.read<NotificationProvider>().addNotification(
+                                      projectId: widget.projectId,
+                                      projectTitle: 'Dự án CineX #${widget.projectId}',
+                                      title: 'Xóa bối cảnh: ${loc.name}',
+                                      body: 'Bối cảnh "${loc.name}" (${loc.setting.fullLabel} - ${loc.timeOfDay.fullLabel}) đã bị xóa.',
+                                      actionType: NotificationActionType.delete,
+                                    );
+                                AppSnackbar.success(context, 'Đã xóa bối cảnh thành công');
+                              }
+                            }
                           },
                         );
                       },

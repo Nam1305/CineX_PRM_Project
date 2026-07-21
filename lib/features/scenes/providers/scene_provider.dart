@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class SceneProvider extends ChangeNotifier {
   final _api = ApiService();
@@ -22,9 +23,11 @@ class SceneProvider extends ChangeNotifier {
     try {
       _scenesByAct[actId] = await _api.getScenesForAct(actId);
     } catch (e) {
-      _error = 'Không thể tải cảnh quay: $e';
-      _scenesByAct[actId] = [];
+      _error = 'Không thể tải cảnh quay từ server, dùng dữ liệu cục bộ: $e';
+      final mockScenesForAct = MockData.mockScenes.where((s) => s.actId == actId).toList();
+      _scenesByAct[actId] = mockScenesForAct.isNotEmpty ? mockScenesForAct : MockData.mockScenes;
     } finally {
+      _scenesByAct[actId]?.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
       _isLoading = false;
       notifyListeners();
     }
@@ -36,6 +39,7 @@ class SceneProvider extends ChangeNotifier {
       if (created == null) return false;
       _scenesByAct.putIfAbsent(scene.actId, () => []);
       _scenesByAct[scene.actId]!.add(created);
+      _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
       notifyListeners();
       return true;
     } catch (e) {
@@ -65,7 +69,10 @@ class SceneProvider extends ChangeNotifier {
         final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
         if (index >= 0) {
           list[index] = updated;
+        } else {
+          list.add(updated);
         }
+        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
       }
       notifyListeners();
       return true;

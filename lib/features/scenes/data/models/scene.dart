@@ -10,6 +10,8 @@ class Scene {
   final String title;
   final String? summary;
   final SceneStatus status;
+  final LocationSetting setting;
+  final SceneTime timeOfDay;
 
   // Enriched at runtime — not sent back to the server directly
   final Location? location;
@@ -23,6 +25,8 @@ class Scene {
     required this.title,
     this.summary,
     this.status = SceneStatus.todo,
+    this.setting = LocationSetting.interior,
+    this.timeOfDay = SceneTime.day,
     this.location,
     this.characters = const [],
   });
@@ -35,6 +39,8 @@ class Scene {
     String? title,
     String? summary,
     SceneStatus? status,
+    LocationSetting? setting,
+    SceneTime? timeOfDay,
     Location? location,
     List<Character>? characters,
   }) =>
@@ -46,7 +52,23 @@ class Scene {
         title: title ?? this.title,
         summary: summary ?? this.summary,
         status: status ?? this.status,
+        setting: setting ?? this.setting,
+        timeOfDay: timeOfDay ?? this.timeOfDay,
         location: location ?? this.location,
         characters: characters ?? this.characters,
       );
+
+  String get displaySceneLabel {
+    final effSetting = location?.setting ?? setting;
+    final effTime = location?.timeOfDay ?? timeOfDay;
+    return '${effSetting.label}. ${location?.name ?? title} - ${effTime.label}';
+  }
+
+  String get fullFormattedTitle {
+    final effSetting = (location?.setting ?? setting).label.toUpperCase();
+    final locName = (location?.name ?? title).toUpperCase();
+    final effTime = (location?.timeOfDay ?? timeOfDay).label.toUpperCase();
+    return 'CẢNH $sceneNumber: $effSetting. $locName - $effTime';
+  }
 }
+

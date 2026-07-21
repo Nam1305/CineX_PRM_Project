@@ -40,8 +40,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
           final filtered = provider.locations.where((l) {
             final matchesFilter = _filter == null || l.setting == _filter;
             final matchesSearch = _searchQuery.isEmpty ||
-                l.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                (l.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                l.name.toLowerCase().contains(_searchQuery.toLowerCase());
             return matchesFilter && matchesSearch;
           }).toList();
 
@@ -51,7 +50,6 @@ class _LocationListScreenState extends State<LocationListScreen> {
                 child: AppHeader(
                   title: 'Bối cảnh',
                   onSearch: () {},
-                  onNotification: () {},
                 ),
               ),
               // Search & Filter
@@ -222,13 +220,9 @@ class _LocationCard extends StatelessWidget {
                   top: 12,
                   left: 12,
                   child: Row(
-                    children: [
+                    children: const [
                       _TagBadge(
-                        label: location.setting.label,
-                      ),
-                      const SizedBox(width: 8),
-                      _TagBadge(
-                        label: location.timeOfDay.label,
+                        label: 'Địa điểm quay',
                       ),
                     ],
                   ),

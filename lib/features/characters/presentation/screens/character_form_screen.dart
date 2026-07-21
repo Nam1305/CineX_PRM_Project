@@ -7,6 +7,8 @@ import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 
 class CharacterFormScreen extends StatefulWidget {
@@ -110,7 +112,7 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
               onChanged: (v) => setState(() => _roleType = v!),
             ),
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'DIỄN VIÊN (ACTOR)'),
+            _fieldLabel(theme, 'DIỄN VIÊN (ACTOR) *'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _actorCtrl,
@@ -118,6 +120,7 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                 hintText: 'Nhập tên diễn viên...',
                 suffixIcon: Icon(Icons.contact_page_outlined),
               ),
+              validator: (v) => AppValidators.required(v, field: 'Tên diễn viên'),
               onChanged: (_) => setState(() {}),
             ),
             if (_actorCtrl.text.trim().isNotEmpty) ...[
@@ -136,21 +139,16 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            _fieldLabel(theme, 'MÔ TẢ CHI TIẾT (DETAILED DESCRIPTION)'),
+            _fieldLabel(theme, 'MÔ TẢ CHI TIẾT (DETAILED DESCRIPTION) *'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _descCtrl,
               decoration: const InputDecoration(
                 hintText: 'Mô tả về tâm lý, nền tảng và các nét nhân vật...',
               ),
+              validator: (v) => AppValidators.required(v, field: 'Mô tả nhân vật'),
               maxLines: 5,
             ),
-            if (_isEditing) ...[
-              const SizedBox(height: 24),
-              _fieldLabel(theme, 'CẢNH XUẤT HIỆN (APPEARS IN)'),
-              const SizedBox(height: 8),
-              const _AppearsInScenesSection(),
-            ],
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
@@ -232,6 +230,15 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      context.read<NotificationProvider>().addNotification(
+            projectId: widget.projectId,
+            projectTitle: 'Dự án CineX #${widget.projectId}',
+            title: _isEditing
+                ? 'Cập nhật nhân vật: ${_nameCtrl.text.trim()}'
+                : 'Thêm nhân vật mới: ${_nameCtrl.text.trim()}',
+            body: 'Vai: ${_roleType.label}${_actorCtrl.text.trim().isNotEmpty ? " - Diễn viên: ${_actorCtrl.text.trim()}" : ""}',
+            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
+          );
       AppSnackbar.success(
         context,
         _isEditing ? 'Đã cập nhật nhân vật' : 'Đã thêm nhân vật',
@@ -375,97 +382,6 @@ class _UploadPlaceholder extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AppearsInScene {
-  final String code;
-  final String title;
-  final String tag;
-  final SceneTime time;
-
-  const _AppearsInScene(this.code, this.title, this.tag, this.time);
-}
-
-class _AppearsInScenesSection extends StatelessWidget {
-  const _AppearsInScenesSection();
-
-  // Chưa có endpoint tra cứu "cảnh nào có nhân vật này" trên toàn dự án
-  // (Character là entity dùng chung, không gắn theo ProjectId), nên đây là
-  // dữ liệu minh hoạ giống cách CharacterDetailScreen đang làm.
-  static const _scenes = [
-    _AppearsInScene('SCENE 12A', 'Căn hộ của Minh', 'INT / DAY', SceneTime.day),
-    _AppearsInScene('SCENE 15', 'Hẻm tối Quận 4', 'EXT / NIGHT', SceneTime.night),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: _scenes.map((scene) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(
-              width: 160,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: const Border.fromBorderSide(
-                  BorderSide(color: Color(0xFF393939)),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          scene.code,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        scene.time == SceneTime.day
-                            ? Icons.wb_sunny_outlined
-                            : Icons.nightlight_round,
-                        size: 16,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    scene.title,
-                    style: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    scene.tag,
-                    style: theme.textTheme.labelSmall,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
     );
   }
 }

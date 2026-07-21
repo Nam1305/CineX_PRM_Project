@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
+import 'package:cinex_application/data/mock_data.dart';
 
 class LocationProvider extends ChangeNotifier {
   final _api = ApiService();
@@ -20,8 +21,11 @@ class LocationProvider extends ChangeNotifier {
     try {
       _locations = await _api.getLocations(projectId);
     } catch (e) {
-      _error = 'Không thể tải bối cảnh: $e';
-      _locations = [];
+      _error = 'Không thể tải bối cảnh từ server, dùng dữ liệu cục bộ: $e';
+      _locations = MockData.mockLocations.where((l) => l.projectId == projectId || l.projectId == null).toList();
+      if (_locations.isEmpty) {
+        _locations = List.from(MockData.mockLocations);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

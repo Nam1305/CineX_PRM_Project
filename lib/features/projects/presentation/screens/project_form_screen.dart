@@ -7,6 +7,8 @@ import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 
 class ProjectFormScreen extends StatefulWidget {
@@ -51,10 +53,13 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     _posterPath = widget.project?.posterUrl;
 
     if (widget.project?.startDate != null) {
-      _startDate = DateTime.tryParse(widget.project!.startDate!);
+      final parsed = DateTime.tryParse(widget.project!.startDate!);
+      // Convert UTC dates from server to local to prevent off-by-one day
+      _startDate = parsed != null ? DateTime(parsed.year, parsed.month, parsed.day) : null;
     }
     if (widget.project?.endDate != null) {
-      _endDate = DateTime.tryParse(widget.project!.endDate!);
+      final parsed = DateTime.tryParse(widget.project!.endDate!);
+      _endDate = parsed != null ? DateTime(parsed.year, parsed.month, parsed.day) : null;
     }
   }
 
@@ -80,14 +85,34 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   }
 
   Future<void> _selectStartDate() async {
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    
+    DateTime firstAllowed = todayMidnight;
+    if (_startDate != null && _startDate!.isBefore(todayMidnight)) {
+      firstAllowed = _startDate!;
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
+      initialDate: _startDate ?? todayMidnight,
+      firstDate: firstAllowed,
       lastDate: DateTime(2030),
       helpText: 'Chọn ngày bắt đầu',
     );
     if (picked != null) {
+      final pickedMidnight = DateTime(picked.year, picked.month, picked.day);
+      if (pickedMidnight.isBefore(todayMidnight)) {
+        final initialStartStr = widget.project?.startDate;
+        final initialStart = initialStartStr != null ? DateTime.tryParse(initialStartStr) : null;
+        final origMidnight = initialStart != null ? DateTime(initialStart.year, initialStart.month, initialStart.day) : null;
+
+        if (origMidnight == null || !pickedMidnight.isAtSameMomentAs(origMidnight)) {
+          AppSnackbar.error(context, 'Ngày bắt đầu dự án không được ở trong quá khứ');
+          return;
+        }
+      }
+
       setState(() {
         _startDate = picked;
         if (_endDate != null && _endDate!.isBefore(picked)) {
@@ -204,117 +229,152 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 const SizedBox(height: 16),
 
                 // Director
-                _fieldLabel(theme, 'ĐẠO DIỄN'),
+                _fieldLabel(theme, 'ĐẠO DIỄN *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _directorCtrl,
                   decoration: const InputDecoration(
                     hintText: 'Tên đạo diễn...',
                   ),
+                  validator: (v) => AppValidators.required(v, field: 'Tên đạo diễn'),
                 ),
                 const SizedBox(height: 16),
 
                 // Genre & Status Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 380;
+                    final genreCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _fieldLabel(theme, 'THỂ LOẠI'),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _selectedGenre,
+                          items: genreOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                          onChanged: (value) => setState(() => _selectedGenre = value ?? 'Drama'),
+                        ),
+                      ],
+                    );
+                    final statusCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _fieldLabel(theme, 'TRẠNG THÁI'),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _selectedStatus,
+                          items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(getStatusLabel(s)))).toList(),
+                          onChanged: (value) => setState(() => _selectedStatus = value ?? 'PLANNING'),
+                        ),
+                      ],
+                    );
+
+                    if (isNarrow) {
+                      return Column(
                         children: [
-                          _fieldLabel(theme, 'THỂ LOẠI'),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedGenre,
-                            items: genreOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                            onChanged: (value) => setState(() => _selectedGenre = value ?? 'Drama'),
-                          ),
+                          genreCol,
+                          const SizedBox(height: 16),
+                          statusCol,
                         ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldLabel(theme, 'TRẠNG THÁI'),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedStatus,
-                            items: statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(getStatusLabel(s)))).toList(),
-                            onChanged: (value) => setState(() => _selectedStatus = value ?? 'PLANNING'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: genreCol),
+                        const SizedBox(width: 16),
+                        Expanded(child: statusCol),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
                 // Date Pickers Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldLabel(theme, 'NGÀY BẮT ĐẦU'),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: _selectStartDate,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                                border: Border.all(color: const Color(0xFF393939)),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 380;
+                    final startCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _fieldLabel(theme, 'NGÀY BẮT ĐẦU'),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _selectStartDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              border: Border.all(color: const Color(0xFF393939)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
                                     _startDate != null ? dateFormat.format(_startDate!) : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldLabel(theme, 'NGÀY KẾT THÚC'),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: _selectEndDate,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                                border: Border.all(color: const Color(0xFF393939)),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
+                        ),
+                      ],
+                    );
+                    final endCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _fieldLabel(theme, 'NGÀY KẾT THÚC'),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _selectEndDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              border: Border.all(color: const Color(0xFF393939)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
                                     _endDate != null ? dateFormat.format(_endDate!) : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  const Icon(Icons.event, size: 16, color: Colors.grey),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.event, size: 16, color: Colors.grey),
+                              ],
                             ),
                           ),
+                        ),
+                      ],
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          startCol,
+                          const SizedBox(height: 16),
+                          endCol,
                         ],
-                      ),
-                    ),
-                  ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: startCol),
+                        const SizedBox(width: 16),
+                        Expanded(child: endCol),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -332,13 +392,14 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 const SizedBox(height: 16),
 
                 // Description / Logline
-                _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE)'),
+                _fieldLabel(theme, 'MÔ TẢ KỊCH BẢN (SYNOP/LOGLINE) *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _descCtrl,
                   decoration: const InputDecoration(
                     hintText: 'Mô tả cốt truyện chi tiết...',
                   ),
+                  validator: (v) => AppValidators.required(v, field: 'Mô tả kịch bản'),
                   maxLines: 5,
                 ),
                 const SizedBox(height: 32),
@@ -399,6 +460,33 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_startDate == null) {
+      AppSnackbar.error(context, 'Vui lòng chọn ngày bắt đầu dự án');
+      return;
+    }
+    if (_endDate == null) {
+      AppSnackbar.error(context, 'Vui lòng chọn ngày kết thúc dự án');
+      return;
+    }
+    if (_endDate!.isBefore(_startDate!)) {
+      AppSnackbar.error(context, 'Ngày kết thúc không được trước ngày bắt đầu');
+      return;
+    }
+
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    final startMidnight = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+
+    final initialStartStr = widget.project?.startDate;
+    final initialStart = initialStartStr != null ? DateTime.tryParse(initialStartStr) : null;
+    final origMidnight = initialStart != null ? DateTime(initialStart.year, initialStart.month, initialStart.day) : null;
+
+    if (startMidnight.isBefore(todayMidnight)) {
+      if (origMidnight == null || !startMidnight.isAtSameMomentAs(origMidnight)) {
+        AppSnackbar.error(context, 'Ngày bắt đầu dự án không được ở trong quá khứ');
+        return;
+      }
+    }
     setState(() => _saving = true);
 
     String? finalPosterUrl = widget.project?.posterUrl ?? 
@@ -418,8 +506,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       director: _directorCtrl.text.trim().isEmpty ? null : _directorCtrl.text.trim(),
       genre: _selectedGenre,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      startDate: _startDate?.toUtc().toIso8601String(),
-      endDate: _endDate?.toUtc().toIso8601String(),
+      startDate: _startDate != null
+          ? '${_startDate!.year.toString().padLeft(4, '0')}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}T00:00:00'
+          : null,
+      endDate: _endDate != null
+          ? '${_endDate!.year.toString().padLeft(4, '0')}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}T00:00:00'
+          : null,
       posterUrl: finalPosterUrl,
       progress: widget.project?.progress ?? 0.0,
       status: _selectedStatus,
@@ -439,6 +531,13 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     if (mounted) {
       setState(() => _saving = false);
       if (success) {
+        context.read<NotificationProvider>().addNotification(
+              projectId: project.id,
+              projectTitle: project.title,
+              title: _isEditing ? 'Cập nhật dự án: ${project.title}' : 'Tạo dự án mới: ${project.title}',
+              body: 'Trạng thái: ${project.status} · Thể loại: ${project.genre ?? "N/A"} · Đạo diễn: ${project.director ?? "N/A"}',
+              actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
+            );
         AppSnackbar.success(
           context,
           _isEditing ? 'Cập nhật dự án thành công' : 'Đã tạo dự án thành công',

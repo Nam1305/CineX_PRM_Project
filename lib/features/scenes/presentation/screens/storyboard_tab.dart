@@ -9,6 +9,8 @@ import 'package:cinex_application/features/acts/presentation/screens/act_form_sc
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/shared/widgets/pagination_bar.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'scene_form_screen.dart';
 
 class StoryboardTab extends StatefulWidget {
@@ -129,6 +131,17 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         );
                         if (!confirmed) return;
                         await sceneProvider.removeScene(scene.id!, act.id!);
+                        if (context.mounted) {
+                          context.read<NotificationProvider>().addNotification(
+                                projectId: widget.projectId,
+                                projectTitle: 'Dự án CineX #${widget.projectId}',
+                                actId: act.id,
+                                sceneId: scene.id,
+                                title: 'Xóa Cảnh ${scene.sceneNumber}',
+                                body: 'Cảnh ${scene.sceneNumber}: ${scene.title} đã bị xóa khỏi ${act.title}.',
+                                actionType: NotificationActionType.delete,
+                              );
+                        }
                         messenger.showSnackBar(
                           SnackBar(
                             content: const Text('Đã xoá cảnh'),
@@ -156,6 +169,16 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         );
                         if (!confirmed) return;
                         await actProvider.removeAct(act.id!);
+                        if (context.mounted) {
+                          context.read<NotificationProvider>().addNotification(
+                                projectId: widget.projectId,
+                                projectTitle: 'Dự án CineX #${widget.projectId}',
+                                actId: act.id,
+                                title: 'Xóa Hồi: ${act.title}',
+                                body: 'Hồi "${act.title}" đã bị xóa khỏi dự án.',
+                                actionType: NotificationActionType.delete,
+                              );
+                        }
                         messenger.showSnackBar(
                           SnackBar(
                             content: const Text('Đã xoá hồi'),

@@ -86,14 +86,16 @@ class IntExtPieChart extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLegend('NỘI (INT)', Colors.blue.shade600, interior),
-                    const SizedBox(height: 12),
-                    _buildLegend('NGOẠI (EXT)', Colors.orange.shade700, exterior),
-                  ],
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLegend('NỘI (INT)', Colors.blue.shade600, interior),
+                      const SizedBox(height: 12),
+                      _buildLegend('NGOẠI (EXT)', Colors.orange.shade700, exterior),
+                    ],
+                  ),
                 ),
               ],
             ),
