@@ -37,10 +37,7 @@ class SceneProvider extends ChangeNotifier {
     try {
       final created = await _api.createScene(scene, characterIds);
       if (created == null) return false;
-      _scenesByAct.putIfAbsent(scene.actId, () => []);
-      _scenesByAct[scene.actId]!.add(created);
-      _scenesByAct[scene.actId]!.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
-      notifyListeners();
+      await loadScenesForAct(scene.actId);
       return true;
     } catch (e) {
       _error = 'Không thể thêm cảnh: $e';
@@ -64,17 +61,7 @@ class SceneProvider extends ChangeNotifier {
         previousCharacterIds: previousCharacterIds,
       );
       if (updated == null) return false;
-      final list = _scenesByAct[scene.actId];
-      if (list != null) {
-        final index = list.indexWhere((s) => s.id == scene.id || s.id == updated.id);
-        if (index >= 0) {
-          list[index] = updated;
-        } else {
-          list.add(updated);
-        }
-        list.sort((a, b) => a.sceneNumber.compareTo(b.sceneNumber));
-      }
-      notifyListeners();
+      await loadScenesForAct(scene.actId);
       return true;
     } catch (e) {
       _error = 'Không thể cập nhật cảnh: $e';
