@@ -40,7 +40,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     if (!auth.isProducer) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi lịch quay.'),
+          content: Text(
+            'Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi lịch quay.',
+          ),
           backgroundColor: Colors.amber,
         ),
       );
@@ -48,10 +50,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     }
 
     DateTime? baseStartDate;
-    if (widget.projectStartDate != null && widget.projectStartDate!.isNotEmpty) {
+    if (widget.projectStartDate != null &&
+        widget.projectStartDate!.isNotEmpty) {
       baseStartDate = DateTime.tryParse(widget.projectStartDate!);
     }
-    
+
     DateTime? baseEndDate;
     if (widget.projectEndDate != null && widget.projectEndDate!.isNotEmpty) {
       baseEndDate = DateTime.tryParse(widget.projectEndDate!);
@@ -104,7 +107,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
 
     if (selected != null && context.mounted) {
       // 1. Validation: Không chọn ngày trong quá khứ
-      final selectedMidnight = DateTime(selected.year, selected.month, selected.day);
+      final selectedMidnight = DateTime(
+        selected.year,
+        selected.month,
+        selected.day,
+      );
       if (selectedMidnight.isBefore(todayMidnight)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -116,19 +123,33 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       }
 
       // 2. Validation: Ngày bắt đầu / kết thúc dự án
-      if (baseStartDate != null && selectedMidnight.isBefore(DateTime(baseStartDate.year, baseStartDate.month, baseStartDate.day))) {
+      if (baseStartDate != null &&
+          selectedMidnight.isBefore(
+            DateTime(
+              baseStartDate.year,
+              baseStartDate.month,
+              baseStartDate.day,
+            ),
+          )) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ngày chọn không được trước ngày bắt đầu dự án (${DateFormat('dd/MM/yyyy').format(baseStartDate)})'),
+            content: Text(
+              'Ngày chọn không được trước ngày bắt đầu dự án (${DateFormat('dd/MM/yyyy').format(baseStartDate)})',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
         return;
       }
-      if (baseEndDate != null && selectedMidnight.isAfter(DateTime(baseEndDate.year, baseEndDate.month, baseEndDate.day))) {
+      if (baseEndDate != null &&
+          selectedMidnight.isAfter(
+            DateTime(baseEndDate.year, baseEndDate.month, baseEndDate.day),
+          )) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ngày chọn không được sau ngày kết thúc dự án (${DateFormat('dd/MM/yyyy').format(baseEndDate)})'),
+            content: Text(
+              'Ngày chọn không được sau ngày kết thúc dự án (${DateFormat('dd/MM/yyyy').format(baseEndDate)})',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -145,26 +166,46 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       if (isDuplicate) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ngày ${DateFormat('dd/MM/yyyy').format(selected)} đã được gán cho bối cảnh khác! Vui lòng chọn ngày khác.'),
+            content: Text(
+              'Ngày ${DateFormat('dd/MM/yyyy').format(selected)} đã được gán cho bối cảnh khác! Vui lòng chọn ngày khác.',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
         return;
       }
 
-      await provider.setCustomDate(widget.projectId, widget.locationLabel, dateStr);
+      final saved = await provider.setCustomDate(
+        widget.projectId,
+        widget.locationLabel,
+        dateStr,
+      );
+      if (!saved) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(provider.error ?? 'Không thể cập nhật ngày quay.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
 
       if (context.mounted) {
         context.read<NotificationProvider>().addNotification(
-              projectId: widget.projectId,
-              projectTitle: 'Dự án CineX #${widget.projectId}',
-              title: 'Cập nhật lịch quay',
-              body: 'Bối cảnh "${widget.locationLabel}" đã được gán ngày quay ${DateFormat('dd/MM/yyyy').format(selected)}.',
-              actionType: NotificationActionType.update,
-            );
+          projectId: widget.projectId,
+          projectTitle: 'Dự án CineX #${widget.projectId}',
+          title: 'Cập nhật lịch quay',
+          body:
+              'Bối cảnh "${widget.locationLabel}" đã được gán ngày quay ${DateFormat('dd/MM/yyyy').format(selected)}.',
+          actionType: NotificationActionType.update,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đã cập nhật ngày quay thành công! Danh sách ngày quay đã được sắp xếp theo thời gian.'),
+            content: Text(
+              'Đã cập nhật ngày quay thành công! Danh sách ngày quay đã được sắp xếp theo thời gian.',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -177,7 +218,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     if (!auth.isProducer) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi trạng thái lịch quay.'),
+          content: Text(
+            'Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi trạng thái lịch quay.',
+          ),
           backgroundColor: Colors.amber,
         ),
       );
@@ -189,7 +232,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Kịch bản chưa hoàn thành', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Kịch bản chưa hoàn thành',
+            style: TextStyle(color: Colors.white),
+          ),
           content: const Text(
             'Phân cảnh này chưa hoàn thành viết kịch bản. Vui lòng cập nhật trạng thái kịch bản sang "Đã xong" trong tab Storyboard trước khi bắt đầu quay.',
             style: TextStyle(color: Colors.grey),
@@ -197,7 +243,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Đóng', style: TextStyle(color: Color(0xFFFF571A))),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(color: Color(0xFFFF571A)),
+              ),
             ),
           ],
         ),
@@ -212,29 +261,67 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: Text('Trạng thái quay - Cảnh ${s.sceneNumber}', style: const TextStyle(color: Colors.white)),
+        title: Text(
+          'Trạng thái quay - Cảnh ${s.sceneNumber}',
+          style: const TextStyle(color: Colors.white),
+        ),
         children: [
-          _statusOption(context, SceneStatus.todo, 'Chờ quay', currentStatus == SceneStatus.todo),
-          _statusOption(context, SceneStatus.inProgress, 'Đang quay', currentStatus == SceneStatus.inProgress),
-          _statusOption(context, SceneStatus.done, 'Đã quay xong', currentStatus == SceneStatus.done),
+          _statusOption(
+            context,
+            SceneStatus.todo,
+            'Chờ quay',
+            currentStatus == SceneStatus.todo,
+          ),
+          _statusOption(
+            context,
+            SceneStatus.inProgress,
+            'Đang quay',
+            currentStatus == SceneStatus.inProgress,
+          ),
+          _statusOption(
+            context,
+            SceneStatus.done,
+            'Đã quay xong',
+            currentStatus == SceneStatus.done,
+          ),
         ],
       ),
     );
 
     if (selected != null && s.id != null && context.mounted) {
-      await provider.updateShootingStatus(widget.projectId, s.id!, selected);
+      final saved = await provider.updateShootingStatus(
+        widget.projectId,
+        s.id!,
+        selected,
+      );
+      if (!saved) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                provider.error ?? 'Không thể cập nhật trạng thái quay.',
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
       if (context.mounted) {
         context.read<NotificationProvider>().addNotification(
-              projectId: widget.projectId,
-              projectTitle: 'Dự án CineX #${widget.projectId}',
-              sceneId: s.id,
-              title: 'Cập nhật trạng thái quay - Cảnh ${s.sceneNumber}',
-              body: 'Cảnh ${s.sceneNumber} (${widget.locationLabel}) đã chuyển sang: ${selected.shootingLabel}.',
-              actionType: NotificationActionType.statusChange,
-            );
+          projectId: widget.projectId,
+          projectTitle: 'Dự án CineX #${widget.projectId}',
+          sceneId: s.id,
+          title: 'Cập nhật trạng thái quay - Cảnh ${s.sceneNumber}',
+          body:
+              'Cảnh ${s.sceneNumber} (${widget.locationLabel}) đã chuyển sang: ${selected.shootingLabel}.',
+          actionType: NotificationActionType.statusChange,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã cập nhật trạng thái quay sang: ${selected.shootingLabel}'),
+            content: Text(
+              'Đã cập nhật trạng thái quay sang: ${selected.shootingLabel}',
+            ),
             backgroundColor: const Color(0xFF51CF66),
           ),
         );
@@ -242,7 +329,12 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     }
   }
 
-  Widget _statusOption(BuildContext context, SceneStatus value, String label, bool isSelected) {
+  Widget _statusOption(
+    BuildContext context,
+    SceneStatus value,
+    String label,
+    bool isSelected,
+  ) {
     return SimpleDialogOption(
       onPressed: () => Navigator.pop(context, value),
       child: Row(
@@ -255,7 +347,8 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
-          if (isSelected) const Icon(Icons.check, color: Color(0xFFFF571A), size: 18),
+          if (isSelected)
+            const Icon(Icons.check, color: Color(0xFFFF571A), size: 18),
         ],
       ),
     );
@@ -264,10 +357,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
   @override
   Widget build(BuildContext context) {
     if (widget.scenes.isEmpty) return const SizedBox.shrink();
-    
+
     final groupMode = context.watch<ProductionProvider>().groupMode;
     final isByCharacter = groupMode == ProductionGroupMode.byCharacter;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
@@ -293,7 +386,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                   top: const Radius.circular(12),
                   bottom: _isExpanded ? Radius.zero : const Radius.circular(12),
                 ),
-                border: const Border(bottom: BorderSide(color: Color(0xFF2C2C2C))),
+                border: const Border(
+                  bottom: BorderSide(color: Color(0xFF2C2C2C)),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -306,10 +401,18 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             onTap: () => _selectDate(context),
                             borderRadius: BorderRadius.circular(4),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFF571A).withValues(alpha: 0.15),
-                                border: Border.all(color: const Color(0xFFFF571A), width: 1),
+                                color: const Color(
+                                  0xFFFF571A,
+                                ).withValues(alpha: 0.15),
+                                border: Border.all(
+                                  color: const Color(0xFFFF571A),
+                                  width: 1,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Row(
@@ -318,16 +421,22 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                   Text(
                                     widget.shootingDate != null
                                         ? 'NGÀY ${widget.dayNumber} · ${DateFormat('dd/MM').format(widget.shootingDate!)}'
-                                        : 'NGÀY ${widget.dayNumber}',
+                                        : 'CHƯA XẾP NGÀY',
                                     style: const TextStyle(
                                       color: Color(0xFFFF571A),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  if (context.watch<AuthProvider>().isProducer) ...[
+                                  if (context
+                                      .watch<AuthProvider>()
+                                      .isProducer) ...[
                                     const SizedBox(width: 4),
-                                    const Icon(Icons.edit_calendar, color: Color(0xFFFF571A), size: 12),
+                                    const Icon(
+                                      Icons.edit_calendar,
+                                      color: Color(0xFFFF571A),
+                                      size: 12,
+                                    ),
                                   ],
                                 ],
                               ),
@@ -335,7 +444,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                           )
                         else
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.blue.withValues(alpha: 0.15),
                               border: Border.all(color: Colors.blue, width: 1),
@@ -344,7 +456,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.person_outline, color: Colors.blue, size: 12),
+                                Icon(
+                                  Icons.person_outline,
+                                  color: Colors.blue,
+                                  size: 12,
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   'DIỄN VIÊN',
@@ -396,14 +512,15 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
               ),
             ),
           ),
-          
+
           // Scenes List
           if (_isExpanded)
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: widget.scenes.length,
-              separatorBuilder: (context, index) => const Divider(color: Color(0xFF2C2C2C), height: 1),
+              separatorBuilder: (context, index) =>
+                  const Divider(color: Color(0xFF2C2C2C), height: 1),
               itemBuilder: (context, index) {
                 final s = widget.scenes[index];
                 final provider = context.watch<ProductionProvider>();
@@ -443,7 +560,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                         width: 60,
                         padding: const EdgeInsets.only(right: 16),
                         decoration: const BoxDecoration(
-                          border: Border(right: BorderSide(color: Color(0xFF2C2C2C))),
+                          border: Border(
+                            right: BorderSide(color: Color(0xFF2C2C2C)),
+                          ),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -459,15 +578,16 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             Text(
                               s.sceneNumber.toString(),
                               style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFFF571A)),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF571A),
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 16),
-                      
+
                       // Scene Info
                       Expanded(
                         child: Column(
@@ -478,7 +598,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    s.summary ?? (s.title.isNotEmpty ? s.title : 'Chưa có tiêu đề'),
+                                    s.summary ??
+                                        (s.title.isNotEmpty
+                                            ? s.title
+                                            : 'Chưa có tiêu đề'),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -489,10 +612,14 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                   ),
                                 ),
                                 InkWell(
-                                  onTap: () => _changeShootingStatus(context, s),
+                                  onTap: () =>
+                                      _changeShootingStatus(context, s),
                                   borderRadius: BorderRadius.circular(4),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: badgeColor,
                                       border: Border.all(
@@ -510,9 +637,16 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                             color: textColor,
                                           ),
                                         ),
-                                        if (s.status == SceneStatus.done && context.watch<AuthProvider>().isProducer) ...[
+                                        if (s.status == SceneStatus.done &&
+                                            context
+                                                .watch<AuthProvider>()
+                                                .isProducer) ...[
                                           const SizedBox(width: 2),
-                                          Icon(Icons.arrow_drop_down, color: textColor, size: 12),
+                                          Icon(
+                                            Icons.arrow_drop_down,
+                                            color: textColor,
+                                            size: 12,
+                                          ),
                                         ],
                                       ],
                                     ),
@@ -525,13 +659,21 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: s.setting == LocationSetting.interior
-                                        ? Colors.blue.shade900.withValues(alpha: 0.3)
-                                        : Colors.orange.shade900.withValues(alpha: 0.3),
+                                        ? Colors.blue.shade900.withValues(
+                                            alpha: 0.3,
+                                          )
+                                        : Colors.orange.shade900.withValues(
+                                            alpha: 0.3,
+                                          ),
                                     border: Border.all(
-                                      color: s.setting == LocationSetting.interior
+                                      color:
+                                          s.setting == LocationSetting.interior
                                           ? Colors.blue.shade700
                                           : Colors.orange.shade700,
                                     ),
@@ -542,7 +684,8 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: s.setting == LocationSetting.interior
+                                      color:
+                                          s.setting == LocationSetting.interior
                                           ? Colors.blue.shade200
                                           : Colors.orange.shade200,
                                     ),
@@ -550,11 +693,18 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                 ),
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: s.timeOfDay == SceneTime.day
-                                        ? Colors.amber.shade900.withValues(alpha: 0.3)
-                                        : Colors.indigo.shade900.withValues(alpha: 0.3),
+                                        ? Colors.amber.shade900.withValues(
+                                            alpha: 0.3,
+                                          )
+                                        : Colors.indigo.shade900.withValues(
+                                            alpha: 0.3,
+                                          ),
                                     border: Border.all(
                                       color: s.timeOfDay == SceneTime.day
                                           ? Colors.amber.shade700
@@ -594,11 +744,17 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             if (s.characters.isNotEmpty)
                               Row(
                                 children: [
-                                  const Icon(Icons.groups, size: 14, color: Colors.grey),
+                                  const Icon(
+                                    Icons.groups,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      s.characters.map((e) => e.name).join(', '),
+                                      s.characters
+                                          .map((e) => e.name)
+                                          .join(', '),
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey,
@@ -613,7 +769,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                                  const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(

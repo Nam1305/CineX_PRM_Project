@@ -10,6 +10,7 @@ import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/data/mock_data.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:cinex_application/features/production/data/models/production_plan.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -97,15 +98,15 @@ class ApiService {
                 ?.toString() ??
             detail;
       }
-        final validationErrors = decoded['errors'];
-        if (validationErrors is List && validationErrors.isNotEmpty) {
-          detail = validationErrors.first.toString();
-        } else if (validationErrors is Map && validationErrors.isNotEmpty) {
-          final firstValue = validationErrors.values.first;
-          if (firstValue is List && firstValue.isNotEmpty) {
-            detail = firstValue.first.toString();
-          }
+      final validationErrors = decoded['errors'];
+      if (validationErrors is List && validationErrors.isNotEmpty) {
+        detail = validationErrors.first.toString();
+      } else if (validationErrors is Map && validationErrors.isNotEmpty) {
+        final firstValue = validationErrors.values.first;
+        if (firstValue is List && firstValue.isNotEmpty) {
+          detail = firstValue.first.toString();
         }
+      }
     } catch (_) {
       // Non-JSON response: retain the short response text below.
     }
@@ -799,6 +800,55 @@ class ApiService {
     }
   }
 
+  // ─── PRODUCTION PLAN ───────────────────────────────────────────────────────
+
+  Future<ProductionPlan> getProductionPlan(int projectId) async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse(
+      '$apiBaseUrl/api/projects/$projectId/production-plan',
+    );
+    try {
+      final response = await _client.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        return ProductionPlan.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Tải kế hoạch sản xuất',
+      );
+    } catch (e) {
+      _rethrowAsApiException(e, 'Tải kế hoạch sản xuất');
+    }
+  }
+
+  Future<ProductionPlan> updateProductionPlan(ProductionPlan plan) async {
+    final apiBaseUrl = baseUrl.replaceAll('/odata', '');
+    final url = Uri.parse(
+      '$apiBaseUrl/api/projects/${plan.projectId}/production-plan',
+    );
+    try {
+      final response = await _client.put(
+        url,
+        headers: _headers,
+        body: jsonEncode(plan.toUpdateMap()),
+      );
+      if (response.statusCode == 200) {
+        return ProductionPlan.fromMap(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Cập nhật kế hoạch sản xuất',
+      );
+    } catch (e) {
+      _rethrowAsApiException(e, 'Cập nhật kế hoạch sản xuất');
+    }
+  }
   // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
 
   /// Lấy danh sách tất cả thông báo từ database

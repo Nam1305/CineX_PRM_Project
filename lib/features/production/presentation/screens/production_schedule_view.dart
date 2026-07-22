@@ -23,25 +23,15 @@ class ProductionScheduleView extends StatelessWidget {
     this.projectEndDate,
   });
 
-  /// Parse the project start date and compute the date for a given day index (0-based), or return a custom date if set.
-  DateTime? _shootingDate(String locationLabel, int dayIndex) {
-    // 1. Check custom date first
+  /// Returns only a shooting date that has actually been persisted.
+  /// Unscheduled locations must not receive a generated display date because
+  /// that date was never saved and cannot be used consistently for sorting.
+  DateTime? _shootingDate(String locationLabel) {
     final customDateStr = provider.customDates[locationLabel];
     if (customDateStr != null && customDateStr.isNotEmpty) {
-      try {
-        return DateTime.parse(customDateStr);
-      } catch (e) {
-        debugPrint('Error: $e');
-      }
+      return DateTime.tryParse(customDateStr);
     }
-    // 2. Fallback to sequential date calculation
-    if (projectStartDate == null || projectStartDate!.isEmpty) return null;
-    try {
-      final base = DateTime.parse(projectStartDate!);
-      return base.add(Duration(days: dayIndex));
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 
   String _formatDate(DateTime? dt) {
@@ -82,7 +72,10 @@ class ProductionScheduleView extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF571A),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -93,10 +86,7 @@ class ProductionScheduleView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  SceneFilterBar(
-                    projectId: projectId,
-                    provider: provider,
-                  ),
+                  SceneFilterBar(projectId: projectId, provider: provider),
                 ],
               ),
             ),
@@ -107,7 +97,11 @@ class ProductionScheduleView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.movie_creation_outlined, size: 64, color: Colors.grey),
+                    Icon(
+                      Icons.movie_creation_outlined,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
                     SizedBox(height: 16),
                     Text(
                       'Chưa có phân cảnh nào',
@@ -127,21 +121,18 @@ class ProductionScheduleView extends StatelessWidget {
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) {
-                    final entry = groupEntries[i];
-                    return ShootingDayGroup(
-                      locationLabel: entry.key,
-                      scenes: entry.value,
-                      dayNumber: i + 1,
-                      shootingDate: _shootingDate(entry.key, i),
-                      projectId: projectId,
-                      projectStartDate: projectStartDate,
-                      projectEndDate: projectEndDate,
-                    );
-                  },
-                  childCount: groupEntries.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final entry = groupEntries[i];
+                  return ShootingDayGroup(
+                    locationLabel: entry.key,
+                    scenes: entry.value,
+                    dayNumber: i + 1,
+                    shootingDate: _shootingDate(entry.key),
+                    projectId: projectId,
+                    projectStartDate: projectStartDate,
+                    projectEndDate: projectEndDate,
+                  );
+                }, childCount: groupEntries.length),
               ),
             ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
@@ -165,7 +156,7 @@ class ProductionScheduleView extends StatelessWidget {
       final excel = Excel.createExcel();
       final sheet = excel['Lịch Quay'];
       excel.setDefaultSheet('Lịch Quay');
-      
+
       // Header
       sheet.appendRow([
         TextCellValue('Ngày quay'),
@@ -181,10 +172,10 @@ class ProductionScheduleView extends StatelessWidget {
       int dayCounter = 0;
       for (var entry in provider.groupedByLocation.entries) {
         final locationLabel = entry.key;
-        final dt = _shootingDate(locationLabel, dayCounter);
+        final dt = _shootingDate(locationLabel);
         final dayLabel = dt != null
             ? 'Ngày ${dayCounter + 1} (${_formatDate(dt)})'
-            : 'Ngày ${dayCounter + 1}';
+            : 'Chưa xếp ngày';
         for (var scene in entry.value) {
           sheet.appendRow([
             TextCellValue(dayLabel),
@@ -210,9 +201,11 @@ class ProductionScheduleView extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(savedPath == 'Tải xuống trình duyệt'
-                  ? 'Đã tải xuống lịch quay thành công!'
-                  : 'Đã lưu Excel tại: $savedPath'),
+              content: Text(
+                savedPath == 'Tải xuống trình duyệt'
+                    ? 'Đã tải xuống lịch quay thành công!'
+                    : 'Đã lưu Excel tại: $savedPath',
+              ),
               backgroundColor: const Color(0xFF51CF66),
               duration: const Duration(seconds: 5),
             ),

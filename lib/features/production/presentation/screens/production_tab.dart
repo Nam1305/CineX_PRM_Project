@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'production_schedule_view.dart';
 import 'production_analytics_view.dart';
@@ -28,7 +29,10 @@ class _ProductionTabState extends State<ProductionTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProductionProvider>().loadForProject(widget.projectId);
+      context.read<ProductionProvider>().loadForProject(
+        widget.projectId,
+        canMigrateLegacy: context.read<AuthProvider>().isProducer,
+      );
       context.read<CharacterProvider>().loadCharacters(widget.projectId);
     });
   }
@@ -58,9 +62,7 @@ class _ProductionTabState extends State<ProductionTab> {
                 // Hiển thị loading indicator toàn màn hình chỉ khi lần đầu load
                 if (provider.isLoading) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFFF571A),
-                    ),
+                    child: CircularProgressIndicator(color: Color(0xFFFF571A)),
                   );
                 }
                 // Luôn hiển thị TabBarView, empty state nằm trong từng view

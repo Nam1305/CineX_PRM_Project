@@ -7,6 +7,7 @@ import 'package:cinex_application/features/characters/data/models/character.dart
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/features/production/data/models/production_plan.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -15,7 +16,11 @@ class MediaCacheRecord {
   final String? localPath;
   final String contentType;
 
-  const MediaCacheRecord({this.bytes, this.localPath, required this.contentType});
+  const MediaCacheRecord({
+    this.bytes,
+    this.localPath,
+    required this.contentType,
+  });
 }
 
 /// Persistent, read-only-offline cache. PostgreSQL remains the source of truth.
@@ -25,7 +30,7 @@ class LocalCacheService {
 
   static final LocalCacheService instance = LocalCacheService._();
   static const _databaseName = 'cinex_offline.db';
-  static const _schemaVersion = 1;
+  static const _schemaVersion = 2;
 
   Database? _database;
   Future<Database>? _opening;
@@ -47,6 +52,9 @@ class LocalCacheService {
         },
         onCreate: (db, version) async {
           await _createSchema(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) await _createProductionPlansTable(db);
         },
       ),
     );
@@ -132,6 +140,38 @@ class LocalCacheService {
         last_accessed_at INTEGER NOT NULL
       )
     ''');
+    await _createProductionPlansTable(db);
+  }
+
+  Future<void> _createProductionPlansTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS production_plans (
+        project_id INTEGER PRIMARY KEY,
+        payload TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        cached_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  Future<ProductionPlan?> getProductionPlan(int projectId) async {
+    final rows = await (await _db).query(
+      'production_plans',
+      where: 'project_id = ?',
+      whereArgs: [projectId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return ProductionPlan.fromMap(_payload(rows.first));
+  }
+
+  Future<void> upsertProductionPlan(ProductionPlan plan) async {
+    await (await _db).insert('production_plans', {
+      'project_id': plan.projectId,
+      'payload': jsonEncode(plan.toMap()),
+      'version': plan.version,
+      'cached_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Project>> getProjects() async {
@@ -161,15 +201,11 @@ class LocalCacheService {
   Future<void> upsertProject(Project project) async {
     if (project.id == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    await (await _db).insert(
-      'projects',
-      {
-        'id': project.id,
-        'payload': jsonEncode(project.toMap()),
-        'cached_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await _db).insert('projects', {
+      'id': project.id,
+      'payload': jsonEncode(project.toMap()),
+      'cached_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteProject(int id) async {
@@ -193,6 +229,11 @@ class LocalCacheService {
       await txn.delete('acts', where: 'project_id = ?', whereArgs: [id]);
       await txn.delete('characters', where: 'project_id = ?', whereArgs: [id]);
       await txn.delete('locations', where: 'project_id = ?', whereArgs: [id]);
+      await txn.delete(
+        'production_plans',
+        where: 'project_id = ?',
+        whereArgs: [id],
+      );
       await txn.delete('projects', where: 'id = ?', whereArgs: [id]);
     });
   }
@@ -230,17 +271,13 @@ class LocalCacheService {
 
   Future<void> upsertAct(Act act) async {
     if (act.id == null) return;
-    await (await _db).insert(
-      'acts',
-      {
-        'id': act.id,
-        'project_id': act.projectId,
-        'sequence_order': act.sequenceOrder,
-        'payload': jsonEncode({...act.toMap(), 'id': act.id}),
-        'cached_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await _db).insert('acts', {
+      'id': act.id,
+      'project_id': act.projectId,
+      'sequence_order': act.sequenceOrder,
+      'payload': jsonEncode({...act.toMap(), 'id': act.id}),
+      'cached_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteAct(int id) async {
@@ -292,17 +329,13 @@ class LocalCacheService {
 
   Future<void> upsertCharacter(Character character) async {
     if (character.id == null || character.projectId == null) return;
-    await (await _db).insert(
-      'characters',
-      {
-        'id': character.id,
-        'project_id': character.projectId,
-        'name': character.name,
-        'payload': jsonEncode(_characterMap(character)),
-        'cached_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await _db).insert('characters', {
+      'id': character.id,
+      'project_id': character.projectId,
+      'name': character.name,
+      'payload': jsonEncode(_characterMap(character)),
+      'cached_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteCharacter(int id) async {
@@ -322,7 +355,11 @@ class LocalCacheService {
   Future<void> replaceLocations(int projectId, List<Location> locations) async {
     final db = await _db;
     await db.transaction((txn) async {
-      await txn.delete('locations', where: 'project_id = ?', whereArgs: [projectId]);
+      await txn.delete(
+        'locations',
+        where: 'project_id = ?',
+        whereArgs: [projectId],
+      );
       final batch = txn.batch();
       final now = DateTime.now().millisecondsSinceEpoch;
       for (final location in locations) {
@@ -342,17 +379,13 @@ class LocalCacheService {
 
   Future<void> upsertLocation(Location location) async {
     if (location.id == null || location.projectId == null) return;
-    await (await _db).insert(
-      'locations',
-      {
-        'id': location.id,
-        'project_id': location.projectId,
-        'name': location.name,
-        'payload': jsonEncode(_locationMap(location)),
-        'cached_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await _db).insert('locations', {
+      'id': location.id,
+      'project_id': location.projectId,
+      'name': location.name,
+      'payload': jsonEncode(_locationMap(location)),
+      'cached_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteLocation(int id) async {
@@ -388,7 +421,9 @@ class LocalCacheService {
       whereArgs: [actId],
       limit: 1,
     );
-    final projectId = actRows.isEmpty ? null : actRows.first['project_id'] as int?;
+    final projectId = actRows.isEmpty
+        ? null
+        : actRows.first['project_id'] as int?;
     await _replaceScenes(
       deleteWhere: 'act_id = ?',
       deleteArgs: [actId],
@@ -439,7 +474,9 @@ class LocalCacheService {
         whereArgs: [scene.id],
         limit: 1,
       );
-      projectId = existing.isEmpty ? null : existing.first['project_id'] as int?;
+      projectId = existing.isEmpty
+          ? null
+          : existing.first['project_id'] as int?;
     }
     await db.insert(
       'scenes',
@@ -495,18 +532,14 @@ class LocalCacheService {
     String? localPath,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await (await _db).insert(
-      'media_cache',
-      {
-        'cache_key': cacheKey,
-        'content_type': contentType,
-        'bytes': bytes,
-        'local_path': localPath,
-        'cached_at': now,
-        'last_accessed_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await (await _db).insert('media_cache', {
+      'cache_key': cacheKey,
+      'content_type': contentType,
+      'bytes': bytes,
+      'local_path': localPath,
+      'cached_at': now,
+      'last_accessed_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> removeMedia(String cacheKey) async {
@@ -522,11 +555,10 @@ class LocalCacheService {
     String key,
     int millis,
   ) async {
-    await executor.insert(
-      'sync_metadata',
-      {'key': 'last_sync:$key', 'value': '$millis'},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await executor.insert('sync_metadata', {
+      'key': 'last_sync:$key',
+      'value': '$millis',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Map<String, dynamic> _payload(Map<String, Object?> row) =>
