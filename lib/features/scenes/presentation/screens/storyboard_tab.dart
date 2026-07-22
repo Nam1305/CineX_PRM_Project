@@ -41,7 +41,9 @@ class _StoryboardTabState extends State<StoryboardTab> {
       _initialized = true;
       _observedCharacterDataVersion = characterVersion;
       _observedLocationDataVersion = locationVersion;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reloadScenes());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _reloadScenes(reloadActs: true),
+      );
       return;
     }
 
@@ -60,15 +62,27 @@ class _StoryboardTabState extends State<StoryboardTab> {
     });
   }
 
-  Future<void> _reloadScenes() async {
+  @override
+  void didUpdateWidget(covariant StoryboardTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.projectId == widget.projectId) return;
+    _currentPage = 1;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _reloadScenes(reloadActs: true),
+    );
+  }
+
+  Future<void> _reloadScenes({bool reloadActs = false}) async {
     if (!mounted) return;
     final actProvider = context.read<ActProvider>();
     final sceneProvider = context.read<SceneProvider>();
-    if (actProvider.acts.isEmpty) {
+    if (reloadActs || !actProvider.hasLoadedProject(widget.projectId)) {
       await actProvider.loadActs(widget.projectId);
     }
+    if (!mounted) return;
+    final acts = actProvider.actsForProject(widget.projectId);
     await Future.wait(
-      actProvider.acts
+      acts
           .where((act) => act.id != null)
           .map((act) => sceneProvider.loadScenesForAct(act.id!)),
     );
@@ -82,10 +96,12 @@ class _StoryboardTabState extends State<StoryboardTab> {
     return Scaffold(
       body: Consumer2<ActProvider, SceneProvider>(
         builder: (context, actProvider, sceneProvider, _) {
-          if (actProvider.isLoading) {
+          final acts = actProvider.actsForProject(widget.projectId);
+          if (actProvider.isLoadingForProject(widget.projectId) &&
+              acts.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (actProvider.acts.isEmpty) {
+          if (acts.isEmpty) {
             return const EmptyStateWidget(
               icon: Icons.movie_filter_outlined,
               message: 'Chưa có hồi nào. Thêm hồi để bắt đầu.',
@@ -93,7 +109,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
           }
 
           // Phân trang
-          final totalItems = actProvider.acts.length;
+          final totalItems = acts.length;
           final totalPages = (totalItems / _itemsPerPage).ceil();
 
           if (_currentPage > totalPages && totalPages > 0) {
@@ -104,7 +120,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
           final endIndex = startIndex + _itemsPerPage > totalItems
               ? totalItems
               : startIndex + _itemsPerPage;
-          final paginatedActs = actProvider.acts.sublist(startIndex, endIndex);
+          final paginatedActs = acts.sublist(startIndex, endIndex);
 
           return Column(
             children: [

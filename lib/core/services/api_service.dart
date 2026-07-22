@@ -354,6 +354,7 @@ class ApiService {
         final List<dynamic> values = data['value'] ?? [];
         final acts = values
             .map((e) => Act.fromMap(e as Map<String, dynamic>))
+            .where((act) => act.projectId == projectId)
             .toList();
         return acts;
       } else {

@@ -84,7 +84,9 @@ class _ActFormScreenState extends State<ActFormScreen> {
       id: widget.act?.id,
       projectId: widget.projectId,
       title: _titleCtrl.text.trim(),
-      sequenceOrder: widget.act?.sequenceOrder ?? provider.acts.length + 1,
+      sequenceOrder:
+          widget.act?.sequenceOrder ??
+          provider.actsForProject(widget.projectId).length + 1,
       summary: _summaryCtrl.text.trim().isEmpty
           ? null
           : _summaryCtrl.text.trim(),
@@ -114,7 +116,10 @@ class _ActFormScreenState extends State<ActFormScreen> {
       );
       Navigator.pop(context);
     } else {
-      AppSnackbar.error(context, provider.error ?? 'Có lỗi xảy ra');
+      AppSnackbar.error(
+        context,
+        provider.errorForProject(widget.projectId) ?? 'Có lỗi xảy ra',
+      );
     }
   }
 }
