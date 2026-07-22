@@ -51,7 +51,7 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
             Container(
               height: 200,
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF393939), width: 2),
+                border: Border.all(color: theme.colorScheme.outline, width: 2),
                 borderRadius: BorderRadius.circular(12),
                 color: theme.colorScheme.surface,
               ),

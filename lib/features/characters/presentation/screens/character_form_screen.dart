@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
@@ -208,16 +209,16 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle,
                         size: 14,
-                        color: Colors.green,
+                        color: context.appColors.success,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Hồ sơ diễn viên đã được liên kết',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.green,
+                          color: context.appColors.success,
                         ),
                       ),
                     ],
@@ -253,12 +254,12 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                 FilledButton.icon(
                   onPressed: (_saving || _uploadingImage) ? null : _save,
                   icon: _saving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.black,
+                            color: theme.colorScheme.onPrimary,
                           ),
                         )
                       : const Icon(Icons.save),
@@ -266,7 +267,7 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.black,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     textStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -303,7 +304,9 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
           Expanded(
             child: Text(
               _imageUploadError!,
-              style: theme.textTheme.labelSmall?.copyWith(color: Colors.red),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: context.appColors.danger,
+              ),
             ),
           ),
           TextButton.icon(
@@ -316,11 +319,13 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
     }
     return Row(
       children: [
-        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+        Icon(Icons.check_circle, size: 16, color: context.appColors.success),
         const SizedBox(width: 6),
         Text(
           'Ảnh đã được tải lên',
-          style: theme.textTheme.labelSmall?.copyWith(color: Colors.green),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: context.appColors.success,
+          ),
         ),
       ],
     );
@@ -464,13 +469,16 @@ class _ImageUploadSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final approved = castingStatus == 'Đã duyệt';
+    final statusColor = approved
+        ? context.appColors.success
+        : context.appColors.warning;
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: 200,
         width: double.infinity,
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFF393939)),
+          border: Border.all(color: theme.colorScheme.outline),
           color: theme.colorScheme.surface,
         ),
         child: Stack(
@@ -492,29 +500,21 @@ class _ImageUploadSection extends StatelessWidget {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: (approved ? Colors.green : Colors.amber).withValues(
-                      alpha: 0.15,
-                    ),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: approved ? Colors.green : Colors.amber,
-                    ),
+                    border: Border.all(color: statusColor),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 14,
-                        color: approved ? Colors.green : Colors.amber,
-                      ),
+                      Icon(Icons.check_circle, size: 14, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
                         castingStatus!,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: approved ? Colors.green : Colors.amber,
+                          color: statusColor,
                         ),
                       ),
                     ],
@@ -537,15 +537,19 @@ class _ImageUploadSection extends StatelessWidget {
                       color: theme.colorScheme.primary,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.camera_alt, size: 18, color: Colors.black),
-                        SizedBox(width: 8),
+                        Icon(
+                          Icons.camera_alt,
+                          size: 18,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           'THAY ĐỔI ẢNH',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: theme.colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                             letterSpacing: 0.5,
@@ -609,7 +613,9 @@ class _AppearsInScenesSection extends StatelessWidget {
     if (scenes.isEmpty) {
       return Text(
         'Nhân vật chưa được gán vào cảnh nào.',
-        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: context.appColors.textFaint,
+        ),
       );
     }
     return SingleChildScrollView(
@@ -624,8 +630,8 @@ class _AppearsInScenesSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: const Border.fromBorderSide(
-                  BorderSide(color: Color(0xFF393939)),
+                border: Border.fromBorderSide(
+                  BorderSide(color: theme.colorScheme.outline),
                 ),
               ),
               child: Column(

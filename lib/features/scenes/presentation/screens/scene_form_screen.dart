@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
@@ -143,22 +144,22 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF252525),
+                  color: context.appColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF333333)),
+                  border: Border.all(color: theme.colorScheme.outline),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.info_outline,
                       size: 16,
-                      color: Color(0xFFFF571A),
+                      color: theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Thuộc tính bối cảnh: ${_setting.fullLabel} · ${_timeOfDay.fullLabel}',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: context.appColors.textMuted,
                         fontSize: 12,
                       ),
                     ),
@@ -187,13 +188,13 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
                   labelStyle: TextStyle(
                     color: selected
                         ? theme.colorScheme.primary
-                        : Colors.white70,
+                        : context.appColors.textMuted,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                   side: BorderSide(
                     color: selected
                         ? theme.colorScheme.primary
-                        : const Color(0xFF393939),
+                        : theme.colorScheme.outline,
                     width: selected ? 1.5 : 1,
                   ),
                   onSelected: (v) => setState(() {
@@ -253,36 +254,49 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     if (_isEditing) {
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.amber),
-              SizedBox(width: 8),
-              Text(
-                'Cảnh báo thay đổi Lịch quay',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+        builder: (context) {
+          final dialogTheme = Theme.of(context);
+          final dialogAppColors = context.appColors;
+          return AlertDialog(
+            backgroundColor: dialogTheme.colorScheme.surface,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: dialogAppColors.warning,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Cảnh báo thay đổi Lịch quay',
+                  style: TextStyle(
+                    color: dialogTheme.colorScheme.onSurface,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'Việc chỉnh sửa thông tin phân cảnh (số cảnh, bối cảnh, nhân vật) sẽ làm thay đổi lịch bấm máy của toàn bộ đoàn phim.\n\nBạn có chắc chắn muốn cập nhật không?',
+              style: TextStyle(color: dialogAppColors.textFaint),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Hủy',
+                  style: TextStyle(color: dialogAppColors.textFaint),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Xác nhận lưu',
+                  style: TextStyle(color: dialogTheme.colorScheme.primary),
+                ),
               ),
             ],
-          ),
-          content: const Text(
-            'Việc chỉnh sửa thông tin phân cảnh (số cảnh, bối cảnh, nhân vật) sẽ làm thay đổi lịch bấm máy của toàn bộ đoàn phim.\n\nBạn có chắc chắn muốn cập nhật không?',
-            style: TextStyle(color: Colors.grey),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text(
-                'Xác nhận lưu',
-                style: TextStyle(color: Color(0xFFFF571A)),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       );
       if (confirm != true) return;
     }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/core/utils/date_only.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
@@ -260,7 +261,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                     height: 240,
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: const Color(0xFF393939),
+                        color: theme.colorScheme.outline,
                         width: 2,
                       ),
                       borderRadius: BorderRadius.circular(12),
@@ -391,7 +392,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                                 border: Border.all(
-                                  color: const Color(0xFF393939),
+                                  color: theme.colorScheme.outline,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -405,10 +406,10 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                                         : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
                                   ),
-                                  const Icon(
+                                  Icon(
                                     Icons.calendar_today,
                                     size: 16,
-                                    color: Colors.grey,
+                                    color: context.appColors.textFaint,
                                   ),
                                 ],
                               ),
@@ -434,7 +435,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                                 border: Border.all(
-                                  color: const Color(0xFF393939),
+                                  color: theme.colorScheme.outline,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -448,10 +449,10 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                                         : 'Chọn ngày',
                                     style: theme.textTheme.bodyMedium,
                                   ),
-                                  const Icon(
+                                  Icon(
                                     Icons.event,
                                     size: 16,
-                                    color: Colors.grey,
+                                    color: context.appColors.textFaint,
                                   ),
                                 ],
                               ),
@@ -504,12 +505,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 FilledButton.icon(
                   onPressed: (_saving || _uploadingPoster) ? null : _save,
                   icon: _saving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.black,
+                            color: theme.colorScheme.onPrimary,
                           ),
                         )
                       : const Icon(Icons.save),
@@ -517,7 +518,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.black,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     textStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -554,7 +555,9 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
           Expanded(
             child: Text(
               _posterUploadError!,
-              style: theme.textTheme.labelSmall?.copyWith(color: Colors.red),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: context.appColors.danger,
+              ),
             ),
           ),
           TextButton.icon(
@@ -567,11 +570,13 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     }
     return Row(
       children: [
-        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+        Icon(Icons.check_circle, size: 16, color: context.appColors.success),
         const SizedBox(width: 6),
         Text(
           'Ảnh đã được tải lên',
-          style: theme.textTheme.labelSmall?.copyWith(color: Colors.green),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: context.appColors.success,
+          ),
         ),
       ],
     );

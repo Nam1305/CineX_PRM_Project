@@ -4,6 +4,8 @@ import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_list_screen.dart';
 import 'package:cinex_application/core/connectivity/network_status_provider.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
+import 'package:cinex_application/core/theme/theme_provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -40,19 +42,26 @@ class _MainScreenState extends State<MainScreen> {
           Consumer<NetworkStatusProvider>(
             builder: (context, network, _) {
               if (!network.isOffline) return const SizedBox.shrink();
+              final warning = context.appColors.warning;
               return Container(
                 width: double.infinity,
-                color: Colors.orange.shade800,
+                color: warning,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
-                child: const SafeArea(
+                child: SafeArea(
                   top: false,
                   bottom: false,
                   child: Text(
                     'Đang offline: chỉ xem, lọc và xuất dữ liệu đã lưu. Các thay đổi cần kết nối mạng.',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(
+                      color: ThemeData.estimateBrightnessForColor(warning) ==
+                              Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               );
@@ -91,71 +100,113 @@ class _ProfilePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appColors = context.appColors;
     final auth = context.watch<AuthProvider>();
+    final currentMode = context.watch<ThemeProvider>().themeMode;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Hồ sơ cá nhân'), centerTitle: true),
       body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.15,
-                ),
-                child: Icon(
-                  Icons.person,
-                  size: 48,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                auth.fullName ?? 'Người dùng',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '@${auth.username}',
-                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 6),
-              Chip(
-                label: Text(
-                  auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+        child: SingleChildScrollView(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.15,
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    size: 48,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
-                backgroundColor: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.logout),
-                  label: const Text('ĐĂNG XUẤT'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 24),
+                Text(
+                  auth.fullName ?? 'Người dùng',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '@${auth.username}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: appColors.textFaint,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Chip(
+                  label: Text(
+                    auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimary,
                     ),
                   ),
-                  onPressed: () => auth.logout(),
+                  backgroundColor: theme.colorScheme.primary,
                 ),
-              ),
-            ],
+                const SizedBox(height: 40),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Giao diện',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode_outlined),
+                      label: Text('Sáng'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode_outlined),
+                      label: Text('Tối'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.brightness_auto_outlined),
+                      label: Text('Hệ thống'),
+                    ),
+                  ],
+                  selected: {currentMode},
+                  onSelectionChanged: (selection) {
+                    context.read<ThemeProvider>().setThemeMode(
+                      selection.first,
+                    );
+                  },
+                ),
+                const SizedBox(height: 48),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.logout),
+                    label: const Text('ĐĂNG XUẤT'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: appColors.danger,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => auth.logout(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

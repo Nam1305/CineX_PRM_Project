@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class IntExtPieChart extends StatelessWidget {
   final List<Scene> scenes;
@@ -9,6 +10,8 @@ class IntExtPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
     final interior = scenes
         .where((s) => s.location?.setting.toString() == LocationSetting.interior.toString() || s.location?.setting.toString() == 'INT' || s.location?.setting.toString() == 'LocationSetting.interior')
         .length;
@@ -21,12 +24,12 @@ class IntExtPieChart extends StatelessWidget {
       return Container(
         height: 180,
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF2C2C2C)),
+          border: Border.all(color: appColors.surfaceElevated),
         ),
-        child: const Center(
-          child: Text('Chưa có bối cảnh', style: TextStyle(color: Colors.grey)),
+        child: Center(
+          child: Text('Chưa có bối cảnh', style: TextStyle(color: appColors.textFaint)),
         ),
       );
     }
@@ -38,9 +41,9 @@ class IntExtPieChart extends StatelessWidget {
       height: 220,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        border: Border.all(color: appColors.surfaceElevated),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,11 +51,11 @@ class IntExtPieChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Tỷ lệ Bối cảnh',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
               ),
-              const Icon(Icons.location_city, color: Color(0xFFFF571A), size: 20),
+              Icon(Icons.location_city, color: theme.colorScheme.primary, size: 20),
             ],
           ),
           const SizedBox(height: 16),
@@ -91,9 +94,9 @@ class IntExtPieChart extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLegend('NỘI (INT)', Colors.blue.shade600, interior),
+                      _buildLegend(theme, 'NỘI (INT)', Colors.blue.shade600, interior),
                       const SizedBox(height: 12),
-                      _buildLegend('NGOẠI (EXT)', Colors.orange.shade700, exterior),
+                      _buildLegend(theme, 'NGOẠI (EXT)', Colors.orange.shade700, exterior),
                     ],
                   ),
                 ),
@@ -105,7 +108,8 @@ class IntExtPieChart extends StatelessWidget {
     );
   }
 
-  Widget _buildLegend(String title, Color color, int value) {
+  Widget _buildLegend(ThemeData theme, String title, Color color, int value) {
+    final appColors = theme.extension<AppColors>()!;
     return Row(
       children: [
         Container(
@@ -119,11 +123,11 @@ class IntExtPieChart extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'JetBrains Mono'),
+              style: TextStyle(fontSize: 10, color: appColors.textFaint, fontFamily: 'JetBrains Mono'),
             ),
             Text(
               '$value cảnh',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
             ),
           ],
         ),

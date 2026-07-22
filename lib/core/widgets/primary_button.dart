@@ -27,12 +27,12 @@ class PrimaryButton extends StatelessWidget {
               backgroundColor: theme.colorScheme.primary,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            child: const SizedBox(
+            child: SizedBox(
               height: 20,
               width: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
+                valueColor: AlwaysStoppedAnimation(theme.colorScheme.onPrimary),
               ),
             ),
           )

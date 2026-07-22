@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class PaginationBar extends StatelessWidget {
   final int currentPage;
@@ -19,6 +20,7 @@ class PaginationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appColors = context.appColors;
     if (totalPages <= 1) return const SizedBox.shrink();
 
     final int startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -26,9 +28,9 @@ class PaginationBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: Color(0xFF2E2E2E), width: 1),
+          top: BorderSide(color: theme.colorScheme.outline, width: 1),
         ),
       ),
       child: Row(
@@ -36,7 +38,7 @@ class PaginationBar extends StatelessWidget {
           Flexible(
             child: Text(
               'Hiển thị $startItem - $endItem / $totalItems',
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+              style: theme.textTheme.bodySmall?.copyWith(color: appColors.textFaint),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -57,15 +59,15 @@ class PaginationBar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
-                  border: Border.all(color: const Color(0xFF2C2C2C)),
+                  color: theme.colorScheme.surface,
+                  border: Border.all(color: theme.colorScheme.outline),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   '$currentPage/$totalPages',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),

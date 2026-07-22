@@ -11,6 +11,7 @@ import 'package:cinex_application/core/utils/date_only.dart';
 import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/widgets/section_card.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_form_screen.dart';
 import 'package:cinex_application/features/production/presentation/screens/project_production_screen.dart';
@@ -205,29 +206,30 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   void _showExportOptions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1B1B),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
+        final theme = Theme.of(context);
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
                   'XUẤT TÀI LIỆU PDF',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: theme.colorScheme.onSurface,
                     letterSpacing: 0.5,
                   ),
                 ),
               ),
-              const Divider(color: Color(0xFF393939), height: 1),
+              Divider(color: theme.colorScheme.outline, height: 1),
               ListTile(
-                leading: const Icon(Icons.menu_book, color: Color(0xFFFF571A)),
+                leading: Icon(Icons.menu_book, color: theme.colorScheme.primary),
                 title: const Text('Xuất kịch bản phân cảnh đầy đủ'),
                 subtitle: const Text(
                   'Bao gồm thông tin dự án, danh sách nhân vật & nội dung các phân cảnh theo thời gian',
@@ -242,11 +244,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   );
                 },
               ),
-              const Divider(color: Color(0xFF393939), height: 1),
+              Divider(color: theme.colorScheme.outline, height: 1),
               ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.analytics_outlined,
-                  color: Colors.blue,
+                  color: context.appColors.info,
                 ),
                 title: const Text('Xuất báo cáo tiến độ sản xuất'),
                 subtitle: const Text(
@@ -479,9 +481,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         IconButton(
-                                          icon: const Icon(
+                                          icon: Icon(
                                             Icons.delete,
-                                            color: Colors.redAccent,
+                                            color: context.appColors.danger,
                                           ),
                                           onPressed: _deleteProject,
                                           tooltip: 'Xóa dự án',
@@ -635,9 +637,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C1B1B),
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF2C2C2C)),
+                          border: Border.all(
+                            color: context.appColors.surfaceElevated,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,9 +739,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2C2C2C)),
+            border: Border.all(color: context.appColors.surfaceElevated),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,12 +752,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Tiến Độ Sản Xuất',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -779,7 +783,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 child: LinearProgressIndicator(
                   value: _dynamicProgress,
                   minHeight: 8,
-                  backgroundColor: const Color(0xFF353534),
+                  backgroundColor: context.appColors.surfaceElevated,
                   valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
                 ),
               ),
@@ -790,21 +794,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     child: _buildSubCount(
                       'HOÀN THÀNH',
                       '$_doneScenes Cảnh',
-                      const Color(0xFF51CF66),
+                      context.appColors.success,
                     ),
                   ),
                   Expanded(
                     child: _buildSubCount(
                       'ĐANG QUAY',
                       '$_inProgressScenes Cảnh',
-                      const Color(0xFFFFD43B),
+                      context.appColors.warning,
                     ),
                   ),
                   Expanded(
                     child: _buildSubCount(
                       'CÒN LẠI',
                       '$_todoScenes Cảnh',
-                      const Color(0xFF9E9E9E),
+                      context.appColors.textFaint,
                     ),
                   ),
                 ],
@@ -823,7 +827,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   'NHÂN VẬT',
                   '$_characterCount',
                   Icons.groups,
-                  Colors.blue,
+                  context.appColors.info,
                 ),
               ),
               const SizedBox(width: 12),
@@ -841,7 +845,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   'HỒI',
                   '$_actCount',
                   Icons.layers,
-                  Colors.orange,
+                  context.appColors.warning,
                 ),
               ),
               const SizedBox(width: 12),
@@ -850,7 +854,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   'BỐI CẢNH',
                   '$_locationCount',
                   Icons.location_on,
-                  Colors.green,
+                  context.appColors.success,
                 ),
               ),
             ],
@@ -865,7 +869,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       'NHÂN VẬT',
                       '$_characterCount',
                       Icons.groups,
-                      Colors.blue,
+                      context.appColors.info,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -887,7 +891,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       'HỒI',
                       '$_actCount',
                       Icons.layers,
-                      Colors.orange,
+                      context.appColors.warning,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -896,7 +900,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       'BỐI CẢNH',
                       '$_locationCount',
                       Icons.location_on,
-                      Colors.green,
+                      context.appColors.success,
                     ),
                   ),
                 ],
@@ -913,9 +917,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: Colors.grey,
+            color: context.appColors.textFaint,
             fontFamily: 'JetBrains Mono',
           ),
         ),
@@ -938,12 +942,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     IconData icon,
     Color color,
   ) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        border: Border.all(color: context.appColors.surfaceElevated),
       ),
       child: Row(
         children: [
@@ -961,19 +966,19 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey,
+                  color: context.appColors.textFaint,
                   fontFamily: 'JetBrains Mono',
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -986,9 +991,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget _buildActionGrid(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        border: Border.all(color: context.appColors.surfaceElevated),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
@@ -1097,7 +1102,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     return Container(
       height: 32,
       width: 1,
-      color: const Color(0xFF2C2C2C),
+      color: context.appColors.surfaceElevated,
       margin: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
@@ -1145,7 +1150,7 @@ class _MetadataCard extends StatelessWidget {
                   Text(
                     label,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.grey,
+                      color: context.appColors.textFaint,
                       fontSize: 10,
                     ),
                   ),
@@ -1204,7 +1209,9 @@ class _ToolbarItem extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.9,
+                        ),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1224,7 +1231,9 @@ class _ToolbarItem extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 9,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.9,
+                        ),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1250,15 +1259,16 @@ class _ActProgressItem extends StatelessWidget {
   });
 
   Color _getStatusColor() {
+    final appColors = theme.extension<AppColors>()!;
     switch (status) {
       case 'DONE':
-        return const Color(0xFF51CF66);
+        return appColors.success;
       case 'IN_PROGRESS':
-        return const Color(0xFFFFD43B);
+        return appColors.warning;
       case 'WAITING':
-        return const Color(0xFF9E9E9E);
+        return appColors.textFaint;
       default:
-        return Colors.grey;
+        return appColors.textFaint;
     }
   }
 

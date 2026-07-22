@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -69,13 +70,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Color _getActionColor(NotificationActionType type) {
     switch (type) {
       case NotificationActionType.create:
-        return Colors.greenAccent;
+        return context.appColors.success;
       case NotificationActionType.update:
-        return Colors.lightBlueAccent;
+        return context.appColors.info;
       case NotificationActionType.delete:
-        return Colors.redAccent;
+        return context.appColors.danger;
       case NotificationActionType.statusChange:
-        return const Color(0xFFFF571A);
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -83,11 +84,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationProvider>();
     final groupedMap = provider.groupedByProject;
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF131313),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C1B1B),
+        backgroundColor: theme.colorScheme.surface,
         title: Row(
           children: [
             const Text('Thông báo'),
@@ -96,13 +99,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF571A),
+                  color: theme.colorScheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${provider.unreadCount} mới',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -115,28 +118,30 @@ class _NotificationScreenState extends State<NotificationScreen> {
           if (provider.unreadCount > 0)
             TextButton.icon(
               onPressed: () => _markAllAsRead(provider),
-              icon: const Icon(
+              icon: Icon(
                 Icons.done_all,
                 size: 16,
-                color: Color(0xFFFF571A),
+                color: theme.colorScheme.primary,
               ),
-              label: const Text(
+              label: Text(
                 'Đọc tất cả',
-                style: TextStyle(color: Color(0xFFFF571A), fontSize: 12),
+                style: TextStyle(color: theme.colorScheme.primary, fontSize: 12),
               ),
             ),
         ],
       ),
       body: provider.isLoading && groupedMap.isEmpty
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF571A)),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  theme.colorScheme.primary,
+                ),
               ),
             )
           : RefreshIndicator(
               onRefresh: () => provider.loadNotifications(),
-              color: const Color(0xFFFF571A),
-              backgroundColor: const Color(0xFF1E1E1E),
+              color: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.surface,
               child: groupedMap.isEmpty
                   ? ListView(
                       children: [
@@ -145,18 +150,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.notifications_none,
                                 size: 64,
-                                color: Colors.grey,
+                                color: appColors.textFaint,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 provider.error ?? 'Không có thông báo nào',
                                 style: TextStyle(
                                   color: provider.error == null
-                                      ? Colors.grey
-                                      : Colors.orangeAccent,
+                                      ? appColors.textFaint
+                                      : appColors.warning,
                                   fontSize: 16,
                                 ),
                                 textAlign: TextAlign.center,
@@ -178,24 +183,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
-                          color: const Color(0xFF1E1E1E),
+                          color: theme.colorScheme.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFF2C2C2C)),
+                            side: BorderSide(color: appColors.surfaceElevated),
                           ),
                           child: ExpansionTile(
                             initiallyExpanded: true,
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFF571A,
-                                ).withValues(alpha: 0.15),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.movie_outlined,
-                                color: Color(0xFFFF571A),
+                                color: theme.colorScheme.primary,
                                 size: 20,
                               ),
                             ),
@@ -204,8 +209,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 Expanded(
                                   child: Text(
                                     projectTitle,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
                                     ),
@@ -218,13 +223,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFFF571A),
+                                      color: theme.colorScheme.primary,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
                                       '$unreadInProj chưa đọc',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onSurface,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -240,12 +245,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   decoration: BoxDecoration(
                                     color: n.isRead
                                         ? Colors.transparent
-                                        : const Color(
-                                            0xFFFF571A,
-                                          ).withValues(alpha: 0.05),
-                                    border: const Border(
+                                        : theme.colorScheme.primary.withValues(
+                                            alpha: 0.05,
+                                          ),
+                                    border: Border(
                                       top: BorderSide(
-                                        color: Color(0xFF2C2C2C),
+                                        color: appColors.surfaceElevated,
                                         width: 0.5,
                                       ),
                                     ),
@@ -275,8 +280,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                                     n.title,
                                                     style: TextStyle(
                                                       color: n.isRead
-                                                          ? Colors.white70
-                                                          : Colors.white,
+                                                          ? appColors.textMuted
+                                                          : theme
+                                                                .colorScheme
+                                                                .onSurface,
                                                       fontWeight: n.isRead
                                                           ? FontWeight.normal
                                                           : FontWeight.bold,
@@ -286,8 +293,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                                 ),
                                                 Text(
                                                   _formatTimeAgo(n.timestamp),
-                                                  style: const TextStyle(
-                                                    color: Colors.grey,
+                                                  style: TextStyle(
+                                                    color: appColors.textFaint,
                                                     fontSize: 10,
                                                   ),
                                                 ),
@@ -298,8 +305,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                               n.body,
                                               style: TextStyle(
                                                 color: n.isRead
-                                                    ? Colors.grey
-                                                    : Colors.grey.shade300,
+                                                    ? appColors.textFaint
+                                                    : appColors.textMuted,
                                                 fontSize: 12,
                                                 height: 1.3,
                                               ),
@@ -312,8 +319,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                         Container(
                                           width: 8,
                                           height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFFF571A),
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.primary,
                                             shape: BoxShape.circle,
                                           ),
                                         ),

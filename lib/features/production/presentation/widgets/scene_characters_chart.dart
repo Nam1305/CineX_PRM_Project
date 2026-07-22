@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class SceneCharactersChart extends StatelessWidget {
   final List<Scene> scenes;
@@ -12,6 +13,8 @@ class SceneCharactersChart extends StatelessWidget {
     if (scenes.isEmpty) {
       return const SizedBox.shrink();
     }
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
 
     // Sắp xếp các cảnh theo số phân cảnh để biểu đồ tuần tự khoa học
     final sortedScenes = List<Scene>.from(scenes)
@@ -31,19 +34,19 @@ class SceneCharactersChart extends StatelessWidget {
       height: 280,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        border: Border.all(color: appColors.surfaceElevated),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Số lượng Nhân vật theo Phân cảnh',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 16),
@@ -70,7 +73,7 @@ class SceneCharactersChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxY,
-                          color: const Color(0xFF2A2A2A),
+                          color: appColors.surfaceElevated,
                         ),
                       ),
                     ],
@@ -91,9 +94,9 @@ class SceneCharactersChart extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             'Cảnh $sceneNum',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.grey,
+                              color: appColors.textFaint,
                             ),
                           ),
                         );
@@ -109,9 +112,9 @@ class SceneCharactersChart extends StatelessWidget {
                         if (value == value.roundToDouble() && value >= 0) {
                           return Text(
                             value.toInt().toString(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey,
+                              color: appColors.textFaint,
                             ),
                           );
                         }
@@ -130,13 +133,13 @@ class SceneCharactersChart extends StatelessWidget {
                   show: true,
                   horizontalInterval: 1,
                   getDrawingHorizontalLine: (value) =>
-                      FlLine(color: const Color(0xFF2A2A2A), strokeWidth: 0.5),
+                      FlLine(color: appColors.surfaceElevated, strokeWidth: 0.5),
                   drawVerticalLine: false,
                 ),
                 borderData: FlBorderData(show: false),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => const Color(0xFF2A2A2A),
+                    getTooltipColor: (_) => appColors.surfaceElevated,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final scene = displayScenes[groupIndex];
                       final charList = scene.characters
@@ -144,16 +147,16 @@ class SceneCharactersChart extends StatelessWidget {
                           .join(', ');
                       return BarTooltipItem(
                         'Cảnh ${scene.sceneNumber}\n',
-                        const TextStyle(
-                          color: Colors.white,
+                        TextStyle(
+                          color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
                         children: [
                           TextSpan(
                             text: '${rod.toY.toInt()} nhân vật\n',
-                            style: const TextStyle(
-                              color: Colors.blueAccent,
+                            style: TextStyle(
+                              color: appColors.info,
                               fontSize: 10,
                             ),
                           ),
@@ -161,8 +164,8 @@ class SceneCharactersChart extends StatelessWidget {
                             text: charList.isNotEmpty
                                 ? '($charList)'
                                 : '(Trống)',
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: appColors.textFaint,
                               fontSize: 9,
                             ),
                           ),

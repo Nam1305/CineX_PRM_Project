@@ -7,6 +7,7 @@ import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class ShootingDayGroup extends StatefulWidget {
   final String locationLabel;
@@ -39,11 +40,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     final auth = context.read<AuthProvider>();
     if (!auth.isProducer) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
             'Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi lịch quay.',
           ),
-          backgroundColor: Colors.amber,
+          backgroundColor: context.appColors.warning,
         ),
       );
       return;
@@ -91,13 +92,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       cancelText: 'Hủy',
       confirmText: 'Lưu',
       builder: (context, child) {
+        final pickerTheme = Theme.of(context);
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFF571A),
-              onPrimary: Colors.white,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
+          data: pickerTheme.copyWith(
+            colorScheme: pickerTheme.colorScheme.copyWith(
+              onPrimary: pickerTheme.colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -114,9 +113,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       );
       if (selectedMidnight.isBefore(todayMidnight)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ngày quay không được ở trong quá khứ!'),
-            backgroundColor: Colors.redAccent,
+          SnackBar(
+            content: const Text('Ngày quay không được ở trong quá khứ!'),
+            backgroundColor: context.appColors.danger,
           ),
         );
         return;
@@ -136,7 +135,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
             content: Text(
               'Ngày chọn không được trước ngày bắt đầu dự án (${DateFormat('dd/MM/yyyy').format(baseStartDate)})',
             ),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: context.appColors.danger,
           ),
         );
         return;
@@ -150,7 +149,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
             content: Text(
               'Ngày chọn không được sau ngày kết thúc dự án (${DateFormat('dd/MM/yyyy').format(baseEndDate)})',
             ),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: context.appColors.danger,
           ),
         );
         return;
@@ -169,7 +168,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
             content: Text(
               'Ngày ${DateFormat('dd/MM/yyyy').format(selected)} đã được gán cho bối cảnh khác! Vui lòng chọn ngày khác.',
             ),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: context.appColors.danger,
           ),
         );
         return;
@@ -185,7 +184,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(provider.error ?? 'Không thể cập nhật ngày quay.'),
-              backgroundColor: Colors.redAccent,
+              backgroundColor: context.appColors.danger,
             ),
           );
         }
@@ -201,11 +200,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
           actionType: NotificationActionType.update,
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+          SnackBar(
+            content: const Text(
               'Đã cập nhật ngày quay thành công! Danh sách ngày quay đã được sắp xếp theo thời gian.',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: context.appColors.success,
           ),
         );
       }
@@ -216,11 +215,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     final auth = context.read<AuthProvider>();
     if (!auth.isProducer) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
             'Chỉ Nhà sản xuất / Trợ lý đạo diễn mới có quyền thay đổi trạng thái lịch quay.',
           ),
-          backgroundColor: Colors.amber,
+          backgroundColor: context.appColors.warning,
         ),
       );
       return;
@@ -229,26 +228,30 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     if (s.status != SceneStatus.done) {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text(
-            'Kịch bản chưa hoàn thành',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: const Text(
-            'Phân cảnh này chưa hoàn thành viết kịch bản. Vui lòng cập nhật trạng thái kịch bản sang "Đã xong" trong tab Storyboard trước khi bắt đầu quay.',
-            style: TextStyle(color: Colors.grey),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Đóng',
-                style: TextStyle(color: Color(0xFFFF571A)),
-              ),
+        builder: (context) {
+          final theme = Theme.of(context);
+          final appColors = context.appColors;
+          return AlertDialog(
+            backgroundColor: theme.colorScheme.surface,
+            title: Text(
+              'Kịch bản chưa hoàn thành',
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
-          ],
-        ),
+            content: Text(
+              'Phân cảnh này chưa hoàn thành viết kịch bản. Vui lòng cập nhật trạng thái kịch bản sang "Đã xong" trong tab Storyboard trước khi bắt đầu quay.',
+              style: TextStyle(color: appColors.textFaint),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Đóng',
+                  style: TextStyle(color: theme.colorScheme.primary),
+                ),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -258,33 +261,36 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
 
     final selected = await showDialog<SceneStatus>(
       context: context,
-      builder: (context) => SimpleDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          'Trạng thái quay - Cảnh ${s.sceneNumber}',
-          style: const TextStyle(color: Colors.white),
-        ),
-        children: [
-          _statusOption(
-            context,
-            SceneStatus.todo,
-            'Chờ quay',
-            currentStatus == SceneStatus.todo,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return SimpleDialog(
+          backgroundColor: theme.colorScheme.surface,
+          title: Text(
+            'Trạng thái quay - Cảnh ${s.sceneNumber}',
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
-          _statusOption(
-            context,
-            SceneStatus.inProgress,
-            'Đang quay',
-            currentStatus == SceneStatus.inProgress,
-          ),
-          _statusOption(
-            context,
-            SceneStatus.done,
-            'Đã quay xong',
-            currentStatus == SceneStatus.done,
-          ),
-        ],
-      ),
+          children: [
+            _statusOption(
+              context,
+              SceneStatus.todo,
+              'Chờ quay',
+              currentStatus == SceneStatus.todo,
+            ),
+            _statusOption(
+              context,
+              SceneStatus.inProgress,
+              'Đang quay',
+              currentStatus == SceneStatus.inProgress,
+            ),
+            _statusOption(
+              context,
+              SceneStatus.done,
+              'Đã quay xong',
+              currentStatus == SceneStatus.done,
+            ),
+          ],
+        );
+      },
     );
 
     if (selected != null && s.id != null && context.mounted) {
@@ -300,7 +306,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
               content: Text(
                 provider.error ?? 'Không thể cập nhật trạng thái quay.',
               ),
-              backgroundColor: Colors.redAccent,
+              backgroundColor: context.appColors.danger,
             ),
           );
         }
@@ -320,7 +326,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
             content: Text(
               'Đã cập nhật trạng thái quay sang: ${selected.shootingLabel}',
             ),
-            backgroundColor: const Color(0xFF51CF66),
+            backgroundColor: context.appColors.success,
           ),
         );
       }
@@ -333,6 +339,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
     String label,
     bool isSelected,
   ) {
+    final theme = Theme.of(context);
     return SimpleDialogOption(
       onPressed: () => Navigator.pop(context, value),
       child: Row(
@@ -341,12 +348,14 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? const Color(0xFFFF571A) : Colors.white,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           if (isSelected)
-            const Icon(Icons.check, color: Color(0xFFFF571A), size: 18),
+            Icon(Icons.check, color: theme.colorScheme.primary, size: 18),
         ],
       ),
     );
@@ -356,14 +365,16 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
   Widget build(BuildContext context) {
     if (widget.scenes.isEmpty) return const SizedBox.shrink();
 
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
     final groupMode = context.watch<ProductionProvider>().groupMode;
     final isByCharacter = groupMode == ProductionGroupMode.byCharacter;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        color: theme.colorScheme.surface,
+        border: Border.all(color: appColors.surfaceElevated),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -379,13 +390,13 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A),
+                color: appColors.surfaceElevated,
                 borderRadius: BorderRadius.vertical(
                   top: const Radius.circular(12),
                   bottom: _isExpanded ? Radius.zero : const Radius.circular(12),
                 ),
-                border: const Border(
-                  bottom: BorderSide(color: Color(0xFF2C2C2C)),
+                border: Border(
+                  bottom: BorderSide(color: appColors.surfaceElevated),
                 ),
               ),
               child: Row(
@@ -404,11 +415,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFF571A,
-                                ).withValues(alpha: 0.15),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.15,
+                                ),
                                 border: Border.all(
-                                  color: const Color(0xFFFF571A),
+                                  color: theme.colorScheme.primary,
                                   width: 1,
                                 ),
                                 borderRadius: BorderRadius.circular(4),
@@ -420,8 +431,8 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                     widget.shootingDate != null
                                         ? 'NGÀY ${widget.dayNumber} · ${DateFormat('dd/MM').format(widget.shootingDate!)}'
                                         : 'CHƯA XẾP NGÀY',
-                                    style: const TextStyle(
-                                      color: Color(0xFFFF571A),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -430,9 +441,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                       .watch<AuthProvider>()
                                       .isProducer) ...[
                                     const SizedBox(width: 4),
-                                    const Icon(
+                                    Icon(
                                       Icons.edit_calendar,
-                                      color: Color(0xFFFF571A),
+                                      color: theme.colorScheme.primary,
                                       size: 12,
                                     ),
                                   ],
@@ -447,23 +458,23 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.15),
-                              border: Border.all(color: Colors.blue, width: 1),
+                              color: appColors.info.withValues(alpha: 0.15),
+                              border: Border.all(color: appColors.info, width: 1),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.person_outline,
-                                  color: Colors.blue,
+                                  color: appColors.info,
                                   size: 12,
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
                                   'DIỄN VIÊN',
                                   style: TextStyle(
-                                    color: Colors.blue,
+                                    color: appColors.info,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -475,11 +486,11 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                         Expanded(
                           child: Text(
                             widget.locationLabel.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
-                              color: Colors.white,
+                              color: theme.colorScheme.onSurface,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -493,15 +504,15 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                     children: [
                       Text(
                         '${widget.scenes.length} cảnh',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFFE6BEB2),
+                          color: appColors.textMuted,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Icon(
                         _isExpanded ? Icons.expand_less : Icons.expand_more,
-                        color: Colors.grey,
+                        color: appColors.textFaint,
                         size: 18,
                       ),
                     ],
@@ -518,7 +529,7 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: widget.scenes.length,
               separatorBuilder: (context, index) =>
-                  const Divider(color: Color(0xFF2C2C2C), height: 1),
+                  Divider(color: appColors.surfaceElevated, height: 1),
               itemBuilder: (context, index) {
                 final s = widget.scenes[index];
                 final provider = context.watch<ProductionProvider>();
@@ -530,21 +541,21 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
 
                 if (s.status != SceneStatus.done) {
                   displayLabel = 'Chờ viết';
-                  badgeColor = Colors.grey.withAlpha(25);
-                  textColor = Colors.grey;
+                  badgeColor = appColors.textFaint.withAlpha(25);
+                  textColor = appColors.textFaint;
                 } else {
                   if (shootingStatus == SceneStatus.todo) {
                     displayLabel = 'Chờ quay';
-                    badgeColor = Colors.grey.withAlpha(25);
-                    textColor = Colors.grey;
+                    badgeColor = appColors.textFaint.withAlpha(25);
+                    textColor = appColors.textFaint;
                   } else if (shootingStatus == SceneStatus.inProgress) {
                     displayLabel = 'Đang quay';
-                    badgeColor = Colors.amber.withAlpha(25);
-                    textColor = Colors.amber;
+                    badgeColor = appColors.warning.withAlpha(25);
+                    textColor = appColors.warning;
                   } else {
                     displayLabel = 'Đã quay xong';
-                    badgeColor = Colors.green.withAlpha(25);
-                    textColor = Colors.green;
+                    badgeColor = appColors.success.withAlpha(25);
+                    textColor = appColors.success;
                   }
                 }
 
@@ -557,28 +568,28 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                       Container(
                         width: 60,
                         padding: const EdgeInsets.only(right: 16),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           border: Border(
-                            right: BorderSide(color: Color(0xFF2C2C2C)),
+                            right: BorderSide(color: appColors.surfaceElevated),
                           ),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
+                            Text(
                               'CẢNH',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.grey,
+                                color: appColors.textFaint,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               s.sceneNumber.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFFFF571A),
+                                color: theme.colorScheme.primary,
                               ),
                             ),
                           ],
@@ -600,10 +611,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                         (s.title.isNotEmpty
                                             ? s.title
                                             : 'Chưa có tiêu đề'),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -742,10 +753,10 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                             if (s.characters.isNotEmpty)
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.groups,
                                     size: 14,
-                                    color: Colors.grey,
+                                    color: appColors.textFaint,
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
@@ -753,9 +764,9 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                                       s.characters
                                           .map((e) => e.name)
                                           .join(', '),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey,
+                                        color: appColors.textFaint,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -767,18 +778,18 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.location_on_outlined,
                                     size: 14,
-                                    color: Colors.grey,
+                                    color: appColors.textFaint,
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
                                       s.location?.name ?? 'Chưa có bối cảnh',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
-                                        color: Colors.grey,
+                                        color: appColors.textFaint,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,

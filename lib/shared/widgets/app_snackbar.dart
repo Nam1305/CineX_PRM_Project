@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class AppSnackbar {
   static void success(BuildContext context, String message) {
@@ -18,7 +19,7 @@ class AppSnackbar {
           content: Text(message),
           backgroundColor: isError
               ? Theme.of(context).colorScheme.error
-              : Colors.green.shade700,
+              : context.appColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
