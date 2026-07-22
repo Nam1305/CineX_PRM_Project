@@ -65,90 +65,114 @@ class _LocationsTabState extends State<LocationsTab> {
           }
 
           final startIndex = (_currentPage - 1) * _itemsPerPage;
-          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
-          final paginatedLocations = provider.locations.sublist(startIndex, endIndex);
+          final endIndex = startIndex + _itemsPerPage > totalItems
+              ? totalItems
+              : startIndex + _itemsPerPage;
+          final paginatedLocations = provider.locations.sublist(
+            startIndex,
+            endIndex,
+          );
 
           return Column(
-                children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: paginatedLocations.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final loc = paginatedLocations[i];
-                        return LocationTile(
-                          location: loc,
-                          isWritable: isWritable,
-                          onTap: () => _openForm(context, location: loc),
-                          onDelete: () async {
-                            final scenes = await ApiService().getScenesForProject(widget.projectId);
-                            final linkedScenes = scenes.where((s) => s.locationId == loc.id).toList();
-                            if (!context.mounted) return;
-
-                            if (linkedScenes.isNotEmpty) {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: const Color(0xFF1E1E1E),
-                                  title: const Row(
-                                    children: [
-                                      Icon(Icons.error_outline, color: Colors.redAccent),
-                                      SizedBox(width: 8),
-                                      Text('Không thể xóa bối cảnh', style: TextStyle(color: Colors.white, fontSize: 16)),
-                                    ],
-                                  ),
-                                  content: Text(
-                                    'Bối cảnh "${loc.name}" đang được sử dụng trong ${linkedScenes.length} phân cảnh kịch bản.\n\nBạn vui lòng thay đổi bối cảnh hoặc xóa các phân cảnh liên quan trước khi xóa bối cảnh địa lý này.',
-                                    style: const TextStyle(color: Colors.grey),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Đóng', style: TextStyle(color: Color(0xFFFF571A))),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              return;
-                            }
-
-                            final confirmed = await ConfirmDialog.show(
-                              context,
-                              title: 'Xoá bối cảnh',
-                              content: 'Xoá bối cảnh "${loc.name}"?',
-                            );
-                            if (confirmed) {
-                              final ok = await provider.removeLocation(loc.id!);
-                              if (ok && context.mounted) {
-                                context.read<NotificationProvider>().addNotification(
-                                      projectId: widget.projectId,
-                                      projectTitle: 'Dự án CineX #${widget.projectId}',
-                                      title: 'Xóa bối cảnh: ${loc.name}',
-                                      body: 'Bối cảnh "${loc.name}" (${loc.setting.fullLabel} - ${loc.timeOfDay.fullLabel}) đã bị xóa.',
-                                      actionType: NotificationActionType.delete,
-                                    );
-                                AppSnackbar.success(context, 'Đã xóa bối cảnh thành công');
-                              }
-                            }
-                          },
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: paginatedLocations.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
+                    final loc = paginatedLocations[i];
+                    return LocationTile(
+                      location: loc,
+                      isWritable: isWritable,
+                      onTap: () => _openForm(context, location: loc),
+                      onDelete: () async {
+                        final scenes = await ApiService().getScenesForProject(
+                          widget.projectId,
                         );
+                        final linkedScenes = scenes
+                            .where((s) => s.locationId == loc.id)
+                            .toList();
+                        if (!context.mounted) return;
+
+                        if (linkedScenes.isNotEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              backgroundColor: const Color(0xFF1E1E1E),
+                              title: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Không thể xóa bối cảnh',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              content: Text(
+                                'Bối cảnh "${loc.name}" đang được sử dụng trong ${linkedScenes.length} phân cảnh kịch bản.\n\nBạn vui lòng thay đổi bối cảnh hoặc xóa các phân cảnh liên quan trước khi xóa bối cảnh địa lý này.',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text(
+                                    'Đóng',
+                                    style: TextStyle(color: Color(0xFFFF571A)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+
+                        final confirmed = await ConfirmDialog.show(
+                          context,
+                          title: 'Xoá bối cảnh',
+                          content: 'Xoá bối cảnh "${loc.name}"?',
+                        );
+                        if (confirmed) {
+                          final ok = await provider.removeLocation(loc.id!);
+                          if (ok && context.mounted) {
+                            context.read<NotificationProvider>().addNotification(
+                              projectId: widget.projectId,
+                              title: 'Xóa bối cảnh: ${loc.name}',
+                              body:
+                                  'Bối cảnh "${loc.name}" (${loc.setting.fullLabel} - ${loc.timeOfDay.fullLabel}) đã bị xóa.',
+                              actionType: NotificationActionType.delete,
+                            );
+                            AppSnackbar.success(
+                              context,
+                              'Đã xóa bối cảnh thành công',
+                            );
+                          }
+                        }
                       },
-                    ),
-                  ),
-                  PaginationBar(
-                    currentPage: _currentPage,
-                    totalPages: totalPages,
-                    totalItems: totalItems,
-                    itemsPerPage: _itemsPerPage,
-                    onPageChanged: (page) {
-                      setState(() {
-                        _currentPage = page;
-                      });
-                    },
-                  ),
-                ],
-              );
+                    );
+                  },
+                ),
+              ),
+              PaginationBar(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                totalItems: totalItems,
+                itemsPerPage: _itemsPerPage,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+              ),
+            ],
+          );
         },
       ),
       floatingActionButton: isWritable
@@ -165,10 +189,8 @@ class _LocationsTabState extends State<LocationsTab> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => LocationFormScreen(
-          location: location,
-          projectId: widget.projectId,
-        ),
+        builder: (_) =>
+            LocationFormScreen(location: location, projectId: widget.projectId),
       ),
     );
   }

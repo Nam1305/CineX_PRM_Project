@@ -7,7 +7,6 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/core/utils/enums.dart';
-import 'package:cinex_application/data/mock_data.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/features/production/data/models/production_plan.dart';
@@ -674,9 +673,21 @@ class ApiService {
       if (response.statusCode == 201) {
         final createdJson = jsonDecode(response.body) as Map<String, dynamic>;
         final createdId = createdJson['Id'] ?? createdJson['id'];
-        return scene.copyWith(
-          id: createdId is int ? createdId : int.tryParse(createdId.toString()),
-        );
+        final parsedId = createdId is int
+            ? createdId
+            : int.tryParse(createdId.toString());
+        if (parsedId != null) {
+          final getUrl = Uri.parse(
+            '$baseUrl/Scenes($parsedId)?\$expand=Location,SceneCharacters(\$expand=Character)',
+          );
+          final getResponse = await _client.get(getUrl, headers: _headers);
+          if (getResponse.statusCode == 200) {
+            return _sceneFromJson(
+              jsonDecode(getResponse.body) as Map<String, dynamic>,
+            );
+          }
+        }
+        return scene.copyWith(id: parsedId);
       }
       throw _responseError(response.statusCode, response.body, 'Tạo cảnh');
     } catch (e) {
@@ -744,16 +755,16 @@ class ApiService {
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(response.body);
-        final acts = list.map((e) => Act.fromMap(e)).toList();
-        return acts.isNotEmpty
-            ? acts
-            : MockData.deletedActsForProject(projectId);
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list.map((item) => Act.fromMap(item)).toList();
       }
-      return MockData.deletedActsForProject(projectId);
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Tải danh sách hồi đã xóa',
+      );
     } catch (e) {
-      print('ApiService.getDeletedActs error: $e');
-      return MockData.deletedActsForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách hồi đã xóa');
     }
   }
 
@@ -763,16 +774,18 @@ class ApiService {
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(response.body);
-        final scenes = list.map((e) => _sceneFromJson(e)).toList();
-        return scenes.isNotEmpty
-            ? scenes
-            : MockData.deletedScenesForProject(projectId);
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list
+            .map((item) => _sceneFromJson(item as Map<String, dynamic>))
+            .toList();
       }
-      return MockData.deletedScenesForProject(projectId);
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Tải danh sách cảnh đã xóa',
+      );
     } catch (e) {
-      print('ApiService.getDeletedScenes error: $e');
-      return MockData.deletedScenesForProject(projectId);
+      _rethrowAsApiException(e, 'Tải danh sách cảnh đã xóa');
     }
   }
 
@@ -857,20 +870,17 @@ class ApiService {
     try {
       final response = await _client.get(url, headers: _headers);
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> values = data['value'] ?? [];
-        final notifications = values
-            .map((e) => NotificationModel.fromMap(e as Map<String, dynamic>))
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final values = data['value'] as List<dynamic>? ?? const [];
+        return values
+            .map(
+              (item) => NotificationModel.fromMap(item as Map<String, dynamic>),
+            )
             .toList();
-        return notifications.isNotEmpty
-            ? notifications
-            : MockData.notificationsCopy();
-      } else {
-        throw Exception('Failed to load notifications: ${response.statusCode}');
       }
+      throw _responseError(response.statusCode, response.body, 'Tải thông báo');
     } catch (e) {
-      print('ApiService.getNotifications error: $e');
-      return MockData.notificationsCopy();
+      _rethrowAsApiException(e, 'Tải thông báo');
     }
   }
 
@@ -885,15 +895,10 @@ class ApiService {
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return NotificationModel.fromMap(data);
-      } else {
-        print(
-          'ApiService.createNotification failed: ${response.statusCode} - ${response.body}',
-        );
-        return null;
       }
+      throw _responseError(response.statusCode, response.body, 'Tạo thông báo');
     } catch (e) {
-      print('ApiService.createNotification error: $e');
-      return null;
+      _rethrowAsApiException(e, 'Tạo thông báo');
     }
   }
 
@@ -903,10 +908,14 @@ class ApiService {
     try {
       final body = jsonEncode({'IsRead': true});
       final response = await _client.patch(url, headers: _headers, body: body);
-      return response.statusCode == 204 || response.statusCode == 200;
+      if (response.statusCode == 204 || response.statusCode == 200) return true;
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Đánh dấu thông báo đã đọc',
+      );
     } catch (e) {
-      print('ApiService.markNotificationAsRead error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Đánh dấu thông báo đã đọc');
     }
   }
 
@@ -916,10 +925,14 @@ class ApiService {
     final url = Uri.parse('$apiBaseUrl/api/Notifications/MarkAllAsRead');
     try {
       final response = await _client.post(url, headers: _headers);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) return true;
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Đánh dấu tất cả thông báo đã đọc',
+      );
     } catch (e) {
-      print('ApiService.markAllNotificationsAsRead error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Đánh dấu tất cả thông báo đã đọc');
     }
   }
 
@@ -931,10 +944,14 @@ class ApiService {
     );
     try {
       final response = await _client.post(url, headers: _headers);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) return true;
+      throw _responseError(
+        response.statusCode,
+        response.body,
+        'Đánh dấu thông báo dự án đã đọc',
+      );
     } catch (e) {
-      print('ApiService.markProjectNotificationsAsRead error: $e');
-      return false;
+      _rethrowAsApiException(e, 'Đánh dấu thông báo dự án đã đọc');
     }
   }
 }

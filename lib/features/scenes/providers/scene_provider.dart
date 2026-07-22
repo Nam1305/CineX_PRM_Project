@@ -12,10 +12,17 @@ class SceneProvider extends ChangeNotifier {
   final Map<int, List<Scene>> _scenesByAct = {};
   bool _isLoading = false;
   String? _error;
+  int _dataVersion = 0;
 
   List<Scene> scenesForAct(int actId) => _scenesByAct[actId] ?? [];
   bool get isLoading => _isLoading;
   String? get error => _error;
+  int get dataVersion => _dataVersion;
+
+  void invalidateProjectData() {
+    _dataVersion++;
+    notifyListeners();
+  }
 
   Future<void> loadScenesForAct(int actId) async {
     _isLoading = true;
@@ -58,6 +65,7 @@ class SceneProvider extends ChangeNotifier {
       _scenesByAct[scene.actId]!.sort(
         (a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber),
       );
+      _dataVersion++;
       notifyListeners();
       return true;
     } catch (e) {
@@ -95,6 +103,7 @@ class SceneProvider extends ChangeNotifier {
         }
         list.sort((a, b) => Scene.compareNumbers(a.sceneNumber, b.sceneNumber));
       }
+      _dataVersion++;
       notifyListeners();
       return true;
     } catch (e) {
@@ -123,6 +132,8 @@ class SceneProvider extends ChangeNotifier {
         return false;
       }
       await _cache.deleteScene(id);
+      _dataVersion++;
+      notifyListeners();
       return true;
     } catch (e) {
       _scenesByAct[actId]?.insert(index, backup);
@@ -148,6 +159,7 @@ class SceneProvider extends ChangeNotifier {
         previousCharacterIds: scene.characters.map((c) => c.id!).toList(),
       );
       if (result == null) return false;
+      await _cache.upsertScene(result);
       final list = _scenesByAct[scene.actId];
       if (list != null) {
         final index = list.indexWhere((s) => s.id == scene.id);
@@ -158,6 +170,7 @@ class SceneProvider extends ChangeNotifier {
           );
         }
       }
+      _dataVersion++;
       notifyListeners();
       return true;
     } catch (e) {
@@ -172,6 +185,8 @@ class SceneProvider extends ChangeNotifier {
       final ok = await _api.restoreScene(id);
       if (ok) {
         await loadScenesForAct(actId);
+        _dataVersion++;
+        notifyListeners();
       }
       return ok;
     } catch (e) {

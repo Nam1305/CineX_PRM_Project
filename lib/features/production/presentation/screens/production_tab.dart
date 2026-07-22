@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
+import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
+import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'production_schedule_view.dart';
 import 'production_analytics_view.dart';
 
@@ -25,6 +27,11 @@ class ProductionTab extends StatefulWidget {
 }
 
 class _ProductionTabState extends State<ProductionTab> {
+  int _observedSceneDataVersion = -1;
+  int _observedCharacterDataVersion = -1;
+  int _observedLocationDataVersion = -1;
+  bool _refreshScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +41,39 @@ class _ProductionTabState extends State<ProductionTab> {
         canMigrateLegacy: context.read<AuthProvider>().isProducer,
       );
       context.read<CharacterProvider>().loadCharacters(widget.projectId);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final sceneVersion = context.watch<SceneProvider>().dataVersion;
+    final characterVersion = context.watch<CharacterProvider>().dataVersion;
+    final locationVersion = context.watch<LocationProvider>().dataVersion;
+    if (_observedSceneDataVersion == -1) {
+      _observedSceneDataVersion = sceneVersion;
+      _observedCharacterDataVersion = characterVersion;
+      _observedLocationDataVersion = locationVersion;
+      return;
+    }
+
+    final changed =
+        sceneVersion != _observedSceneDataVersion ||
+        characterVersion != _observedCharacterDataVersion ||
+        locationVersion != _observedLocationDataVersion;
+    _observedSceneDataVersion = sceneVersion;
+    _observedCharacterDataVersion = characterVersion;
+    _observedLocationDataVersion = locationVersion;
+    if (!changed || _refreshScheduled) return;
+
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await context.read<ProductionProvider>().loadForProject(
+        widget.projectId,
+        canMigrateLegacy: context.read<AuthProvider>().isProducer,
+      );
+      if (mounted) _refreshScheduled = false;
     });
   }
 

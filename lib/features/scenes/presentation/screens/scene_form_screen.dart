@@ -43,7 +43,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
   void initState() {
     super.initState();
     _numberCtrl = TextEditingController(
-        text: widget.scene?.sceneNumber.toString());
+      text: widget.scene?.sceneNumber.toString(),
+    );
     _titleCtrl = TextEditingController(text: widget.scene?.title);
     _summaryCtrl = TextEditingController(text: widget.scene?.summary);
     _selectedLocationId = widget.scene?.locationId;
@@ -51,9 +52,7 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
     _setting = widget.scene?.setting ?? LocationSetting.interior;
     _timeOfDay = widget.scene?.timeOfDay ?? SceneTime.day;
     if (widget.scene != null) {
-      _selectedCharacterIds.addAll(
-        widget.scene!.characters.map((c) => c.id!),
-      );
+      _selectedCharacterIds.addAll(widget.scene!.characters.map((c) => c.id!));
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LocationProvider>().loadLocations(widget.projectId);
@@ -71,7 +70,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
 
   int? get _effectiveLocationId {
     final locs = context.read<LocationProvider>().locations;
-    if (_selectedLocationId != null && locs.any((l) => l.id == _selectedLocationId)) {
+    if (_selectedLocationId != null &&
+        locs.any((l) => l.id == _selectedLocationId)) {
       return _selectedLocationId;
     }
     return null;
@@ -93,7 +93,8 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             TextFormField(
               controller: _titleCtrl,
               decoration: const InputDecoration(labelText: 'Tiêu đề cảnh *'),
-              validator: (v) => AppValidators.required(v, field: 'Tiêu đề cảnh'),
+              validator: (v) =>
+                  AppValidators.required(v, field: 'Tiêu đề cảnh'),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -107,18 +108,27 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
               initialValue: _effectiveLocationId,
               decoration: const InputDecoration(labelText: 'Bối cảnh địa lý *'),
               items: [
-                const DropdownMenuItem(value: null, child: Text('— Chọn bối cảnh —')),
-                ...locationProvider.locations.map((l) => DropdownMenuItem(
-                      value: l.id,
-                      child: Text('${l.name} (${l.setting.label} · ${l.timeOfDay.label})'),
-                    )),
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('— Chọn bối cảnh —'),
+                ),
+                ...locationProvider.locations.map(
+                  (l) => DropdownMenuItem(
+                    value: l.id,
+                    child: Text(
+                      '${l.name} (${l.setting.label} · ${l.timeOfDay.label})',
+                    ),
+                  ),
+                ),
               ],
               validator: (v) => v == null ? 'Vui lòng chọn bối cảnh' : null,
               onChanged: (v) {
                 setState(() {
                   _selectedLocationId = v;
                   if (v != null) {
-                    final selectedLoc = locationProvider.locations.firstWhere((l) => l.id == v);
+                    final selectedLoc = locationProvider.locations.firstWhere(
+                      (l) => l.id == v,
+                    );
                     _setting = selectedLoc.setting;
                     _timeOfDay = selectedLoc.timeOfDay;
                   }
@@ -128,7 +138,10 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             if (_selectedLocationId != null) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF252525),
                   borderRadius: BorderRadius.circular(8),
@@ -136,18 +149,28 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, size: 16, color: Color(0xFFFF571A)),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Color(0xFFFF571A),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Thuộc tính bối cảnh: ${_setting.fullLabel} · ${_timeOfDay.fullLabel}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
             const SizedBox(height: 16),
-            const Text('Nhân vật tham gia', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Nhân vật tham gia',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -157,18 +180,26 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
                 return FilterChip(
                   label: Text(c.name),
                   selected: selected,
-                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  selectedColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.25,
+                  ),
                   checkmarkColor: theme.colorScheme.primary,
                   labelStyle: TextStyle(
-                    color: selected ? theme.colorScheme.primary : Colors.white70,
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : Colors.white70,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                   side: BorderSide(
-                    color: selected ? theme.colorScheme.primary : const Color(0xFF393939),
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : const Color(0xFF393939),
                     width: selected ? 1.5 : 1,
                   ),
                   onSelected: (v) => setState(() {
-                    v ? _selectedCharacterIds.add(c.id!) : _selectedCharacterIds.remove(c.id);
+                    v
+                        ? _selectedCharacterIds.add(c.id!)
+                        : _selectedCharacterIds.remove(c.id);
                   }),
                 );
               }).toList(),
@@ -185,8 +216,11 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _summaryCtrl,
-              decoration: const InputDecoration(labelText: 'Tóm tắt hành động *'),
-              validator: (v) => AppValidators.required(v, field: 'Tóm tắt hành động'),
+              decoration: const InputDecoration(
+                labelText: 'Tóm tắt hành động *',
+              ),
+              validator: (v) =>
+                  AppValidators.required(v, field: 'Tóm tắt hành động'),
               maxLines: 5,
             ),
             const SizedBox(height: 24),
@@ -210,7 +244,10 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       excludeId: widget.scene?.id,
     );
     if (taken) {
-      AppSnackbar.error(context, 'Số cảnh $sceneNumber đã tồn tại trong hồi này');
+      AppSnackbar.error(
+        context,
+        'Số cảnh $sceneNumber đã tồn tại trong hồi này',
+      );
       return;
     }
     if (_isEditing) {
@@ -222,7 +259,10 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.amber),
               SizedBox(width: 8),
-              Text('Cảnh báo thay đổi Lịch quay', style: TextStyle(color: Colors.white, fontSize: 16)),
+              Text(
+                'Cảnh báo thay đổi Lịch quay',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ],
           ),
           content: const Text(
@@ -236,7 +276,10 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Xác nhận lưu', style: TextStyle(color: Color(0xFFFF571A))),
+              child: const Text(
+                'Xác nhận lưu',
+                style: TextStyle(color: Color(0xFFFF571A)),
+              ),
             ),
           ],
         ),
@@ -250,7 +293,9 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
       locationId: _selectedLocationId,
       sceneNumber: sceneNumber.toString(),
       title: _titleCtrl.text.trim(),
-      summary: _summaryCtrl.text.trim().isEmpty ? null : _summaryCtrl.text.trim(),
+      summary: _summaryCtrl.text.trim().isEmpty
+          ? null
+          : _summaryCtrl.text.trim(),
       status: _status,
       setting: _setting,
       timeOfDay: _timeOfDay,
@@ -259,25 +304,31 @@ class _SceneFormScreenState extends State<SceneFormScreen> {
         ? await sceneProvider.editScene(
             scene,
             _selectedCharacterIds.toList(),
-            previousCharacterIds:
-                widget.scene!.characters.map((c) => c.id!).toList(),
+            previousCharacterIds: widget.scene!.characters
+                .map((c) => c.id!)
+                .toList(),
           )
         : await sceneProvider.addScene(scene, _selectedCharacterIds.toList());
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
       context.read<NotificationProvider>().addNotification(
-            projectId: widget.projectId,
-            projectTitle: 'Dự án CineX #${widget.projectId}',
-            actId: widget.actId,
-            sceneId: scene.id,
-            title: _isEditing
-                ? 'Đã cập nhật Cảnh $sceneNumber'
-                : 'Đã thêm phân cảnh mới: Cảnh $sceneNumber',
-            body: 'Cảnh $sceneNumber (${_setting.label}. ${_titleCtrl.text.trim().toUpperCase()} - ${_timeOfDay.label}) đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
-            actionType: _isEditing ? NotificationActionType.update : NotificationActionType.create,
-          );
-      AppSnackbar.success(context, _isEditing ? 'Đã cập nhật cảnh' : 'Đã thêm cảnh');
+        projectId: widget.projectId,
+        actId: widget.actId,
+        sceneId: scene.id,
+        title: _isEditing
+            ? 'Đã cập nhật Cảnh $sceneNumber'
+            : 'Đã thêm phân cảnh mới: Cảnh $sceneNumber',
+        body:
+            'Cảnh $sceneNumber (${_setting.label}. ${_titleCtrl.text.trim().toUpperCase()} - ${_timeOfDay.label}) đã được ${_isEditing ? "cập nhật" : "thêm mới"}.',
+        actionType: _isEditing
+            ? NotificationActionType.update
+            : NotificationActionType.create,
+      );
+      AppSnackbar.success(
+        context,
+        _isEditing ? 'Đã cập nhật cảnh' : 'Đã thêm cảnh',
+      );
       Navigator.pop(context);
     } else {
       AppSnackbar.error(context, sceneProvider.error ?? 'Có lỗi xảy ra');

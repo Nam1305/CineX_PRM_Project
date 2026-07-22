@@ -66,10 +66,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Tải Poster (2:3)',
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text('Tải Poster (2:3)', style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),
@@ -190,7 +187,6 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       director: _directorCtrl.text.trim(),
       genre: _selectedGenre,
       description: _loglineCtrl.text.trim(),
-      posterUrl: 'https://placehold.co/300x450/FF4D00/FFFFFF?text=New',
       progress: 0.0,
       status: 'PLANNING',
     );
@@ -201,12 +197,13 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       setState(() => _saving = false);
       if (createdId != null) {
         context.read<NotificationProvider>().addNotification(
-              projectId: createdId,
-              projectTitle: project.title,
-              title: 'Tạo dự án mới: ${project.title}',
-              body: 'Trạng thái: ${project.status} · Thể loại: ${project.genre ?? "N/A"} · Đạo diễn: ${project.director ?? "N/A"}',
-              actionType: NotificationActionType.create,
-            );
+          projectId: createdId,
+          projectTitle: project.title,
+          title: 'Tạo dự án mới: ${project.title}',
+          body:
+              'Trạng thái: ${project.status} · Thể loại: ${project.genre ?? "N/A"} · Đạo diễn: ${project.director ?? "N/A"}',
+          actionType: NotificationActionType.create,
+        );
         AppSnackbar.success(context, 'Dự án đã được tạo');
         Navigator.pop(context);
       } else {

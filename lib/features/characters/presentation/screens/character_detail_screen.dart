@@ -4,15 +4,12 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
-import 'package:cinex_application/data/mock_data.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 
 class CharacterDetailScreen extends StatefulWidget {
   final Character character;
 
-  const CharacterDetailScreen({
-    super.key,
-    required this.character,
-  });
+  const CharacterDetailScreen({super.key, required this.character});
 
   @override
   State<CharacterDetailScreen> createState() => _CharacterDetailScreenState();
@@ -30,37 +27,60 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
   }
 
   Future<void> _loadCharacterScenes() async {
-    final projId = widget.character.projectId ?? 1;
+    final projectId = widget.character.projectId;
+    if (projectId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    List<Scene> cachedScenes = [];
     try {
-      final allScenes = await _api.getScenesForProject(projId);
-      final charId = widget.character.id;
-      final charName = widget.character.name.trim().toLowerCase();
+      cachedScenes = await LocalCacheService.instance.getScenesForProject(
+        projectId,
+      );
+      if (cachedScenes.isNotEmpty && mounted) {
+        setState(() {
+          _scenes = _filterCharacterScenes(cachedScenes);
+          _isLoading = false;
+        });
+      }
+    } catch (_) {}
 
-      final filtered = allScenes.where((s) {
-        return s.characters.any((c) => (charId != null && c.id == charId) || c.name.trim().toLowerCase() == charName);
-      }).toList();
-
+    try {
+      final serverScenes = await _api.getScenesForProject(projectId);
+      try {
+        await LocalCacheService.instance.replaceScenesForProject(
+          projectId,
+          serverScenes,
+        );
+      } catch (_) {}
       if (mounted) {
         setState(() {
-          _scenes = filtered;
+          _scenes = _filterCharacterScenes(serverScenes);
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('CharacterDetailScreen._loadCharacterScenes error: $e');
-      final charId = widget.character.id;
-      final charName = widget.character.name.trim().toLowerCase();
-      final mockFiltered = MockData.mockScenes.where((s) {
-        return s.characters.any((c) => (charId != null && c.id == charId) || c.name.trim().toLowerCase() == charName);
-      }).toList();
-
       if (mounted) {
         setState(() {
-          _scenes = mockFiltered;
+          _scenes = _filterCharacterScenes(cachedScenes);
           _isLoading = false;
         });
       }
     }
+  }
+
+  List<Scene> _filterCharacterScenes(List<Scene> scenes) {
+    final characterId = widget.character.id;
+    final characterName = widget.character.name.trim().toLowerCase();
+    return scenes.where((scene) {
+      return scene.characters.any(
+        (character) =>
+            (characterId != null && character.id == characterId) ||
+            character.name.trim().toLowerCase() == characterName,
+      );
+    }).toList();
   }
 
   @override
@@ -68,7 +88,9 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
     final theme = Theme.of(context);
     final character = widget.character;
     final roleLabel = character.roleType.label;
-    final charIdStr = character.id != null ? '#${character.id.toString().padLeft(3, '0')}' : '#001';
+    final charIdStr = character.id != null
+        ? '#${character.id.toString().padLeft(3, '0')}'
+        : '#001';
 
     return Scaffold(
       body: CustomScrollView(
@@ -90,7 +112,9 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                               child: Icon(
                                 Icons.person,
                                 size: 120,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.2,
+                                ),
                               ),
                             ),
                           ),
@@ -101,7 +125,9 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                             child: Icon(
                               Icons.person,
                               size: 120,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                         ),
@@ -149,7 +175,9 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                                   ),
                                 ),
                                 backgroundColor: Colors.transparent,
-                                side: const BorderSide(color: Color(0xFF393939)),
+                                side: const BorderSide(
+                                  color: Color(0xFF393939),
+                                ),
                                 padding: EdgeInsets.zero,
                               ),
                             ],
@@ -176,7 +204,11 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                 const SizedBox(height: 24),
                 _PsychologySection(character: character, theme: theme),
                 const SizedBox(height: 24),
-                _SceneListSection(scenes: _scenes, isLoading: _isLoading, theme: theme),
+                _SceneListSection(
+                  scenes: _scenes,
+                  isLoading: _isLoading,
+                  theme: theme,
+                ),
                 const SizedBox(height: 100),
               ]),
             ),
@@ -191,10 +223,7 @@ class _ImageNotesSection extends StatelessWidget {
   final Character character;
   final ThemeData theme;
 
-  const _ImageNotesSection({
-    required this.character,
-    required this.theme,
-  });
+  const _ImageNotesSection({required this.character, required this.theme});
 
   @override
   Widget build(BuildContext context) {
@@ -218,25 +247,24 @@ class _ImageNotesSection extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ...notes.map((note) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      note,
-                      style: theme.textTheme.bodyMedium,
+            ...notes.map(
+              (note) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: theme.colorScheme.primary,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(note, style: theme.textTheme.bodyMedium),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -248,10 +276,7 @@ class _PsychologySection extends StatelessWidget {
   final Character character;
   final ThemeData theme;
 
-  const _PsychologySection({
-    required this.character,
-    required this.theme,
-  });
+  const _PsychologySection({required this.character, required this.theme});
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +297,9 @@ class _PsychologySection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              hasDesc ? desc : 'Chưa có mô tả tâm lý chi tiết cho nhân vật này.',
+              hasDesc
+                  ? desc
+                  : 'Chưa có mô tả tâm lý chi tiết cho nhân vật này.',
               style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ],
@@ -349,7 +376,9 @@ class _SceneListSection extends StatelessWidget {
                 final timeLabel = scene.location?.timeOfDay.label ?? 'DAY';
 
                 return Padding(
-                  padding: EdgeInsets.only(right: index < scenes.length - 1 ? 12 : 0),
+                  padding: EdgeInsets.only(
+                    right: index < scenes.length - 1 ? 12 : 0,
+                  ),
                   child: SizedBox(
                     width: 160,
                     child: Card(
@@ -418,12 +447,14 @@ class _SceneListSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isInt 
+        color: isInt
             ? Colors.blue.shade900.withValues(alpha: 0.3)
-            : (isExt ? Colors.orange.shade900.withValues(alpha: 0.3) : const Color(0xFF2C2C2C)),
+            : (isExt
+                  ? Colors.orange.shade900.withValues(alpha: 0.3)
+                  : const Color(0xFF2C2C2C)),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isInt 
+          color: isInt
               ? Colors.blue.shade700
               : (isExt ? Colors.orange.shade700 : const Color(0xFF3C3C3C)),
           width: 0.5,
@@ -434,7 +465,7 @@ class _SceneListSection extends StatelessWidget {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w600,
-          color: isInt 
+          color: isInt
               ? Colors.blue.shade200
               : (isExt ? Colors.orange.shade200 : Colors.white70),
         ),

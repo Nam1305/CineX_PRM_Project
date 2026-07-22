@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
+import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
@@ -29,6 +32,8 @@ class _CharactersTabState extends State<CharactersTab> {
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
   Map<int, int> _characterSceneCounts = {};
+  int _observedSceneDataVersion = -1;
+  bool _sceneCountRefreshScheduled = false;
 
   @override
   void initState() {
@@ -39,23 +44,57 @@ class _CharactersTabState extends State<CharactersTab> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final version = context.watch<SceneProvider>().dataVersion;
+    if (_observedSceneDataVersion == -1) {
+      _observedSceneDataVersion = version;
+      return;
+    }
+    if (version == _observedSceneDataVersion || _sceneCountRefreshScheduled) {
+      return;
+    }
+    _observedSceneDataVersion = version;
+    _sceneCountRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _loadSceneCounts();
+      _sceneCountRefreshScheduled = false;
+    });
+  }
+
   Future<void> _loadSceneCounts() async {
     try {
-      final scenes = await ApiService().getScenesForProject(widget.projectId);
-      final Map<int, int> counts = {};
-      for (final scene in scenes) {
-        for (final char in scene.characters) {
-          if (char.id != null) {
-            counts[char.id!] = (counts[char.id!] ?? 0) + 1;
-          }
-        }
-      }
-      if (mounted) {
-        setState(() {
-          _characterSceneCounts = counts;
-        });
-      }
+      final cachedScenes = await LocalCacheService.instance.getScenesForProject(
+        widget.projectId,
+      );
+      _applySceneCounts(cachedScenes);
     } catch (_) {}
+
+    try {
+      final scenes = await ApiService().getScenesForProject(widget.projectId);
+      try {
+        await LocalCacheService.instance.replaceScenesForProject(
+          widget.projectId,
+          scenes,
+        );
+      } catch (_) {}
+      _applySceneCounts(scenes);
+    } catch (e) {
+      debugPrint('CharactersTab._loadSceneCounts error: $e');
+    }
+  }
+
+  void _applySceneCounts(List<Scene> scenes) {
+    final counts = <int, int>{};
+    for (final scene in scenes) {
+      for (final character in scene.characters) {
+        final id = character.id;
+        if (id != null) counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+    if (mounted) setState(() => _characterSceneCounts = counts);
   }
 
   List<dynamic> _getFilteredCharacters(List<dynamic> characters) {
@@ -64,7 +103,11 @@ class _CharactersTabState extends State<CharactersTab> {
       list = list.where((c) => c.roleType == _selectedRole).toList();
     }
     if (_searchQuery.isNotEmpty) {
-      list = list.where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+      list = list
+          .where(
+            (c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+          )
+          .toList();
     }
     return list;
   }
@@ -102,7 +145,9 @@ class _CharactersTabState extends State<CharactersTab> {
           }
 
           final startIndex = (_currentPage - 1) * _itemsPerPage;
-          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems
+              ? totalItems
+              : startIndex + _itemsPerPage;
           final paginated = filtered.sublist(startIndex, endIndex);
 
           return Column(
@@ -112,7 +157,10 @@ class _CharactersTabState extends State<CharactersTab> {
                   slivers: [
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -120,7 +168,9 @@ class _CharactersTabState extends State<CharactersTab> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF1E1E1E),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFF2C2C2C)),
+                                border: Border.all(
+                                  color: const Color(0xFF2C2C2C),
+                                ),
                               ),
                               child: TextField(
                                 onChanged: (value) {
@@ -131,9 +181,14 @@ class _CharactersTabState extends State<CharactersTab> {
                                 },
                                 decoration: const InputDecoration(
                                   hintText: 'Tìm kiếm nhân vật...',
-                                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: Colors.grey,
+                                  ),
                                   border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
                                 ),
                                 style: const TextStyle(color: Colors.white),
                               ),
@@ -146,41 +201,38 @@ class _CharactersTabState extends State<CharactersTab> {
                                   _FilterChip(
                                     label: 'TẤT CẢ',
                                     isSelected: _selectedRole == null,
-                                    onPressed: () =>
-                                        setState(() {
-                                          _selectedRole = null;
-                                          _currentPage = 1;
-                                        }),
+                                    onPressed: () => setState(() {
+                                      _selectedRole = null;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                   const SizedBox(width: 8),
                                   _FilterChip(
                                     label: 'MAIN',
                                     isSelected: _selectedRole == RoleType.main,
-                                    onPressed: () =>
-                                        setState(() {
-                                          _selectedRole = RoleType.main;
-                                          _currentPage = 1;
-                                        }),
+                                    onPressed: () => setState(() {
+                                      _selectedRole = RoleType.main;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                   const SizedBox(width: 8),
                                   _FilterChip(
                                     label: 'SUPPORT',
-                                    isSelected: _selectedRole == RoleType.support,
-                                    onPressed: () =>
-                                        setState(() {
-                                          _selectedRole = RoleType.support;
-                                          _currentPage = 1;
-                                        }),
+                                    isSelected:
+                                        _selectedRole == RoleType.support,
+                                    onPressed: () => setState(() {
+                                      _selectedRole = RoleType.support;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                   const SizedBox(width: 8),
                                   _FilterChip(
                                     label: 'CROWD',
                                     isSelected: _selectedRole == RoleType.crowd,
-                                    onPressed: () =>
-                                        setState(() {
-                                          _selectedRole = RoleType.crowd;
-                                          _currentPage = 1;
-                                        }),
+                                    onPressed: () => setState(() {
+                                      _selectedRole = RoleType.crowd;
+                                      _currentPage = 1;
+                                    }),
                                   ),
                                 ],
                               ),
@@ -192,42 +244,46 @@ class _CharactersTabState extends State<CharactersTab> {
                     SliverPadding(
                       padding: const EdgeInsets.all(16),
                       sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 300,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 1.1,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, i) {
-                            final char = paginated[i];
-                            final sceneCount = _characterSceneCounts[char.id] ?? 0;
-                             return CinematicCharacterCard(
-                              character: char,
-                              sceneCount: sceneCount,
-                              isWritable: isWritable,
-                              onTap: () => _openDetail(context, char),
-                              onEdit: () => _openForm(context, character: char),
-                              onDelete: () async {
-                                final ok = await context
-                                    .read<CharacterProvider>()
-                                    .removeCharacter(char.id!);
-                                if (ok && context.mounted) {
-                                  context.read<NotificationProvider>().addNotification(
-                                        projectId: widget.projectId,
-                                        projectTitle: 'Dự án CineX #${widget.projectId}',
-                                        title: 'Xóa nhân vật: ${char.name}',
-                                        body: 'Nhân vật "${char.name}" (${char.roleType.label}) đã bị xóa khỏi dự án.',
-                                        actionType: NotificationActionType.delete,
-                                      );
-                                  AppSnackbar.success(context, 'Đã xóa nhân vật thành công');
-                                  _loadSceneCounts();
-                                }
-                              },
-                            );
-                          },
-                          childCount: paginated.length,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 300,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 1.1,
+                            ),
+                        delegate: SliverChildBuilderDelegate((context, i) {
+                          final char = paginated[i];
+                          final sceneCount =
+                              _characterSceneCounts[char.id] ?? 0;
+                          return CinematicCharacterCard(
+                            character: char,
+                            sceneCount: sceneCount,
+                            isWritable: isWritable,
+                            onTap: () => _openDetail(context, char),
+                            onEdit: () => _openForm(context, character: char),
+                            onDelete: () async {
+                              final ok = await context
+                                  .read<CharacterProvider>()
+                                  .removeCharacter(char.id!);
+                              if (ok && context.mounted) {
+                                context
+                                    .read<NotificationProvider>()
+                                    .addNotification(
+                                      projectId: widget.projectId,
+                                      title: 'Xóa nhân vật: ${char.name}',
+                                      body:
+                                          'Nhân vật "${char.name}" (${char.roleType.label}) đã bị xóa khỏi dự án.',
+                                      actionType: NotificationActionType.delete,
+                                    );
+                                AppSnackbar.success(
+                                  context,
+                                  'Đã xóa nhân vật thành công',
+                                );
+                                _loadSceneCounts();
+                              }
+                            },
+                          );
+                        }, childCount: paginated.length),
                       ),
                     ),
                   ],
@@ -299,9 +355,13 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surface,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
           border: Border.all(
-            color: isSelected ? theme.colorScheme.primary : const Color(0xFF393939),
+            color: isSelected
+                ? theme.colorScheme.primary
+                : const Color(0xFF393939),
           ),
           borderRadius: BorderRadius.circular(8),
         ),

@@ -10,10 +10,12 @@ class CharacterProvider extends ChangeNotifier {
   List<Character> _characters = [];
   bool _isLoading = false;
   String? _error;
+  int _dataVersion = 0;
 
   List<Character> get characters => _characters;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  int get dataVersion => _dataVersion;
 
   /// Load danh sách nhân vật từ server, fallback sang dữ liệu cục bộ khi không có kết nối
   Future<void> loadCharacters(int projectId) async {
@@ -52,6 +54,7 @@ class CharacterProvider extends ChangeNotifier {
         await _cache.upsertCharacter(created);
       } catch (_) {}
       _characters.add(created);
+      _dataVersion++;
       notifyListeners();
       return true;
     } catch (e) {
@@ -72,6 +75,7 @@ class CharacterProvider extends ChangeNotifier {
         if (index >= 0) {
           _characters[index] = character;
         }
+        _dataVersion++;
         notifyListeners();
       }
       return ok;
@@ -101,6 +105,8 @@ class CharacterProvider extends ChangeNotifier {
       try {
         await _cache.deleteCharacter(id);
       } catch (_) {}
+      _dataVersion++;
+      notifyListeners();
       return true;
     } catch (e) {
       _characters.insert(index, backup);

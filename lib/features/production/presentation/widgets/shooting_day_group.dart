@@ -195,7 +195,6 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       if (context.mounted) {
         context.read<NotificationProvider>().addNotification(
           projectId: widget.projectId,
-          projectTitle: 'Dự án CineX #${widget.projectId}',
           title: 'Cập nhật lịch quay',
           body:
               'Bối cảnh "${widget.locationLabel}" đã được gán ngày quay ${DateFormat('dd/MM/yyyy').format(selected)}.',
@@ -310,7 +309,6 @@ class _ShootingDayGroupState extends State<ShootingDayGroup> {
       if (context.mounted) {
         context.read<NotificationProvider>().addNotification(
           projectId: widget.projectId,
-          projectTitle: 'Dự án CineX #${widget.projectId}',
           sceneId: s.id,
           title: 'Cập nhật trạng thái quay - Cảnh ${s.sceneNumber}',
           body:

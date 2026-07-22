@@ -16,6 +16,7 @@ class ProductionProvider extends ChangeNotifier {
   bool _isSaving = false;
   String? _error;
   int? _projectId;
+  int _loadGeneration = 0;
   ProductionPlan? _plan;
   ProductionGroupMode _groupMode = ProductionGroupMode.byLocation;
 
@@ -62,6 +63,11 @@ class ProductionProvider extends ChangeNotifier {
       }
       for (final list in map.values) {
         list.sort((a, b) {
+          final numberOrder = Scene.compareNumbers(
+            a.sceneNumber,
+            b.sceneNumber,
+          );
+          if (numberOrder != 0) return numberOrder;
           final aOrder = a.timeOfDay == SceneTime.day ? 0 : 1;
           final bOrder = b.timeOfDay == SceneTime.day ? 0 : 1;
           return aOrder.compareTo(bOrder);
@@ -141,6 +147,7 @@ class ProductionProvider extends ChangeNotifier {
     int projectId, {
     bool canMigrateLegacy = false,
   }) async {
+    final generation = ++_loadGeneration;
     _projectId = projectId;
     _isLoading = true;
     _error = null;
@@ -152,6 +159,7 @@ class ProductionProvider extends ChangeNotifier {
       cachedScenes = await _cache.getScenesForProject(projectId);
       cachedPlan = await _cache.getProductionPlan(projectId);
     } catch (_) {}
+    if (generation != _loadGeneration) return;
     if (cachedScenes.isNotEmpty || cachedPlan != null) {
       _allScenes = cachedScenes;
       _applyPlan(cachedPlan ?? ProductionPlan.empty(projectId));
@@ -162,27 +170,32 @@ class ProductionProvider extends ChangeNotifier {
 
     try {
       final fetchedScenes = await _apiService.getScenesForProject(projectId);
+      if (generation != _loadGeneration) return;
       _allScenes = fetchedScenes;
       try {
         await _cache.replaceScenesForProject(projectId, fetchedScenes);
       } catch (_) {}
     } catch (e) {
+      if (generation != _loadGeneration) return;
       if (cachedScenes.isEmpty) _allScenes = [];
       _error = 'Không thể làm mới danh sách cảnh: $e';
     }
 
     try {
       var serverPlan = await _apiService.getProductionPlan(projectId);
+      if (generation != _loadGeneration) return;
       if (canMigrateLegacy && serverPlan.version == 0) {
         final legacyPlan = await _readLegacyPlan(projectId);
         if (legacyPlan.locationDates.isNotEmpty ||
             legacyPlan.sceneStatuses.isNotEmpty) {
           try {
             serverPlan = await _apiService.updateProductionPlan(legacyPlan);
+            if (generation != _loadGeneration) return;
             await _clearLegacyPlan(projectId);
           } on ApiException catch (e) {
             if (e.statusCode == 409) {
               serverPlan = await _apiService.getProductionPlan(projectId);
+              if (generation != _loadGeneration) return;
             } else {
               rethrow;
             }
@@ -195,12 +208,14 @@ class ProductionProvider extends ChangeNotifier {
         await _cache.upsertProductionPlan(serverPlan);
       } catch (_) {}
     } catch (e) {
+      if (generation != _loadGeneration) return;
       _plan = cachedPlan ?? ProductionPlan.empty(projectId);
       _applyPlan(_plan!);
       _error = 'Không thể làm mới kế hoạch sản xuất: $e';
     }
 
     _applyFilters();
+    if (generation != _loadGeneration) return;
     _isLoading = false;
     notifyListeners();
   }

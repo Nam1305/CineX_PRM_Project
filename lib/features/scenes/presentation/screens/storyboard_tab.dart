@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/features/acts/providers/act_provider.dart';
 import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
+import 'package:cinex_application/features/characters/providers/character_provider.dart';
+import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
 import 'package:cinex_application/shared/widgets/confirm_dialog.dart';
 import 'package:cinex_application/features/acts/presentation/widgets/act_expansion_tile.dart';
@@ -23,25 +25,53 @@ class StoryboardTab extends StatefulWidget {
 
 class _StoryboardTabState extends State<StoryboardTab> {
   bool _initialized = false;
+  int _observedCharacterDataVersion = -1;
+  int _observedLocationDataVersion = -1;
+  bool _refreshScheduled = false;
   int _currentPage = 1;
   static const int _itemsPerPage = 4;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_initialized) return;
-    _initialized = true;
+    final characterVersion = context.watch<CharacterProvider>().dataVersion;
+    final locationVersion = context.watch<LocationProvider>().dataVersion;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!_initialized) {
+      _initialized = true;
+      _observedCharacterDataVersion = characterVersion;
+      _observedLocationDataVersion = locationVersion;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reloadScenes());
+      return;
+    }
+
+    final changed =
+        characterVersion != _observedCharacterDataVersion ||
+        locationVersion != _observedLocationDataVersion;
+    _observedCharacterDataVersion = characterVersion;
+    _observedLocationDataVersion = locationVersion;
+    if (!changed || _refreshScheduled) return;
+
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final actProvider = context.read<ActProvider>();
-      final sceneProvider = context.read<SceneProvider>();
-      actProvider.loadActs(widget.projectId).then((_) {
-        for (final act in actProvider.acts) {
-          sceneProvider.loadScenesForAct(act.id!);
-        }
-      });
+      await _reloadScenes();
+      if (mounted) _refreshScheduled = false;
     });
+  }
+
+  Future<void> _reloadScenes() async {
+    if (!mounted) return;
+    final actProvider = context.read<ActProvider>();
+    final sceneProvider = context.read<SceneProvider>();
+    if (actProvider.acts.isEmpty) {
+      await actProvider.loadActs(widget.projectId);
+    }
+    await Future.wait(
+      actProvider.acts
+          .where((act) => act.id != null)
+          .map((act) => sceneProvider.loadScenesForAct(act.id!)),
+    );
   }
 
   @override
@@ -71,7 +101,9 @@ class _StoryboardTabState extends State<StoryboardTab> {
           }
 
           final startIndex = (_currentPage - 1) * _itemsPerPage;
-          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems
+              ? totalItems
+              : startIndex + _itemsPerPage;
           final paginatedActs = actProvider.acts.sublist(startIndex, endIndex);
 
           return Column(
@@ -100,15 +132,21 @@ class _StoryboardTabState extends State<StoryboardTab> {
                           ),
                         );
                         if (context.mounted) {
-                          context.read<SceneProvider>().loadScenesForAct(act.id!);
+                          context.read<SceneProvider>().loadScenesForAct(
+                            act.id!,
+                          );
                         }
                       },
                       onSceneStatusChanged: (scene, newStatus) async {
-                        final ok = await context.read<SceneProvider>().updateSceneStatus(scene, newStatus);
+                        final ok = await context
+                            .read<SceneProvider>()
+                            .updateSceneStatus(scene, newStatus);
                         if (ok && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Đã cập nhật trạng thái cảnh sang ${newStatus.label}'),
+                              content: Text(
+                                'Đã cập nhật trạng thái cảnh sang ${newStatus.label}',
+                              ),
                               backgroundColor: Colors.green.shade700,
                               behavior: SnackBarBehavior.floating,
                               duration: const Duration(seconds: 1),
@@ -128,7 +166,9 @@ class _StoryboardTabState extends State<StoryboardTab> {
                           ),
                         );
                         if (context.mounted) {
-                          context.read<SceneProvider>().loadScenesForAct(act.id!);
+                          context.read<SceneProvider>().loadScenesForAct(
+                            act.id!,
+                          );
                         }
                       },
                       onDeleteScene: (scene) async {
@@ -143,14 +183,14 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         await sceneProvider.removeScene(scene.id!, act.id!);
                         if (context.mounted) {
                           context.read<NotificationProvider>().addNotification(
-                                projectId: widget.projectId,
-                                projectTitle: 'Dự án CineX #${widget.projectId}',
-                                actId: act.id,
-                                sceneId: scene.id,
-                                title: 'Xóa Cảnh ${scene.sceneNumber}',
-                                body: 'Cảnh ${scene.sceneNumber}: ${scene.title} đã bị xóa khỏi ${act.title}.',
-                                actionType: NotificationActionType.delete,
-                              );
+                            projectId: widget.projectId,
+                            actId: act.id,
+                            sceneId: scene.id,
+                            title: 'Xóa Cảnh ${scene.sceneNumber}',
+                            body:
+                                'Cảnh ${scene.sceneNumber}: ${scene.title} đã bị xóa khỏi ${act.title}.',
+                            actionType: NotificationActionType.delete,
+                          );
                         }
                         messenger.showSnackBar(
                           SnackBar(
@@ -175,19 +215,22 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         final confirmed = await ConfirmDialog.show(
                           context,
                           title: 'Xoá hồi',
-                          content: 'Xoá "${act.title}" và toàn bộ cảnh bên trong?',
+                          content:
+                              'Xoá "${act.title}" và toàn bộ cảnh bên trong?',
                         );
                         if (!confirmed) return;
-                        await actProvider.removeAct(act.id!);
+                        final removed = await actProvider.removeAct(act.id!);
+                        if (removed && context.mounted) {
+                          context.read<SceneProvider>().invalidateProjectData();
+                        }
                         if (context.mounted) {
                           context.read<NotificationProvider>().addNotification(
-                                projectId: widget.projectId,
-                                projectTitle: 'Dự án CineX #${widget.projectId}',
-                                actId: act.id,
-                                title: 'Xóa Hồi: ${act.title}',
-                                body: 'Hồi "${act.title}" đã bị xóa khỏi dự án.',
-                                actionType: NotificationActionType.delete,
-                              );
+                            projectId: widget.projectId,
+                            actId: act.id,
+                            title: 'Xóa Hồi: ${act.title}',
+                            body: 'Hồi "${act.title}" đã bị xóa khỏi dự án.',
+                            actionType: NotificationActionType.delete,
+                          );
                         }
                         messenger.showSnackBar(
                           SnackBar(

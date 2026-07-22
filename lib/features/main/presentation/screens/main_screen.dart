@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/presentation/screens/project_list_screen.dart';
 import 'package:cinex_application/core/connectivity/network_status_provider.dart';
+import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,10 +20,16 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _screens = [
-      const ProjectListScreen(),
-      const _ProfilePlaceholder(),
-    ];
+    _screens = [const ProjectListScreen(), const _ProfilePlaceholder()];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final username = context.read<AuthProvider>().username;
+      if (username != null && username.isNotEmpty) {
+        context.read<NotificationProvider>().loadNotifications(
+          ownerKey: username,
+        );
+      }
+    });
   }
 
   @override
@@ -36,7 +43,10 @@ class _MainScreenState extends State<MainScreen> {
               return Container(
                 width: double.infinity,
                 color: Colors.orange.shade800,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: const SafeArea(
                   top: false,
                   bottom: false,
@@ -49,10 +59,7 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
           Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _screens,
-            ),
+            child: IndexedStack(index: _selectedIndex, children: _screens),
           ),
         ],
       ),
@@ -87,10 +94,7 @@ class _ProfilePlaceholder extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hồ sơ cá nhân'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Hồ sơ cá nhân'), centerTitle: true),
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -100,7 +104,9 @@ class _ProfilePlaceholder extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 48,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.15,
+                ),
                 child: Icon(
                   Icons.person,
                   size: 48,
@@ -119,15 +125,16 @@ class _ProfilePlaceholder extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 '@${auth.username}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
               ),
               const SizedBox(height: 6),
               Chip(
                 label: Text(
                   auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
                 backgroundColor: theme.colorScheme.primary,
               ),

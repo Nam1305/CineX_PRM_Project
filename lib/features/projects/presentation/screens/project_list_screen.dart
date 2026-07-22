@@ -10,9 +10,11 @@ import 'package:cinex_application/features/projects/presentation/screens/project
 import 'package:cinex_application/shared/widgets/pagination_bar.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/services/api_service.dart';
-import 'package:cinex_application/core/utils/enums.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
+import 'package:cinex_application/core/utils/date_only.dart';
+import 'package:cinex_application/features/production/data/production_metrics.dart';
 
 class ProjectListScreen extends StatefulWidget {
   const ProjectListScreen({super.key});
@@ -56,27 +58,38 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
           }
 
           final allProjects = provider.projects;
-          
+
           // Sắp xếp theo ngày tạo mới nhất lên đầu
           final sortedProjects = List<Project>.from(allProjects)
             ..sort((a, b) {
-              final aTime = DateTime.tryParse(a.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final bTime = DateTime.tryParse(b.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final aTime =
+                  DateTime.tryParse(a.createdAt ?? '') ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              final bTime =
+                  DateTime.tryParse(b.createdAt ?? '') ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
               return bTime.compareTo(aTime);
             });
 
           final projects = sortedProjects
-              .where((p) => p.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+              .where(
+                (p) =>
+                    p.title.toLowerCase().contains(_searchQuery.toLowerCase()),
+              )
               .where((p) {
-                if (_selectedStatusFilter == null || _selectedStatusFilter!.isEmpty) return true;
+                if (_selectedStatusFilter == null ||
+                    _selectedStatusFilter!.isEmpty)
+                  return true;
                 return p.status == _selectedStatusFilter;
               })
               .toList();
 
-          final activeProjects =
-              allProjects.where((p) => p.status != 'COMPLETED').toList();
-          final completedProjects =
-              allProjects.where((p) => p.status == 'COMPLETED').toList();
+          final activeProjects = allProjects
+              .where((p) => p.status != 'COMPLETED')
+              .toList();
+          final completedProjects = allProjects
+              .where((p) => p.status == 'COMPLETED')
+              .toList();
 
           // Phân trang
           final totalItems = projects.length;
@@ -87,222 +100,256 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
           }
 
           final startIndex = (_currentPage - 1) * _itemsPerPage;
-          final endIndex = startIndex + _itemsPerPage > totalItems ? totalItems : startIndex + _itemsPerPage;
+          final endIndex = startIndex + _itemsPerPage > totalItems
+              ? totalItems
+              : startIndex + _itemsPerPage;
           final paginatedProjects = projects.sublist(startIndex, endIndex);
 
           final screenWidth = MediaQuery.of(context).size.width;
           final double availableWidth = screenWidth - 32;
           int crossAxisCount = (availableWidth / 240).floor();
           if (crossAxisCount < 1) crossAxisCount = 1;
-          if (crossAxisCount > paginatedProjects.length && paginatedProjects.isNotEmpty) {
-            double widthPerCard = (availableWidth - (paginatedProjects.length - 1) * 12) / paginatedProjects.length;
+          if (crossAxisCount > paginatedProjects.length &&
+              paginatedProjects.isNotEmpty) {
+            double widthPerCard =
+                (availableWidth - (paginatedProjects.length - 1) * 12) /
+                paginatedProjects.length;
             if (widthPerCard <= 360) {
               crossAxisCount = paginatedProjects.length;
             } else {
               int limitCols = (availableWidth / 360).floor();
-              crossAxisCount = limitCols < paginatedProjects.length ? paginatedProjects.length : limitCols;
+              crossAxisCount = limitCols < paginatedProjects.length
+                  ? paginatedProjects.length
+                  : limitCols;
             }
           }
 
           return Column(
-                children: [
-                  Expanded(
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: _isSearching
-                              ? Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF1E1E1E),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: const Color(0xFF2C2C2C)),
-                                          ),
-                                          child: TextField(
-                                            controller: _searchController,
-                                            onChanged: (val) {
-                                              setState(() {
-                                                _searchQuery = val.trim();
-                                                _currentPage = 1;
-                                              });
-                                            },
-                                            decoration: const InputDecoration(
-                                              hintText: 'Tìm kiếm dự án...',
-                                              prefixIcon: Icon(Icons.search, color: Colors.grey),
-                                              border: InputBorder.none,
-                                              contentPadding: EdgeInsets.symmetric(vertical: 12),
-                                            ),
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _isSearching
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E1E1E),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: const Color(0xFF2C2C2C),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.close),
-                                        onPressed: () {
+                                      child: TextField(
+                                        controller: _searchController,
+                                        onChanged: (val) {
                                           setState(() {
-                                            _isSearching = false;
-                                            _searchQuery = '';
-                                            _searchController.clear();
+                                            _searchQuery = val.trim();
                                             _currentPage = 1;
                                           });
                                         },
+                                        decoration: const InputDecoration(
+                                          hintText: 'Tìm kiếm dự án...',
+                                          prefixIcon: Icon(
+                                            Icons.search,
+                                            color: Colors.grey,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                )
-                              : AppHeader(
-                                  title: 'Dự án của tôi',
-                                  onSearch: () {
-                                    setState(() {
-                                      _isSearching = true;
-                                    });
-                                  },
-                                  onAdd: isWritable
-                                      ? () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ProjectFormScreen()),
-                                          );
-                                        }
-                                      : null,
-                                ),
-                        ),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isSearching = false;
+                                        _searchQuery = '';
+                                        _searchController.clear();
+                                        _currentPage = 1;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            )
+                          : AppHeader(
+                              title: 'Dự án của tôi',
+                              onSearch: () {
+                                setState(() {
+                                  _isSearching = true;
+                                });
+                              },
+                              onAdd: isWritable
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ProjectFormScreen(),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                            ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _StatCard(
-                                        label: 'Đang thực hiện',
-                                        count: activeProjects.length,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _StatCard(
-                                        label: 'Đã hoàn tất',
-                                        count: completedProjects.length,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1E1E1E),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFF2C2C2C)),
+                                Expanded(
+                                  child: _StatCard(
+                                    label: 'Đang thực hiện',
+                                    count: activeProjects.length,
                                   ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String?>(
-                                      value: _selectedStatusFilter,
-                                      dropdownColor: const Color(0xFF1E1E1E),
-                                      hint: const Text(
-                                        'Lọc theo trạng thái...',
-                                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                                      ),
-                                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                                      icon: const Icon(Icons.filter_alt_outlined, color: Colors.grey),
-                                      isExpanded: true,
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: null,
-                                          child: Text('Tất cả trạng thái'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'PLANNING',
-                                          child: Text('Lập kế hoạch'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'SHOOTING',
-                                          child: Text('Đang quay (Shooting)'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'POST_PRODUCTION',
-                                          child: Text('Hậu kỳ (Post-production)'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'COMPLETED',
-                                          child: Text('Hoàn tất (Completed)'),
-                                        ),
-                                      ],
-                                      onChanged: (val) {
-                                        setState(() {
-                                          _selectedStatusFilter = val;
-                                          _currentPage = 1;
-                                        });
-                                      },
-                                    ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _StatCard(
+                                    label: 'Đã hoàn tất',
+                                    count: completedProjects.length,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        const SliverPadding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          sliver: SliverGrid.builder(
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: crossAxisCount == 1
-                                  ? (screenWidth < 350 ? 0.95 : 1.1)
-                                  : 1.15,
-                            ),
-                            itemCount: paginatedProjects.length,
-                            itemBuilder: (context, index) {
-                              final project = paginatedProjects[index];
-                              return _ProjectCard(
-                                project: project,
-                                onTap: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          ProjectDetailScreen(project: project),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFF2C2C2C),
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String?>(
+                                  value: _selectedStatusFilter,
+                                  dropdownColor: const Color(0xFF1E1E1E),
+                                  hint: const Text(
+                                    'Lọc theo trạng thái...',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 14,
                                     ),
-                                  );
-                                  if (context.mounted) {
-                                    context.read<ProjectProvider>().loadProjects();
-                                  }
-                                },
-                              );
-                            },
-                          ),
+                                  ),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.filter_alt_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  isExpanded: true,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: null,
+                                      child: Text('Tất cả trạng thái'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'PLANNING',
+                                      child: Text('Lập kế hoạch'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'SHOOTING',
+                                      child: Text('Đang quay (Shooting)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'POST_PRODUCTION',
+                                      child: Text('Hậu kỳ (Post-production)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'COMPLETED',
+                                      child: Text('Hoàn tất (Completed)'),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedStatusFilter = val;
+                                      _currentPage = 1;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-                      ],
+                      ),
                     ),
-                  ),
-                  PaginationBar(
-                    currentPage: _currentPage,
-                    totalPages: totalPages,
-                    totalItems: totalItems,
-                    itemsPerPage: _itemsPerPage,
-                    onPageChanged: (page) {
-                      setState(() {
-                        _currentPage = page;
-                      });
-                    },
-                  ),
-                ],
-              );
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverGrid.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: crossAxisCount == 1
+                              ? (screenWidth < 350 ? 0.95 : 1.1)
+                              : 1.15,
+                        ),
+                        itemCount: paginatedProjects.length,
+                        itemBuilder: (context, index) {
+                          final project = paginatedProjects[index];
+                          return _ProjectCard(
+                            key: ValueKey(project.id),
+                            project: project,
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ProjectDetailScreen(project: project),
+                                ),
+                              );
+                              if (context.mounted) {
+                                context.read<ProjectProvider>().loadProjects();
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+                  ],
+                ),
+              ),
+              PaginationBar(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                totalItems: totalItems,
+                itemsPerPage: _itemsPerPage,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+              ),
+            ],
+          );
         },
       ),
       floatingActionButton: null,
@@ -314,10 +361,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final int count;
 
-  const _StatCard({
-    required this.label,
-    required this.count,
-  });
+  const _StatCard({required this.label, required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -329,10 +373,7 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: theme.textTheme.labelSmall,
-            ),
+            Text(label, style: theme.textTheme.labelSmall),
             const SizedBox(height: 8),
             Text(
               count.toString(),
@@ -351,10 +392,7 @@ class _ProjectCard extends StatefulWidget {
   final Project project;
   final VoidCallback onTap;
 
-  const _ProjectCard({
-    required this.project,
-    required this.onTap,
-  });
+  const _ProjectCard({super.key, required this.project, required this.onTap});
 
   @override
   State<_ProjectCard> createState() => _ProjectCardState();
@@ -377,23 +415,25 @@ class _ProjectCardState extends State<_ProjectCard> {
   }
 
   Future<void> _loadCachedProgress() async {
+    final projectId = widget.project.id;
+    if (projectId == null) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getDouble('proj_${widget.project.id}_last_known_shooting_progress');
-      if (cached != null && mounted) {
-        setState(() {
-          _localProgress = cached;
-        });
-      }
+      final scenes = await LocalCacheService.instance.getScenesForProject(
+        projectId,
+      );
+      final plan = await LocalCacheService.instance.getProductionPlan(
+        projectId,
+      );
+      _setProgressFrom(scenes, plan?.sceneStatuses ?? const {});
     } catch (e) {
-        debugPrint('Error: $e');
-      }
+      debugPrint('ProjectCard cache progress error: $e');
+    }
   }
 
   Future<void> _loadLocalProgress() async {
-    if (widget.project.id == null) return;
+    final projectId = widget.project.id;
+    if (projectId == null) return;
     try {
-      // Race condition safety: wait for ApiService token to load from tryAutoLogin
       int retries = 0;
       while (ApiService.token == null && retries < 10) {
         await Future.delayed(const Duration(milliseconds: 200));
@@ -401,43 +441,30 @@ class _ProjectCardState extends State<_ProjectCard> {
       }
 
       final api = ApiService();
-      final scenes = await api.getScenesForProject(widget.project.id!);
-      final prefs = await SharedPreferences.getInstance();
-
-      final total = scenes.length;
-      int done = 0;
-      for (var s in scenes) {
-        final savedStatus = prefs.getString('proj_${widget.project.id}_scene_${s.id}_shooting_status');
-        // Mặc định là chờ quay (todo) chứ không dựa trên trạng thái viết kịch bản
-        final shootingStatus = savedStatus != null ? SceneStatusExt.fromDb(savedStatus) : SceneStatus.todo;
-        if (shootingStatus == SceneStatus.done) {
-          done++;
-        }
-      }
-
-      final calculatedProgress = total == 0
-          ? (widget.project.status == 'COMPLETED' ? 1.0 : 0.0)
-          : (done / total);
-      await prefs.setDouble('proj_${widget.project.id}_last_known_shooting_progress', calculatedProgress);
-
-      if (mounted) {
-        setState(() {
-          _localProgress = calculatedProgress;
-        });
-      }
+      final scenes = await api.getScenesForProject(projectId);
+      final plan = await api.getProductionPlan(projectId);
+      try {
+        await LocalCacheService.instance.replaceScenesForProject(
+          projectId,
+          scenes,
+        );
+        await LocalCacheService.instance.upsertProductionPlan(plan);
+      } catch (_) {}
+      _setProgressFrom(scenes, plan.sceneStatuses);
     } catch (e) {
-      debugPrint('ProjectCard_Error loading progress for project ${widget.project.id}: $e');
+      debugPrint(
+        'ProjectCard_Error loading progress for project $projectId: $e',
+      );
     }
   }
 
+  void _setProgressFrom(List<Scene> scenes, Map<int, String> statuses) {
+    final metrics = ProductionMetrics.fromScenes(scenes, statuses);
+    if (mounted) setState(() => _localProgress = metrics.progress);
+  }
+
   String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'TBD';
-    try {
-      final dt = DateTime.parse(dateStr);
-      return '${dt.day}/${dt.month}/${dt.year}';
-    } catch (_) {
-      return dateStr;
-    }
+    return formatDateOnly(dateStr);
   }
 
   String _getStatusLabel(String status) {
@@ -491,10 +518,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: StatusBadge(
-                      status: statusType,
-                      label: statusLabel,
-                    ),
+                    child: StatusBadge(status: statusType, label: statusLabel),
                   ),
                 ],
               ),
@@ -515,7 +539,11 @@ class _ProjectCardState extends State<_ProjectCard> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey),
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 12,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(

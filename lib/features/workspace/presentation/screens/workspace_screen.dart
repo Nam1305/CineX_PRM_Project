@@ -5,13 +5,19 @@ import 'package:cinex_application/features/scenes/presentation/screens/storyboar
 import 'package:cinex_application/features/characters/presentation/screens/characters_tab.dart';
 import 'package:cinex_application/features/locations/presentation/screens/locations_tab.dart';
 import 'package:cinex_application/features/production/presentation/screens/production_tab.dart';
+import 'package:cinex_application/features/production/providers/production_provider.dart';
+import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/presentation/screens/notification_screen.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   final Project project;
   final int initialTab;
-  const WorkspaceScreen({super.key, required this.project, this.initialTab = 0});
+  const WorkspaceScreen({
+    super.key,
+    required this.project,
+    this.initialTab = 0,
+  });
 
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
@@ -30,7 +36,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       StoryboardTab(projectId: id),
       CharactersTab(projectId: id),
       LocationsTab(projectId: id),
-      ProductionTab(projectId: id),
+      ProductionTab(
+        projectId: id,
+        projectStartDate: widget.project.startDate,
+        projectEndDate: widget.project.endDate,
+      ),
     ];
   }
 
@@ -49,9 +59,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
                 ),
               ),
               if (unreadCount > 0)
@@ -92,7 +100,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+        onDestinationSelected: (i) {
+          setState(() => _selectedIndex = i);
+          if (i == 3) {
+            context.read<ProductionProvider>().loadForProject(
+              widget.project.id!,
+              canMigrateLegacy: context.read<AuthProvider>().isProducer,
+            );
+          }
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.movie_filter_outlined),

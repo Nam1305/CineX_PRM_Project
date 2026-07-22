@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -12,6 +13,29 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
+  Future<void> _markAllAsRead(NotificationProvider provider) async {
+    final success = await provider.markAllAsRead();
+    if (!success && mounted) {
+      AppSnackbar.error(
+        context,
+        provider.error ?? 'Không thể đánh dấu tất cả thông báo đã đọc.',
+      );
+    }
+  }
+
+  Future<void> _markAsRead(
+    NotificationProvider provider,
+    int? notificationId,
+  ) async {
+    final success = await provider.markAsRead(notificationId);
+    if (!success && mounted) {
+      AppSnackbar.error(
+        context,
+        provider.error ?? 'Không thể đánh dấu thông báo đã đọc.',
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -90,8 +114,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         actions: [
           if (provider.unreadCount > 0)
             TextButton.icon(
-              onPressed: () => provider.markAllAsRead(),
-              icon: const Icon(Icons.done_all, size: 16, color: Color(0xFFFF571A)),
+              onPressed: () => _markAllAsRead(provider),
+              icon: const Icon(
+                Icons.done_all,
+                size: 16,
+                color: Color(0xFFFF571A),
+              ),
               label: const Text(
                 'Đọc tất cả',
                 style: TextStyle(color: Color(0xFFFF571A), fontSize: 12),
@@ -111,17 +139,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
               backgroundColor: const Color(0xFF1E1E1E),
               child: groupedMap.isEmpty
                   ? ListView(
-                      children: const [
-                        SizedBox(height: 200),
+                      children: [
+                        const SizedBox(height: 200),
                         Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.notifications_none, size: 64, color: Colors.grey),
-                              SizedBox(height: 16),
+                              const Icon(
+                                Icons.notifications_none,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
                               Text(
-                                'Không có thông báo nào',
-                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                                provider.error ?? 'Không có thông báo nào',
+                                style: TextStyle(
+                                  color: provider.error == null
+                                      ? Colors.grey
+                                      : Colors.orangeAccent,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
@@ -134,7 +172,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       itemBuilder: (context, index) {
                         final projectTitle = groupedMap.keys.elementAt(index);
                         final notifs = groupedMap[projectTitle]!;
-                        final unreadInProj = notifs.where((n) => !n.isRead).length;
+                        final unreadInProj = notifs
+                            .where((n) => !n.isRead)
+                            .length;
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -148,10 +188,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFF571A).withValues(alpha: 0.15),
+                                color: const Color(
+                                  0xFFFF571A,
+                                ).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.movie_outlined, color: Color(0xFFFF571A), size: 20),
+                              child: const Icon(
+                                Icons.movie_outlined,
+                                color: Color(0xFFFF571A),
+                                size: 20,
+                              ),
                             ),
                             title: Row(
                               children: [
@@ -167,7 +213,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 ),
                                 if (unreadInProj > 0)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFFF571A),
                                       borderRadius: BorderRadius.circular(10),
@@ -185,17 +234,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             ),
                             children: notifs.map((n) {
                               return InkWell(
-                                onTap: () => provider.markAsRead(n.id),
+                                onTap: () => _markAsRead(provider, n.id),
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: n.isRead ? Colors.transparent : const Color(0xFFFF571A).withValues(alpha: 0.05),
+                                    color: n.isRead
+                                        ? Colors.transparent
+                                        : const Color(
+                                            0xFFFF571A,
+                                          ).withValues(alpha: 0.05),
                                     border: const Border(
-                                      top: BorderSide(color: Color(0xFF2C2C2C), width: 0.5),
+                                      top: BorderSide(
+                                        color: Color(0xFF2C2C2C),
+                                        width: 0.5,
+                                      ),
                                     ),
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Icon(
                                         _getActionIcon(n.actionType),
@@ -205,24 +262,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 Expanded(
                                                   child: Text(
                                                     n.title,
                                                     style: TextStyle(
-                                                      color: n.isRead ? Colors.white70 : Colors.white,
-                                                      fontWeight: n.isRead ? FontWeight.normal : FontWeight.bold,
+                                                      color: n.isRead
+                                                          ? Colors.white70
+                                                          : Colors.white,
+                                                      fontWeight: n.isRead
+                                                          ? FontWeight.normal
+                                                          : FontWeight.bold,
                                                       fontSize: 13,
                                                     ),
                                                   ),
                                                 ),
                                                 Text(
                                                   _formatTimeAgo(n.timestamp),
-                                                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                                  style: const TextStyle(
+                                                    color: Colors.grey,
+                                                    fontSize: 10,
+                                                  ),
                                                 ),
                                               ],
                                             ),
@@ -230,7 +297,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                             Text(
                                               n.body,
                                               style: TextStyle(
-                                                color: n.isRead ? Colors.grey : Colors.grey.shade300,
+                                                color: n.isRead
+                                                    ? Colors.grey
+                                                    : Colors.grey.shade300,
                                                 fontSize: 12,
                                                 height: 1.3,
                                               ),

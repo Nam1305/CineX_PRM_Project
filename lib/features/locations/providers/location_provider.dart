@@ -10,10 +10,12 @@ class LocationProvider extends ChangeNotifier {
   List<Location> _locations = [];
   bool _isLoading = false;
   String? _error;
+  int _dataVersion = 0;
 
   List<Location> get locations => _locations;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  int get dataVersion => _dataVersion;
 
   Future<void> loadLocations(int projectId) async {
     _isLoading = true;
@@ -51,6 +53,7 @@ class LocationProvider extends ChangeNotifier {
         await _cache.upsertLocation(created);
       } catch (_) {}
       _locations.add(created);
+      _dataVersion++;
       notifyListeners();
       return true;
     } catch (e) {
@@ -71,6 +74,7 @@ class LocationProvider extends ChangeNotifier {
         if (index >= 0) {
           _locations[index] = location;
         }
+        _dataVersion++;
         notifyListeners();
       }
       return ok;
@@ -100,6 +104,8 @@ class LocationProvider extends ChangeNotifier {
       try {
         await _cache.deleteLocation(id);
       } catch (_) {}
+      _dataVersion++;
+      notifyListeners();
       return true;
     } catch (e) {
       _locations.insert(index, backup);

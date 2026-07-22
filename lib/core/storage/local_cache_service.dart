@@ -8,6 +8,7 @@ import 'package:cinex_application/features/locations/data/models/location.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/features/production/data/models/production_plan.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -30,7 +31,7 @@ class LocalCacheService {
 
   static final LocalCacheService instance = LocalCacheService._();
   static const _databaseName = 'cinex_offline.db';
-  static const _schemaVersion = 2;
+  static const _schemaVersion = 3;
 
   Database? _database;
   Future<Database>? _opening;
@@ -55,6 +56,7 @@ class LocalCacheService {
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) await _createProductionPlansTable(db);
+          if (oldVersion < 3) await _createNotificationsTable(db);
         },
       ),
     );
@@ -141,6 +143,7 @@ class LocalCacheService {
       )
     ''');
     await _createProductionPlansTable(db);
+    await _createNotificationsTable(db);
   }
 
   Future<void> _createProductionPlansTable(DatabaseExecutor db) async {
@@ -152,6 +155,105 @@ class LocalCacheService {
         cached_at INTEGER NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createNotificationsTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notifications (
+        owner_key TEXT NOT NULL,
+        id INTEGER NOT NULL,
+        project_id INTEGER,
+        timestamp INTEGER NOT NULL,
+        is_read INTEGER NOT NULL,
+        payload TEXT NOT NULL,
+        cached_at INTEGER NOT NULL,
+        PRIMARY KEY (owner_key, id)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS ix_notifications_owner_time '
+      'ON notifications(owner_key, timestamp DESC)',
+    );
+  }
+
+  Future<List<NotificationModel>> getNotifications(String ownerKey) async {
+    final rows = await (await _db).query(
+      'notifications',
+      where: 'owner_key = ?',
+      whereArgs: [ownerKey],
+      orderBy: 'timestamp DESC',
+    );
+    return rows.map((row) => NotificationModel.fromMap(_payload(row))).toList();
+  }
+
+  Future<void> replaceNotifications(
+    String ownerKey,
+    List<NotificationModel> notifications,
+  ) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'notifications',
+        where: 'owner_key = ?',
+        whereArgs: [ownerKey],
+      );
+      final batch = txn.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final notification in notifications) {
+        if (notification.id == null) continue;
+        batch.insert('notifications', {
+          'owner_key': ownerKey,
+          'id': notification.id,
+          'project_id': notification.projectId,
+          'timestamp': notification.timestamp.millisecondsSinceEpoch,
+          'is_read': notification.isRead ? 1 : 0,
+          'payload': jsonEncode(notification.toMap()),
+          'cached_at': now,
+        });
+      }
+      await batch.commit(noResult: true);
+      await _setLastSync(txn, 'notifications:$ownerKey', now);
+    });
+  }
+
+  Future<void> upsertNotification(
+    String ownerKey,
+    NotificationModel notification,
+  ) async {
+    if (notification.id == null) return;
+    await (await _db).insert('notifications', {
+      'owner_key': ownerKey,
+      'id': notification.id,
+      'project_id': notification.projectId,
+      'timestamp': notification.timestamp.millisecondsSinceEpoch,
+      'is_read': notification.isRead ? 1 : 0,
+      'payload': jsonEncode(notification.toMap()),
+      'cached_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateCachedNotificationReadState(
+    String ownerKey,
+    Iterable<NotificationModel> notifications,
+  ) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final notification in notifications) {
+        if (notification.id == null) continue;
+        batch.insert('notifications', {
+          'owner_key': ownerKey,
+          'id': notification.id,
+          'project_id': notification.projectId,
+          'timestamp': notification.timestamp.millisecondsSinceEpoch,
+          'is_read': notification.isRead ? 1 : 0,
+          'payload': jsonEncode(notification.toMap()),
+          'cached_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   Future<ProductionPlan?> getProductionPlan(int projectId) async {
@@ -477,6 +579,16 @@ class LocalCacheService {
       projectId = existing.isEmpty
           ? null
           : existing.first['project_id'] as int?;
+    }
+    if (projectId == null) {
+      final actRows = await db.query(
+        'acts',
+        columns: ['project_id'],
+        where: 'id = ?',
+        whereArgs: [scene.actId],
+        limit: 1,
+      );
+      projectId = actRows.isEmpty ? null : actRows.first['project_id'] as int?;
     }
     await db.insert(
       'scenes',

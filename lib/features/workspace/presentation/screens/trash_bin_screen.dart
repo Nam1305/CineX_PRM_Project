@@ -16,10 +16,11 @@ class TrashBinScreen extends StatefulWidget {
   State<TrashBinScreen> createState() => _TrashBinScreenState();
 }
 
-class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProviderStateMixin {
+class _TrashBinScreenState extends State<TrashBinScreen>
+    with SingleTickerProviderStateMixin {
   final _api = ApiService();
   late TabController _tabController;
-  
+
   List<Act> _deletedActs = [];
   List<Scene> _deletedScenes = [];
   bool _isLoading = true;
@@ -54,14 +55,18 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProvid
   Future<void> _restoreAct(Act act) async {
     final actProvider = context.read<ActProvider>();
     final sceneProvider = context.read<SceneProvider>();
-    
+
     final ok = await actProvider.restoreAct(act.id!, widget.projectId);
     if (ok) {
       if (mounted) {
-        AppSnackbar.success(context, 'Đã khôi phục Hồi "${act.title}" cùng các cảnh quay');
+        AppSnackbar.success(
+          context,
+          'Đã khôi phục Hồi "${act.title}" cùng các cảnh quay',
+        );
       }
       // Khởi động lại dữ liệu cảnh trong provider cho Hồi này
       await sceneProvider.loadScenesForAct(act.id!);
+      sceneProvider.invalidateProjectData();
       _loadTrashData();
     } else {
       if (mounted) {
@@ -103,10 +108,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProvid
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
-              children: [
-                _buildActsList(),
-                _buildScenesList(),
-              ],
+              children: [_buildActsList(), _buildScenesList()],
             ),
     );
   }
@@ -126,7 +128,10 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProvid
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
-            title: Text(act.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              act.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: Text(act.summary ?? 'Không có tóm tắt'),
             trailing: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -160,12 +165,21 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SingleTickerProvid
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.grey.withValues(alpha: 0.15),
-              child: Text('${scene.sceneNumber}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text(
+                '${scene.sceneNumber}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-            title: Text(scene.title.isNotEmpty ? scene.title : 'Cảnh không tiêu đề',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Thuộc Hồi: ${scene.location?.sceneLabel ?? "Không rõ bối cảnh"}'),
+            title: Text(
+              scene.title.isNotEmpty ? scene.title : 'Cảnh không tiêu đề',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Thuộc Hồi: ${scene.location?.sceneLabel ?? "Không rõ bối cảnh"}',
+            ),
             trailing: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade800,

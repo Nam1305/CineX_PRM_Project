@@ -5,7 +5,6 @@ import '../widgets/int_ext_pie_chart.dart';
 import '../widgets/character_frequency_chart.dart';
 import '../widgets/scene_characters_chart.dart';
 import 'package:cinex_application/core/services/api_service.dart';
-import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/core/utils/pdf_exporter.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 
@@ -50,11 +49,16 @@ class ProductionAnalyticsView extends StatelessWidget {
       );
     }
 
+    final locationCount = provider.allScenes
+        .map((scene) => scene.locationId ?? scene.location?.id)
+        .whereType<int>()
+        .toSet()
+        .length;
     // Calculate Insights
     String keyCharacter = 'N/A';
     int maxCharScenes = 0;
     double charCoverage = 0.0;
-    
+
     final charCounts = <String, int>{};
     for (var scene in provider.allScenes) {
       for (var c in scene.characters) {
@@ -97,7 +101,9 @@ class ProductionAnalyticsView extends StatelessWidget {
         complexSceneChars = scene.characters.map((c) => c.name).toList();
       }
     }
-    double avgCharsPerScene = provider.allScenes.isEmpty ? 0.0 : totalCharsInScenes / provider.allScenes.length;
+    double avgCharsPerScene = provider.allScenes.isEmpty
+        ? 0.0
+        : totalCharsInScenes / provider.allScenes.length;
 
     return Container(
       color: const Color(0xFF131313),
@@ -125,7 +131,10 @@ class ProductionAnalyticsView extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF571A),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -136,29 +145,63 @@ class ProductionAnalyticsView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Stats Grid
             LayoutBuilder(
               builder: (context, constraints) {
-                final doneCount = provider.allScenes.where((s) => provider.getShootingStatus(s) == SceneStatus.done).length;
+                final doneCount = provider.allScenes
+                    .where(
+                      (s) => provider.getShootingStatus(s) == SceneStatus.done,
+                    )
+                    .length;
                 if (constraints.maxWidth < 360) {
                   return Column(
                     children: [
-                      _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation),
+                      _buildStatCard(
+                        'Tổng cảnh',
+                        provider.allScenes.length.toString(),
+                        Icons.movie_creation,
+                      ),
                       const SizedBox(height: 8),
-                      _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on),
+                      _buildStatCard(
+                        'Bối cảnh',
+                        locationCount.toString(),
+                        Icons.location_on,
+                      ),
                       const SizedBox(height: 8),
-                      _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle),
+                      _buildStatCard(
+                        'Đã quay',
+                        doneCount.toString(),
+                        Icons.check_circle,
+                      ),
                     ],
                   );
                 }
                 return Row(
                   children: [
-                    Expanded(child: _buildStatCard('Tổng cảnh', provider.allScenes.length.toString(), Icons.movie_creation)),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Tổng cảnh',
+                        provider.allScenes.length.toString(),
+                        Icons.movie_creation,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard('Bối cảnh', provider.groupedByLocation.length.toString(), Icons.location_on)),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Bối cảnh',
+                        locationCount.toString(),
+                        Icons.location_on,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard('Đã quay', doneCount.toString(), Icons.check_circle)),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Đã quay',
+                        doneCount.toString(),
+                        Icons.check_circle,
+                      ),
+                    ),
                   ],
                 );
               },
@@ -221,62 +264,6 @@ class ProductionAnalyticsView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Production Progress Bar
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF2C2C2C)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Tiến độ sản xuất',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        '${(provider.productionProgress * 100).toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFFF571A),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: provider.productionProgress,
-                      minHeight: 10,
-                      backgroundColor: const Color(0xFF2C2C2C),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        provider.productionProgress >= 1.0
-                            ? Colors.green
-                            : const Color(0xFFFF571A),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${provider.completedScenesCount} / ${provider.allScenes.length} cảnh đã hoàn thành quay',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
             // Int vs Ext Chart
             IntExtPieChart(scenes: provider.allScenes),
             const SizedBox(height: 24),
@@ -284,7 +271,7 @@ class ProductionAnalyticsView extends StatelessWidget {
             // Scene Characters Chart
             SceneCharactersChart(scenes: provider.allScenes),
             const SizedBox(height: 24),
-            
+
             // Character Frequency Chart
             CharacterFrequencyChart(scenes: provider.allScenes),
             const SizedBox(height: 24),
@@ -328,15 +315,13 @@ class ProductionAnalyticsView extends StatelessWidget {
       final api = ApiService();
       // Tải danh sách dự án để tìm dự án hiện tại
       final projects = await api.getProjects();
-      final project = projects.firstWhere(
-        (p) => p.id == projectId,
-        orElse: () => Project(
-          id: projectId,
-          title: 'Dự án CineX',
-          status: 'PLANNING',
-          crewCount: 0,
-        ),
+      final matchingProjects = projects.where(
+        (project) => project.id == projectId,
       );
+      if (matchingProjects.isEmpty) {
+        throw StateError('Không tìm thấy dự án để xuất báo cáo.');
+      }
+      final project = matchingProjects.first;
 
       // Tải danh sách hồi (Acts)
       final acts = await api.getActsForProject(projectId);
@@ -401,7 +386,11 @@ class ProductionAnalyticsView extends StatelessWidget {
                   color: const Color(0xFFFF571A),
                 ),
               ),
-              const Icon(Icons.psychology_outlined, color: Color(0xFFFF571A), size: 20),
+              const Icon(
+                Icons.psychology_outlined,
+                color: Color(0xFFFF571A),
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -410,7 +399,7 @@ class ProductionAnalyticsView extends StatelessWidget {
             iconColor: Colors.blueAccent,
             title: 'Nhân vật chủ chốt',
             value: keyCharacter != 'N/A' ? keyCharacter : 'Chưa có',
-            subtitle: keyCharacter != 'N/A' 
+            subtitle: keyCharacter != 'N/A'
                 ? 'Xuất hiện trong ${maxCharScenes} cảnh (${charCoverage.toStringAsFixed(0)}% thời lượng kịch bản)'
                 : 'Thêm nhân vật vào cảnh để thống kê',
           ),
@@ -430,7 +419,8 @@ class ProductionAnalyticsView extends StatelessWidget {
             iconColor: Colors.orangeAccent,
             title: 'Mức độ phức tạp trung bình',
             value: '${avgCharsPerScene.toStringAsFixed(1)} nhân vật/cảnh',
-            subtitle: 'Đoàn phim cần lưu ý sắp xếp lịch điều phối nhân sự phù hợp',
+            subtitle:
+                'Đoàn phim cần lưu ý sắp xếp lịch điều phối nhân sự phù hợp',
           ),
           if (maxSceneChars > 0) ...[
             const Divider(color: Color(0xFF2C2C2C), height: 24),
@@ -439,7 +429,8 @@ class ProductionAnalyticsView extends StatelessWidget {
               iconColor: Colors.redAccent,
               title: 'Cảnh phức tạp nhất (Cảnh ${complexSceneNum})',
               value: complexSceneTitle,
-              subtitle: 'Đòi hỏi sự xuất hiện của ${maxSceneChars} diễn viên cùng lúc:\n(${complexSceneChars.join(', ')})',
+              subtitle:
+                  'Đòi hỏi sự xuất hiện của ${maxSceneChars} diễn viên cùng lúc:\n(${complexSceneChars.join(', ')})',
             ),
           ],
         ],
@@ -472,17 +463,29 @@ class ProductionAnalyticsView extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.grey, height: 1.3),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey,
+                  height: 1.3,
+                ),
               ),
             ],
           ),
@@ -497,22 +500,8 @@ class ProductionAnalyticsView extends StatelessWidget {
     final groups = provider.groupedByLocation.entries.toList();
 
     DateTime? getShootingDate(int dayIndex) {
-      final group = groups[dayIndex];
-      final customDateStr = provider.customDates[group.key];
-      if (customDateStr != null && customDateStr.isNotEmpty) {
-        try {
-          return DateTime.parse(customDateStr);
-        } catch (e) {
-        debugPrint('Error: $e');
-      }
-      }
-      if (projectStartDate == null || projectStartDate!.isEmpty) return null;
-      try {
-        final base = DateTime.parse(projectStartDate!);
-        return base.add(Duration(days: dayIndex));
-      } catch (_) {
-        return null;
-      }
+      final customDate = provider.customDates[groups[dayIndex].key];
+      return customDate == null ? null : DateTime.tryParse(customDate);
     }
 
     final hasManyDays = groups.length > 3;
@@ -548,7 +537,11 @@ class ProductionAnalyticsView extends StatelessWidget {
                         style: TextStyle(color: Colors.grey, fontSize: 10),
                       ),
                     ),
-                  const Icon(Icons.calendar_today_outlined, color: Color(0xFFFF571A), size: 20),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    color: Color(0xFFFF571A),
+                    size: 20,
+                  ),
                 ],
               ),
             ],
@@ -566,14 +559,20 @@ class ProductionAnalyticsView extends StatelessWidget {
                     ? const AlwaysScrollableScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
                 itemCount: groups.length,
-                separatorBuilder: (context, index) => const Divider(color: Color(0xFF2C2C2C), height: 24),
+                separatorBuilder: (context, index) =>
+                    const Divider(color: Color(0xFF2C2C2C), height: 24),
                 itemBuilder: (context, index) {
                   final group = groups[index];
                   final date = getShootingDate(index);
-                  final dateStr = date != null ? DateFormat('dd/MM/yyyy').format(date) : 'Chưa thiết lập ngày';
+                  final dateStr = date != null
+                      ? DateFormat('dd/MM/yyyy').format(date)
+                      : 'Chưa thiết lập ngày';
                   final firstLoc = group.value.first.location;
-                  final settingStr = (firstLoc?.setting.toString() == LocationSetting.interior.toString() ||
-                          firstLoc?.setting.toString() == 'LocationSetting.interior' ||
+                  final settingStr =
+                      (firstLoc?.setting.toString() ==
+                              LocationSetting.interior.toString() ||
+                          firstLoc?.setting.toString() ==
+                              'LocationSetting.interior' ||
                           firstLoc?.setting.toString() == 'INT')
                       ? 'Nội (INT)'
                       : 'Ngoại (EXT)';
@@ -583,16 +582,25 @@ class ProductionAnalyticsView extends StatelessWidget {
                     children: [
                       Container(
                         width: 95,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFF571A).withValues(alpha: 0.1),
-                          border: Border.all(color: const Color(0xFFFF571A).withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFF571A,
+                            ).withValues(alpha: 0.3),
+                          ),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Column(
                           children: [
                             Text(
-                              'NGÀY ${index + 1}',
+                              date == null
+                                  ? 'CHƯA XẾP NGÀY'
+                                  : 'NGÀY ${index + 1}',
                               style: const TextStyle(
                                 color: Color(0xFFFF571A),
                                 fontWeight: FontWeight.bold,
@@ -668,13 +676,7 @@ class ProductionAnalyticsView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
+          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
     );

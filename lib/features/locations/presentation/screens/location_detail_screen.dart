@@ -5,15 +5,12 @@ import 'package:cinex_application/features/scenes/data/models/scene.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/widgets/section_card.dart';
-import 'package:cinex_application/data/mock_data.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
 
 class LocationDetailScreen extends StatefulWidget {
   final Location location;
 
-  const LocationDetailScreen({
-    super.key,
-    required this.location,
-  });
+  const LocationDetailScreen({super.key, required this.location});
 
   @override
   State<LocationDetailScreen> createState() => _LocationDetailScreenState();
@@ -31,30 +28,60 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
   }
 
   Future<void> _loadLocationScenes() async {
-    final projId = widget.location.projectId ?? 1;
+    final projectId = widget.location.projectId;
+    if (projectId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    List<Scene> cachedScenes = [];
     try {
-      final allScenes = await _api.getScenesForProject(projId);
-      final locId = widget.location.id;
+      cachedScenes = await LocalCacheService.instance.getScenesForProject(
+        projectId,
+      );
+      if (cachedScenes.isNotEmpty && mounted) {
+        setState(() {
+          _scenes = _filterLocationScenes(cachedScenes);
+          _isLoading = false;
+        });
+      }
+    } catch (_) {}
 
-      final filtered = allScenes.where((s) => s.locationId == locId || (locId != null && s.location?.id == locId)).toList();
-
+    try {
+      final serverScenes = await _api.getScenesForProject(projectId);
+      try {
+        await LocalCacheService.instance.replaceScenesForProject(
+          projectId,
+          serverScenes,
+        );
+      } catch (_) {}
       if (mounted) {
         setState(() {
-          _scenes = filtered;
+          _scenes = _filterLocationScenes(serverScenes);
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('LocationDetailScreen._loadLocationScenes error: $e');
-      final locId = widget.location.id;
-      final mockFiltered = MockData.mockScenes.where((s) => s.locationId == locId || (locId != null && s.location?.id == locId)).toList();
       if (mounted) {
         setState(() {
-          _scenes = mockFiltered;
+          _scenes = _filterLocationScenes(cachedScenes);
           _isLoading = false;
         });
       }
     }
+  }
+
+  List<Scene> _filterLocationScenes(List<Scene> scenes) {
+    final locationId = widget.location.id;
+    if (locationId == null) return [];
+    return scenes
+        .where(
+          (scene) =>
+              scene.locationId == locationId ||
+              scene.location?.id == locationId,
+        )
+        .toList();
   }
 
   @override
@@ -70,8 +97,6 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: ImageCard(
-                imageUrl:
-                    'https://placehold.co/400x300/1C1B1B/FF4D00?text=${Uri.encodeComponent(location.name)}',
                 onTap: () {},
                 heroTag: 'location_${location.id}',
               ),
@@ -82,18 +107,13 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Title
-                Text(
-                  location.name,
-                  style: theme.textTheme.headlineLarge,
-                ),
+                Text(location.name, style: theme.textTheme.headlineLarge),
                 const SizedBox(height: 12),
 
                 // Quick Tags
                 Wrap(
                   spacing: 8,
-                  children: const [
-                    _TagChip(label: 'Bối cảnh địa lý'),
-                  ],
+                  children: const [_TagChip(label: 'Bối cảnh địa lý')],
                 ),
                 const SizedBox(height: 24),
 
@@ -111,7 +131,8 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
                       _TechInfoItem(
                         icon: Icons.straighten,
                         label: 'Vị trí & Thời gian quay',
-                        value: '${location.setting.fullLabel} - ${location.timeOfDay.fullLabel}',
+                        value:
+                            '${location.setting.fullLabel} - ${location.timeOfDay.fullLabel}',
                       ),
                       const SizedBox(height: 12),
                       _TechInfoItem(
@@ -142,31 +163,34 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _scenes.isEmpty
-                          ? const Text(
-                              'Chưa có cảnh quay nào đăng ký tại bối cảnh này.',
-                              style: TextStyle(color: Colors.grey, fontSize: 13),
-                            )
-                          : Column(
-                              children: _scenes.asMap().entries.map((entry) {
-                                final idx = entry.key;
-                                final scene = entry.value;
-                                final sceneNum = scene.sceneNumber.toString().padLeft(2, '0');
-                                final charCount = scene.characters.length;
+                      ? const Text(
+                          'Chưa có cảnh quay nào đăng ký tại bối cảnh này.',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        )
+                      : Column(
+                          children: _scenes.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final scene = entry.value;
+                            final sceneNum = scene.sceneNumber
+                                .toString()
+                                .padLeft(2, '0');
+                            final charCount = scene.characters.length;
 
-                                return Column(
-                                  children: [
-                                    if (idx > 0) const SizedBox(height: 12),
-                                    _SceneItem(
-                                      sceneNumber: sceneNum,
-                                      title: scene.title,
-                                      summary: scene.summary ?? 'Chưa có tóm tắt cảnh',
-                                      charCount: charCount,
-                                      statusLabel: scene.status.label,
-                                    ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
+                            return Column(
+                              children: [
+                                if (idx > 0) const SizedBox(height: 12),
+                                _SceneItem(
+                                  sceneNumber: sceneNum,
+                                  title: scene.title,
+                                  summary:
+                                      scene.summary ?? 'Chưa có tóm tắt cảnh',
+                                  charCount: charCount,
+                                  statusLabel: scene.status.label,
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                 ),
                 const SizedBox(height: 16),
 
@@ -245,10 +269,7 @@ class _TechInfoItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall,
-              ),
+              Text(label, style: theme.textTheme.labelSmall),
               Text(
                 value,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -289,7 +310,9 @@ class _SceneItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+            ),
           ),
           child: Center(
             child: Text(
@@ -334,10 +357,7 @@ class _ManagementItem extends StatelessWidget {
   final String label;
   final String value;
 
-  const _ManagementItem({
-    required this.label,
-    required this.value,
-  });
+  const _ManagementItem({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -345,10 +365,7 @@ class _ManagementItem extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall,
-        ),
+        Text(label, style: theme.textTheme.labelSmall),
         Text(
           value,
           style: theme.textTheme.bodyMedium?.copyWith(

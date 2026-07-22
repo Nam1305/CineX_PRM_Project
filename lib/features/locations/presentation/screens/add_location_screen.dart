@@ -7,7 +7,9 @@ import 'package:cinex_application/features/locations/providers/location_provider
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 
 class AddLocationScreen extends StatefulWidget {
-  const AddLocationScreen({super.key});
+  final int projectId;
+
+  const AddLocationScreen({super.key, required this.projectId});
 
   @override
   State<AddLocationScreen> createState() => _AddLocationScreenState();
@@ -62,10 +64,7 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Tải Moodboard',
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text('Tải Moodboard', style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),
@@ -106,12 +105,17 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
             const SizedBox(height: 8),
             SegmentedButton<LocationSetting>(
               segments: LocationSetting.values
-                  .map((s) => ButtonSegment(
+                  .map(
+                    (s) => ButtonSegment(
                       value: s,
                       label: Text(s.fullLabel),
-                      icon: Icon(s == LocationSetting.interior
-                          ? Icons.home_outlined
-                          : Icons.wb_sunny_outlined)))
+                      icon: Icon(
+                        s == LocationSetting.interior
+                            ? Icons.home_outlined
+                            : Icons.wb_sunny_outlined,
+                      ),
+                    ),
+                  )
                   .toList(),
               selected: {_setting},
               onSelectionChanged: (s) => setState(() => _setting = s.first),
@@ -128,12 +132,17 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
             const SizedBox(height: 8),
             SegmentedButton<SceneTime>(
               segments: SceneTime.values
-                  .map((t) => ButtonSegment(
+                  .map(
+                    (t) => ButtonSegment(
                       value: t,
                       label: Text(t.fullLabel),
-                      icon: Icon(t == SceneTime.day
-                          ? Icons.wb_sunny
-                          : Icons.nightlight_round)))
+                      icon: Icon(
+                        t == SceneTime.day
+                            ? Icons.wb_sunny
+                            : Icons.nightlight_round,
+                      ),
+                    ),
+                  )
                   .toList(),
               selected: {_timeOfDay},
               onSelectionChanged: (t) => setState(() => _timeOfDay = t.first),
@@ -180,6 +189,7 @@ class _AddLocationScreenState extends State<AddLocationScreen> {
     setState(() => _saving = true);
 
     final location = Location(
+      projectId: widget.projectId,
       name: _nameCtrl.text.trim(),
       setting: _setting,
       timeOfDay: _timeOfDay,

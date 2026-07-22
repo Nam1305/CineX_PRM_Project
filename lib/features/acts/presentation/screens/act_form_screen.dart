@@ -98,7 +98,6 @@ class _ActFormScreenState extends State<ActFormScreen> {
     if (ok) {
       context.read<NotificationProvider>().addNotification(
         projectId: widget.projectId,
-        projectTitle: 'Dự án CineX #${widget.projectId}',
         actId: act.id,
         title: _isEditing
             ? 'Cập nhật Hồi: ${act.title}'

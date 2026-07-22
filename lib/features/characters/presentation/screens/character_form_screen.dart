@@ -10,6 +10,8 @@ import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
+import 'package:cinex_application/features/scenes/data/models/scene.dart';
 
 class CharacterFormScreen extends StatefulWidget {
   final int projectId;
@@ -38,6 +40,8 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
   double _imageUploadProgress = 0;
   String? _imageUploadError;
   bool _saving = false;
+  bool _loadingAppearingScenes = false;
+  List<Scene> _appearingScenes = const [];
 
   bool get _isEditing => widget.character != null;
 
@@ -49,6 +53,66 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
     _descCtrl = TextEditingController(text: widget.character?.description);
     _roleType = widget.character?.roleType ?? RoleType.main;
     _imagePath = widget.character?.imagePath;
+    if (_isEditing) _loadAppearingScenes();
+  }
+
+  Future<void> _loadAppearingScenes() async {
+    final character = widget.character;
+    if (character == null) return;
+    setState(() => _loadingAppearingScenes = true);
+
+    List<Scene> cachedScenes = const [];
+    try {
+      cachedScenes = await LocalCacheService.instance.getScenesForProject(
+        widget.projectId,
+      );
+      if (mounted && cachedScenes.isNotEmpty) {
+        setState(() {
+          _appearingScenes = _filterAppearingScenes(cachedScenes, character);
+          _loadingAppearingScenes = false;
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final serverScenes = await _api.getScenesForProject(widget.projectId);
+      try {
+        await LocalCacheService.instance.replaceScenesForProject(
+          widget.projectId,
+          serverScenes,
+        );
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _appearingScenes = _filterAppearingScenes(serverScenes, character);
+          _loadingAppearingScenes = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _appearingScenes = _filterAppearingScenes(cachedScenes, character);
+          _loadingAppearingScenes = false;
+        });
+      }
+    }
+  }
+
+  List<Scene> _filterAppearingScenes(List<Scene> scenes, Character character) {
+    final normalizedName = character.name.trim().toLowerCase();
+    final result = scenes.where((scene) {
+      return scene.characters.any((item) {
+        if (character.id != null && item.id != null) {
+          return item.id == character.id;
+        }
+        return item.name.trim().toLowerCase() == normalizedName;
+      });
+    }).toList();
+    result.sort(
+      (left, right) =>
+          Scene.compareNumbers(left.sceneNumber, right.sceneNumber),
+    );
+    return result;
   }
 
   @override
@@ -180,7 +244,10 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
                   const SizedBox(height: 24),
                   _fieldLabel(theme, 'CẢNH XUẤT HIỆN (APPEARS IN)'),
                   const SizedBox(height: 8),
-                  const _AppearsInScenesSection(),
+                  _AppearsInScenesSection(
+                    scenes: _appearingScenes,
+                    isLoading: _loadingAppearingScenes,
+                  ),
                 ],
                 const SizedBox(height: 32),
                 FilledButton.icon(
@@ -361,7 +428,6 @@ class _CharacterFormScreenState extends State<CharacterFormScreen> {
     if (ok) {
       context.read<NotificationProvider>().addNotification(
         projectId: widget.projectId,
-        projectTitle: 'Dự án CineX #${widget.projectId}',
         title: _isEditing
             ? 'Cập nhật nhân vật: ${_nameCtrl.text.trim()}'
             : 'Thêm nhân vật mới: ${_nameCtrl.text.trim()}',
@@ -525,38 +591,31 @@ class _UploadPlaceholder extends StatelessWidget {
   }
 }
 
-class _AppearsInScene {
-  final String code;
-  final String title;
-  final String tag;
-  final SceneTime time;
-
-  const _AppearsInScene(this.code, this.title, this.tag, this.time);
-}
-
 class _AppearsInScenesSection extends StatelessWidget {
-  const _AppearsInScenesSection();
+  final List<Scene> scenes;
+  final bool isLoading;
 
-  // Chưa có endpoint tra cứu "cảnh nào có nhân vật này" trên toàn dự án
-  // (Character là entity dùng chung, không gắn theo ProjectId), nên đây là
-  // dữ liệu minh hoạ giống cách CharacterDetailScreen đang làm.
-  static const _scenes = [
-    _AppearsInScene('SCENE 12A', 'Căn hộ của Minh', 'INT / DAY', SceneTime.day),
-    _AppearsInScene(
-      'SCENE 15',
-      'Hẻm tối Quận 4',
-      'EXT / NIGHT',
-      SceneTime.night,
-    ),
-  ];
+  const _AppearsInScenesSection({
+    required this.scenes,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (isLoading && scenes.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (scenes.isEmpty) {
+      return Text(
+        'Nhân vật chưa được gán vào cảnh nào.',
+        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+      );
+    }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: _scenes.map((scene) {
+        children: scenes.map((scene) {
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Container(
@@ -587,7 +646,7 @@ class _AppearsInScenesSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          scene.code,
+                          'CẢNH ${scene.sceneNumber}',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -596,7 +655,7 @@ class _AppearsInScenesSection extends StatelessWidget {
                         ),
                       ),
                       Icon(
-                        scene.time == SceneTime.day
+                        scene.timeOfDay == SceneTime.day
                             ? Icons.wb_sunny_outlined
                             : Icons.nightlight_round,
                         size: 16,
@@ -614,7 +673,10 @@ class _AppearsInScenesSection extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(scene.tag, style: theme.textTheme.labelSmall),
+                  Text(
+                    '${scene.setting.label} / ${scene.timeOfDay.label}',
+                    style: theme.textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),

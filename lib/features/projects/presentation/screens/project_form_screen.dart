@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:cinex_application/core/utils/validators.dart';
+import 'package:cinex_application/core/utils/date_only.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/projects/data/models/project.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
@@ -58,10 +59,10 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     _posterPath = widget.project?.posterUrl;
 
     if (widget.project?.startDate != null) {
-      _startDate = DateTime.tryParse(widget.project!.startDate!);
+      _startDate = parseDateOnly(widget.project!.startDate!);
     }
     if (widget.project?.endDate != null) {
-      _endDate = DateTime.tryParse(widget.project!.endDate!);
+      _endDate = parseDateOnly(widget.project!.endDate!);
     }
   }
 
@@ -143,12 +144,15 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     final todayMidnight = DateTime(now.year, now.month, now.day);
     final firstAllowed = _isEditing ? DateTime(1900) : todayMidnight;
 
-    final preferred = _startDate ?? (_isEditing ? DateTime.now() : todayMidnight);
+    final preferred =
+        _startDate ?? (_isEditing ? DateTime.now() : todayMidnight);
     final lastYear = preferred.year > now.year + 20
         ? preferred.year + 20
         : now.year + 20;
     final lastAllowed = DateTime(lastYear, 12, 31);
-    final initialDate = preferred.isBefore(firstAllowed) ? firstAllowed : preferred;
+    final initialDate = preferred.isBefore(firstAllowed)
+        ? firstAllowed
+        : preferred;
 
     final picked = await showDatePicker(
       context: context,
@@ -178,7 +182,9 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
         ? preferred.year + 20
         : now.year + 20;
     final lastAllowed = DateTime(lastYear, 12, 31);
-    final initialDate = preferred.isBefore(_startDate!) ? _startDate! : preferred;
+    final initialDate = preferred.isBefore(_startDate!)
+        ? _startDate!
+        : preferred;
 
     final picked = await showDatePicker(
       context: context,
@@ -636,10 +642,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     }
     setState(() => _saving = true);
 
-    final finalPosterUrl =
-        _uploadedPosterUrl ??
-        widget.project?.posterUrl ??
-        'https://placehold.co/300x450/FF4D00/FFFFFF?text=Poster';
+    final finalPosterUrl = _uploadedPosterUrl ?? widget.project?.posterUrl;
 
     final project = Project(
       id: widget.project?.id,
@@ -649,8 +652,8 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
           : _directorCtrl.text.trim(),
       genre: _selectedGenre,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      startDate: _startDate?.toUtc().toIso8601String(),
-      endDate: _endDate?.toUtc().toIso8601String(),
+      startDate: _startDate == null ? null : dateOnlyToApi(_startDate!),
+      endDate: _endDate == null ? null : dateOnlyToApi(_endDate!),
       posterUrl: finalPosterUrl,
       progress: widget.project?.progress ?? 0.0,
       status: _selectedStatus,
@@ -661,10 +664,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
     final provider = context.read<ProjectProvider>();
     bool success;
+    int? savedProjectId = project.id;
     if (_isEditing) {
       success = await provider.editProject(project);
     } else {
       final newId = await provider.addProject(project);
+      savedProjectId = newId;
       success = newId != null;
     }
 
@@ -672,7 +677,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       setState(() => _saving = false);
       if (success) {
         context.read<NotificationProvider>().addNotification(
-          projectId: project.id,
+          projectId: savedProjectId,
           projectTitle: project.title,
           title: _isEditing
               ? 'Cập nhật dự án: ${project.title}'

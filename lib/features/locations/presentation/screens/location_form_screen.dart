@@ -178,7 +178,6 @@ class _LocationFormScreenState extends State<LocationFormScreen> {
     if (ok) {
       context.read<NotificationProvider>().addNotification(
         projectId: location.projectId,
-        projectTitle: 'Dự án CineX #${location.projectId}',
         title: _isEditing
             ? 'Cập nhật bối cảnh: $name'
             : 'Thêm bối cảnh mới: $name',

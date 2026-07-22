@@ -1,73 +1,102 @@
-import 'package:flutter/material.dart';
-import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cinex_application/core/services/api_service.dart';
+import 'package:cinex_application/core/storage/local_cache_service.dart';
+import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _cache = LocalCacheService.instance;
   final List<NotificationModel> _notifications = [];
   bool _isLoading = false;
+  String? _error;
+  String? _ownerKey;
 
-  NotificationProvider() {
-    loadNotifications();
-  }
-
-  List<NotificationModel> get notifications => List.unmodifiable(_notifications);
+  List<NotificationModel> get notifications =>
+      List.unmodifiable(_notifications);
   bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  /// Tổng số thông báo chưa đọc toàn hệ thống
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  /// Số lượng thông báo chưa đọc theo từng dự án
   int unreadCountForProject(int? projectId) {
     if (projectId == null) {
-      return _notifications.where((n) => !n.isRead && n.projectId == null).length;
+      return _notifications
+          .where((n) => !n.isRead && n.projectId == null)
+          .length;
     }
-    return _notifications.where((n) => !n.isRead && n.projectId == projectId).length;
+    return _notifications
+        .where((n) => !n.isRead && n.projectId == projectId)
+        .length;
   }
 
-  /// Danh sách thông báo gom nhóm theo Dự án (Project)
   Map<String, List<NotificationModel>> get groupedByProject {
     final map = <String, List<NotificationModel>>{};
-    for (final n in _notifications) {
-      final key = n.projectTitle.isNotEmpty ? n.projectTitle : 'Thông báo chung';
-      map.putIfAbsent(key, () => []).add(n);
+    for (final notification in _notifications) {
+      final key = notification.projectTitle.isNotEmpty
+          ? notification.projectTitle
+          : 'Thông báo chung';
+      map.putIfAbsent(key, () => []).add(notification);
     }
-    // Sắp xếp thông báo mới nhất lên đầu trong từng nhóm
     for (final list in map.values) {
       list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
     return map;
   }
 
-  /// Tải thông báo từ database
-  Future<void> loadNotifications() async {
+  /// Loads the signed-in user's cache first, then replaces it with server data.
+  Future<void> loadNotifications({String? ownerKey}) async {
+    final requestedOwner = (ownerKey ?? _ownerKey)?.trim();
+    if (requestedOwner == null || requestedOwner.isEmpty) return;
+    final ownerChanged = requestedOwner != _ownerKey;
+    _ownerKey = requestedOwner;
     _isLoading = true;
+    _error = null;
+    if (ownerChanged) _notifications.clear();
     notifyListeners();
+
     try {
-      final list = await _api.getNotifications();
-      _notifications.clear();
-      _notifications.addAll(list);
-    } catch (e) {
-      print('NotificationProvider.loadNotifications error: $e');
+      final cached = await _cache.getNotifications(requestedOwner);
+      if (_ownerKey == requestedOwner && cached.isNotEmpty) {
+        _replaceInMemory(cached);
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Notification cache read failed: $error\n$stackTrace');
+    }
+
+    try {
+      final serverNotifications = await _api.getNotifications();
+      if (_ownerKey != requestedOwner) return;
+      _replaceInMemory(serverNotifications);
+      try {
+        await _cache.replaceNotifications(requestedOwner, serverNotifications);
+      } catch (error, stackTrace) {
+        debugPrint('Notification cache write failed: $error\n$stackTrace');
+      }
+    } catch (error) {
+      _error = 'Không thể làm mới thông báo: $error';
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_ownerKey == requestedOwner) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
-  /// Tự động tạo và lưu thông báo mới khi có thao tác Thêm/Sửa/Xóa
-  Future<void> addNotification({
+  Future<bool> addNotification({
     int? projectId,
-    required String projectTitle,
+    String? projectTitle,
     int? actId,
     int? sceneId,
     required String title,
     required String body,
     NotificationActionType actionType = NotificationActionType.update,
   }) async {
-    final notif = NotificationModel(
+    final effectiveTitle = await _resolveProjectTitle(projectId, projectTitle);
+    final notification = NotificationModel(
       projectId: projectId,
-      projectTitle: projectTitle,
+      projectTitle: effectiveTitle,
       actId: actId,
       sceneId: sceneId,
       title: title,
@@ -77,78 +106,133 @@ class NotificationProvider extends ChangeNotifier {
       actionType: actionType,
     );
 
-    // Lưu tạm thời vào list local để UI cập nhật ngay lập tức
-    _notifications.insert(0, notif);
-    notifyListeners();
+    try {
+      final saved = await _api.createNotification(notification);
+      if (saved == null) {
+        _error = 'Server không trả về thông báo vừa tạo.';
+        notifyListeners();
+        return false;
+      }
+      _notifications.insert(0, saved);
+      final owner = _ownerKey;
+      if (owner != null) {
+        try {
+          await _cache.upsertNotification(owner, saved);
+        } catch (error, stackTrace) {
+          debugPrint('Notification cache insert failed: $error\n$stackTrace');
+        }
+      }
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _error = 'Không thể tạo thông báo: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markAsRead(int? id) async {
+    if (id == null) return false;
+    final index = _notifications.indexWhere((item) => item.id == id);
+    if (index < 0 || _notifications[index].isRead) return true;
+    try {
+      final saved = await _api.markNotificationAsRead(id);
+      if (!saved) throw Exception('Server từ chối cập nhật thông báo.');
+      _notifications[index].isRead = true;
+      await _cacheReadState();
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _error = 'Không thể đánh dấu đã đọc: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markProjectAsRead(int? projectId, String projectTitle) async {
+    if (projectId == null) return false;
+    try {
+      final saved = await _api.markProjectNotificationsAsRead(projectId);
+      if (!saved) throw Exception('Server từ chối cập nhật thông báo.');
+      for (final notification in _notifications) {
+        if (notification.projectId == projectId) notification.isRead = true;
+      }
+      await _cacheReadState();
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _error = 'Không thể đánh dấu thông báo dự án đã đọc: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markAllAsRead() async {
+    try {
+      final saved = await _api.markAllNotificationsAsRead();
+      if (!saved) throw Exception('Server từ chối cập nhật thông báo.');
+      for (final notification in _notifications) {
+        notification.isRead = true;
+      }
+      await _cacheReadState();
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _error = 'Không thể đánh dấu tất cả thông báo đã đọc: $error';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<String> _resolveProjectTitle(
+    int? projectId,
+    String? suppliedTitle,
+  ) async {
+    final supplied = suppliedTitle?.trim();
+    if (supplied != null && supplied.isNotEmpty) {
+      return supplied;
+    }
+    if (projectId == null) return 'Thông báo chung';
 
     try {
-      final saved = await _api.createNotification(notif);
-      if (saved != null) {
-        // Tìm và thay thế bằng bản ghi có Id thực từ DB
-        final idx = _notifications.indexWhere((n) => n.id == null && n.title == title && n.body == body);
-        if (idx >= 0) {
-          _notifications[idx] = saved;
-          notifyListeners();
-        }
+      final cachedProjects = await _cache.getProjects();
+      for (final project in cachedProjects) {
+        if (project.id == projectId) return project.title;
       }
-    } catch (e) {
-      print('NotificationProvider.addNotification error: $e');
+    } catch (_) {}
+
+    try {
+      final projects = await _api.getProjects();
+      try {
+        await _cache.replaceProjects(projects);
+      } catch (_) {}
+      for (final project in projects) {
+        if (project.id == projectId) return project.title;
+      }
+    } catch (_) {}
+    return 'Dự án không khả dụng';
+  }
+
+  Future<void> _cacheReadState() async {
+    final owner = _ownerKey;
+    if (owner == null) return;
+    try {
+      await _cache.updateCachedNotificationReadState(owner, _notifications);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Notification cache status update failed: $error\n$stackTrace',
+      );
     }
   }
 
-  /// Đánh dấu một thông báo là đã đọc
-  Future<void> markAsRead(int? id) async {
-    if (id == null) return;
-    final index = _notifications.indexWhere((n) => n.id == id);
-    if (index >= 0 && !_notifications[index].isRead) {
-      _notifications[index].isRead = true;
-      notifyListeners();
-
-      try {
-        await _api.markNotificationAsRead(id);
-      } catch (e) {
-        print('NotificationProvider.markAsRead error: $e');
-      }
-    }
-  }
-
-  /// Đánh dấu tất cả thông báo của một dự án là đã đọc
-  Future<void> markProjectAsRead(int? projectId, String projectTitle) async {
-    bool changed = false;
-    for (final n in _notifications) {
-      if (n.projectTitle == projectTitle && !n.isRead) {
-        n.isRead = true;
-        changed = true;
-      }
-    }
-    if (changed) {
-      notifyListeners();
-      try {
-        if (projectId != null) {
-          await _api.markProjectNotificationsAsRead(projectId);
-        }
-      } catch (e) {
-        print('NotificationProvider.markProjectAsRead error: $e');
-      }
-    }
-  }
-
-  /// Đánh dấu toàn bộ thông báo là đã đọc
-  Future<void> markAllAsRead() async {
-    bool changed = false;
-    for (final n in _notifications) {
-      if (!n.isRead) {
-        n.isRead = true;
-        changed = true;
-      }
-    }
-    if (changed) {
-      notifyListeners();
-      try {
-        await _api.markAllNotificationsAsRead();
-      } catch (e) {
-        print('NotificationProvider.markAllAsRead error: $e');
-      }
-    }
+  void _replaceInMemory(List<NotificationModel> notifications) {
+    _notifications
+      ..clear()
+      ..addAll(notifications)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 }

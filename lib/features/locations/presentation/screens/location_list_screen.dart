@@ -10,7 +10,9 @@ import 'add_location_screen.dart';
 import 'location_detail_screen.dart';
 
 class LocationListScreen extends StatefulWidget {
-  const LocationListScreen({super.key});
+  final int projectId;
+
+  const LocationListScreen({super.key, required this.projectId});
 
   @override
   State<LocationListScreen> createState() => _LocationListScreenState();
@@ -24,7 +26,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadLocations(101);
+      context.read<LocationProvider>().loadLocations(widget.projectId);
     });
   }
 
@@ -39,7 +41,8 @@ class _LocationListScreenState extends State<LocationListScreen> {
 
           final filtered = provider.locations.where((l) {
             final matchesFilter = _filter == null || l.setting == _filter;
-            final matchesSearch = _searchQuery.isEmpty ||
+            final matchesSearch =
+                _searchQuery.isEmpty ||
                 l.name.toLowerCase().contains(_searchQuery.toLowerCase());
             return matchesFilter && matchesSearch;
           }).toList();
@@ -47,10 +50,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: AppHeader(
-                  title: 'Bối cảnh',
-                  onSearch: () {},
-                ),
+                child: AppHeader(title: 'Bối cảnh', onSearch: () {}),
               ),
               // Search & Filter
               SliverToBoxAdapter(
@@ -89,15 +89,17 @@ class _LocationListScreenState extends State<LocationListScreen> {
                             _FilterChip(
                               label: 'INT',
                               isSelected: _filter == LocationSetting.interior,
-                              onTap: () =>
-                                  setState(() => _filter = LocationSetting.interior),
+                              onTap: () => setState(
+                                () => _filter = LocationSetting.interior,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             _FilterChip(
                               label: 'EXT',
                               isSelected: _filter == LocationSetting.exterior,
-                              onTap: () =>
-                                  setState(() => _filter = LocationSetting.exterior),
+                              onTap: () => setState(
+                                () => _filter = LocationSetting.exterior,
+                              ),
                             ),
                           ],
                         ),
@@ -142,7 +144,9 @@ class _LocationListScreenState extends State<LocationListScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddLocationScreen()),
+            MaterialPageRoute(
+              builder: (_) => AddLocationScreen(projectId: widget.projectId),
+            ),
           );
         },
         child: const Icon(Icons.add_location_outlined),
@@ -170,9 +174,13 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surface,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
           border: Border.all(
-            color: isSelected ? theme.colorScheme.primary : const Color(0xFF393939),
+            color: isSelected
+                ? theme.colorScheme.primary
+                : const Color(0xFF393939),
           ),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -192,10 +200,7 @@ class _LocationCard extends StatelessWidget {
   final Location location;
   final VoidCallback onTap;
 
-  const _LocationCard({
-    required this.location,
-    required this.onTap,
-  });
+  const _LocationCard({required this.location, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -210,8 +215,6 @@ class _LocationCard extends StatelessWidget {
             Stack(
               children: [
                 ImageCard(
-                  imageUrl:
-                      'https://placehold.co/400x300/1C1B1B/FF4D00?text=${Uri.encodeComponent(location.name)}',
                   onTap: onTap,
                   height: 180,
                   heroTag: 'location_${location.id}',
@@ -220,11 +223,7 @@ class _LocationCard extends StatelessWidget {
                   top: 12,
                   left: 12,
                   child: Row(
-                    children: const [
-                      _TagBadge(
-                        label: 'Địa điểm quay',
-                      ),
-                    ],
+                    children: const [_TagBadge(label: 'Địa điểm quay')],
                   ),
                 ),
               ],
@@ -243,9 +242,7 @@ class _LocationCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     location.notes ?? 'Không có ghi chú',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 12,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -253,10 +250,7 @@ class _LocationCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '8 cảnh',
-                        style: theme.textTheme.labelSmall,
-                      ),
+                      Text('8 cảnh', style: theme.textTheme.labelSmall),
                       StatusBadge(
                         status: StatusType.approved,
                         label: 'ĐÃ XÁC NHẬN',
