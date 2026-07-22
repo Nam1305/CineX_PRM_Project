@@ -13,13 +13,11 @@ DateTime? parseDateOnly(String? value) {
   return date;
 }
 
-/// Serializes a calendar date for ASP.NET without UTC conversion. Converting a
-/// local midnight to UTC would move Vietnamese dates to the previous day.
+/// Serializes a calendar date as UTC midnight for OData. We construct UTC from
+/// the selected calendar components instead of converting local midnight,
+/// which would move Vietnamese dates to the previous day.
 String dateOnlyToApi(DateTime date) {
-  final year = date.year.toString().padLeft(4, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '$year-$month-${day}T00:00:00';
+  return DateTime.utc(date.year, date.month, date.day).toIso8601String();
 }
 
 String formatDateOnly(String? value, {String fallback = 'TBD'}) {

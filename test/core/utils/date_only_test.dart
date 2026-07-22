@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('serializes a local calendar date without shifting to UTC', () {
     final selected = DateTime(2026, 7, 22);
-    expect(dateOnlyToApi(selected), '2026-07-22T00:00:00');
+    expect(dateOnlyToApi(selected), '2026-07-22T00:00:00.000Z');
   });
 
   test('parses the calendar portion without timezone conversion', () {

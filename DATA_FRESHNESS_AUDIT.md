@@ -18,7 +18,7 @@ Phạm vi: ứng dụng Flutter tại `CineX_PRM_Project`.
 | API thùng rác/thông báo | Lỗi API từng bị thay bằng dữ liệu demo, che giấu lỗi thật | Không trả `MockData`; response rỗng là danh sách rỗng, HTTP lỗi được truyền lên UI | Đã sửa |
 | Tạo Project | Poster chưa chọn từng được lưu thành URL placeholder | Không lưu URL giả; chỉ lưu URL upload thật hoặc URL hiện có khi sửa | Đã sửa |
 | Location list cũ | Dùng cố định project `101` | Bắt buộc truyền `projectId` thật | Đã sửa |
-| Project - ngày bắt đầu/kết thúc | Chuyển 00:00 local sang UTC làm ngày bị lùi một ngày | Dùng serializer ngày lịch `yyyy-MM-ddT00:00:00`, không chuyển UTC; parser chỉ lấy phần ngày | Đã sửa |
+| Project - ngày bắt đầu/kết thúc | Chuyển 00:00 local sang UTC làm ngày bị lùi một ngày; chuỗi thiếu offset lại bị OData từ chối | Tạo UTC midnight trực tiếp từ năm-tháng-ngày (`yyyy-MM-ddT00:00:00.000Z`); parser chỉ lấy phần ngày | Đã sửa |
 | Scene mới chưa xuất hiện trong Production | POST chỉ trả ID và cache không suy ra được project | GET lại Scene có expand sau khi tạo, lưu cache theo project và refresh Production khi đổi tab | Đã sửa |
 | Gom lịch theo bối cảnh | Danh sách trong group chỉ sort theo DAY/NIGHT nên phụ thuộc thứ tự API/tạo | Sort theo `Scene.compareNumbers`, sau đó mới dùng DAY/NIGHT làm tie-breaker | Đã sửa |
 | Notification title | Nhiều nơi truyền tên giả `Dự án CineX #id` | Provider tự resolve title thật từ SQLite/API; các call site không còn truyền title giả | Đã sửa |
