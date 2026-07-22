@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/storage/local_cache_service.dart';
@@ -120,6 +121,7 @@ class _CharactersTabState extends State<CharactersTab> {
     return Scaffold(
       body: Consumer<CharacterProvider>(
         builder: (context, provider, _) {
+          final theme = Theme.of(context);
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -166,10 +168,10 @@ class _CharactersTabState extends State<CharactersTab> {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E1E1E),
+                                color: theme.colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFF2C2C2C),
+                                  color: context.appColors.surfaceElevated,
                                 ),
                               ),
                               child: TextField(
@@ -179,18 +181,20 @@ class _CharactersTabState extends State<CharactersTab> {
                                     _currentPage = 1;
                                   });
                                 },
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'Tìm kiếm nhân vật...',
                                   prefixIcon: Icon(
                                     Icons.search,
-                                    color: Colors.grey,
+                                    color: context.appColors.textFaint,
                                   ),
                                   border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
+                                  contentPadding: const EdgeInsets.symmetric(
                                     vertical: 12,
                                   ),
                                 ),
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -361,14 +365,16 @@ class _FilterChip extends StatelessWidget {
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : const Color(0xFF393939),
+                : theme.colorScheme.outline,
           ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
-            color: isSelected ? Colors.black : Colors.white70,
+            color: isSelected
+                ? theme.colorScheme.onPrimary
+                : context.appColors.textMuted,
             fontWeight: FontWeight.bold,
           ),
         ),

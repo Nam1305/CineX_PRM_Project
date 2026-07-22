@@ -13,6 +13,7 @@ import 'package:cinex_application/shared/widgets/pagination_bar.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
 import 'package:cinex_application/features/notifications/data/models/notification_model.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class LocationsTab extends StatefulWidget {
   final int projectId;
@@ -79,7 +80,7 @@ class _LocationsTabState extends State<LocationsTab> {
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: paginatedLocations.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, i) {
                     final loc = paginatedLocations[i];
                     return LocationTile(
@@ -98,38 +99,46 @@ class _LocationsTabState extends State<LocationsTab> {
                         if (linkedScenes.isNotEmpty) {
                           showDialog(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              backgroundColor: const Color(0xFF1E1E1E),
-                              title: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: Colors.redAccent,
+                            builder: (dialogContext) {
+                              final dialogTheme = Theme.of(dialogContext);
+                              return AlertDialog(
+                                backgroundColor: dialogTheme.colorScheme.surface,
+                                title: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: dialogContext.appColors.danger,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Không thể xóa bối cảnh',
+                                      style: TextStyle(
+                                        color: dialogTheme.colorScheme.onSurface,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                content: Text(
+                                  'Bối cảnh "${loc.name}" đang được sử dụng trong ${linkedScenes.length} phân cảnh kịch bản.\n\nBạn vui lòng thay đổi bối cảnh hoặc xóa các phân cảnh liên quan trước khi xóa bối cảnh địa lý này.',
+                                  style: TextStyle(
+                                    color: dialogContext.appColors.textFaint,
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Không thể xóa bối cảnh',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: Text(
+                                      'Đóng',
+                                      style: TextStyle(
+                                        color: dialogTheme.colorScheme.primary,
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ),
-                              content: Text(
-                                'Bối cảnh "${loc.name}" đang được sử dụng trong ${linkedScenes.length} phân cảnh kịch bản.\n\nBạn vui lòng thay đổi bối cảnh hoặc xóa các phân cảnh liên quan trước khi xóa bối cảnh địa lý này.',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text(
-                                    'Đóng',
-                                    style: TextStyle(color: Color(0xFFFF571A)),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                           return;
                         }

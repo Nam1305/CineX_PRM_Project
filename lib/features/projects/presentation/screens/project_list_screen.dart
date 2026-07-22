@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cinex_application/core/widgets/app_header.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
@@ -49,6 +50,7 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isWritable = auth.isScreenwriter;
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: Consumer<ProjectProvider>(
@@ -141,10 +143,12 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                                   Expanded(
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF1E1E1E),
+                                        color: theme.colorScheme.surface,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: const Color(0xFF2C2C2C),
+                                          color: context
+                                              .appColors
+                                              .surfaceElevated,
                                         ),
                                       ),
                                       child: TextField(
@@ -155,19 +159,20 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                                             _currentPage = 1;
                                           });
                                         },
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           hintText: 'Tìm kiếm dự án...',
                                           prefixIcon: Icon(
                                             Icons.search,
-                                            color: Colors.grey,
+                                            color: context.appColors.textFaint,
                                           ),
                                           border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            vertical: 12,
-                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                vertical: 12,
+                                              ),
                                         ),
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: theme.colorScheme.onSurface,
                                         ),
                                       ),
                                     ),
@@ -236,30 +241,30 @@ class _ProjectListScreenState extends State<ProjectListScreen> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E1E1E),
+                                color: theme.colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFF2C2C2C),
+                                  color: context.appColors.surfaceElevated,
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String?>(
                                   value: _selectedStatusFilter,
-                                  dropdownColor: const Color(0xFF1E1E1E),
-                                  hint: const Text(
+                                  dropdownColor: theme.colorScheme.surface,
+                                  hint: Text(
                                     'Lọc theo trạng thái...',
                                     style: TextStyle(
-                                      color: Colors.grey,
+                                      color: context.appColors.textFaint,
                                       fontSize: 14,
                                     ),
                                   ),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface,
                                     fontSize: 14,
                                   ),
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.filter_alt_outlined,
-                                    color: Colors.grey,
+                                    color: context.appColors.textFaint,
                                   ),
                                   isExpanded: true,
                                   items: const [
@@ -539,10 +544,10 @@ class _ProjectCardState extends State<_ProjectCard> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today_outlined,
                         size: 12,
-                        color: Colors.grey,
+                        color: context.appColors.textFaint,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -551,7 +556,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade400,
+                            color: context.appColors.textFaint,
                             fontSize: 10,
                           ),
                         ),

@@ -6,6 +6,7 @@ import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/widgets/section_card.dart';
 import 'package:cinex_application/core/storage/local_cache_service.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class LocationDetailScreen extends StatefulWidget {
   final Location location;
@@ -163,9 +164,12 @@ class _LocationDetailScreenState extends State<LocationDetailScreen> {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _scenes.isEmpty
-                      ? const Text(
+                      ? Text(
                           'Chưa có cảnh quay nào đăng ký tại bối cảnh này.',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          style: TextStyle(
+                            color: context.appColors.textFaint,
+                            fontSize: 13,
+                          ),
                         )
                       : Column(
                           children: _scenes.asMap().entries.map((entry) {
@@ -341,7 +345,9 @@ class _SceneItem extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '$summary • $charCount nhân vật • $statusLabel',
-                style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: context.appColors.textFaint,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

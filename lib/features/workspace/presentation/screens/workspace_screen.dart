@@ -47,6 +47,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   @override
   Widget build(BuildContext context) {
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -68,8 +69,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF571A),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(
@@ -78,8 +79,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     ),
                     child: Text(
                       '$unreadCount',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),

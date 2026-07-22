@@ -49,8 +49,8 @@ class CinematicCharacterCard extends StatelessWidget {
                   child: Chip(
                     label: Text(
                       character.roleType.label,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
                       ),

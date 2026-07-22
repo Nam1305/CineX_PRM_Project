@@ -4,6 +4,7 @@ import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/features/characters/data/models/character.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
 import 'package:cinex_application/features/production/providers/production_provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class SceneFilterBar extends StatefulWidget {
   final int projectId;
@@ -32,6 +33,7 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final characterProvider = context.watch<CharacterProvider>();
     final provider = widget.provider;
 
@@ -65,6 +67,7 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
             // Bộ lọc Nhân vật
             Expanded(
               child: _buildFilterDropdown(
+                theme: theme,
                 label: 'NHÂN VẬT',
                 value: effectiveCharId,
                 items: [
@@ -82,6 +85,7 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
             // Bộ lọc Thời gian
             Expanded(
               child: _buildFilterDropdown(
+                theme: theme,
                 label: 'THỜI GIAN',
                 value: provider.filterTimeOfDay,
                 items: [
@@ -101,11 +105,11 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'CHẾ ĐỘ GOM NHÓM',
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.grey,
+                color: context.appColors.textFaint,
                 letterSpacing: 0.5,
               ),
             ),
@@ -143,10 +147,10 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: provider.clearFilters,
-              icon: const Icon(Icons.close, size: 16, color: Colors.grey),
-              label: const Text(
+              icon: Icon(Icons.close, size: 16, color: context.appColors.textFaint),
+              label: Text(
                 'Xóa bộ lọc',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: context.appColors.textFaint, fontSize: 12),
               ),
             ),
           ),
@@ -155,19 +159,21 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
   }
 
   Widget _buildFilterDropdown({
+    required ThemeData theme,
     required String label,
     required dynamic value,
     required List<DropdownMenuItem<dynamic>> items,
     required void Function(dynamic) onChanged,
   }) {
+    final appColors = theme.extension<AppColors>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: Colors.grey,
+            color: appColors.textFaint,
             letterSpacing: 0.5,
           ),
         ),
@@ -175,17 +181,17 @@ class _SceneFilterBarState extends State<SceneFilterBar> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            border: Border.all(color: const Color(0xFF2C2C2C)),
+            color: theme.colorScheme.surface,
+            border: Border.all(color: appColors.surfaceElevated),
             borderRadius: BorderRadius.circular(8),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<dynamic>(
               isExpanded: true,
               value: value,
-              dropdownColor: const Color(0xFF1E1E1E),
-              icon: const Icon(Icons.expand_more, color: Colors.grey),
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              dropdownColor: theme.colorScheme.surface,
+              icon: Icon(Icons.expand_more, color: appColors.textFaint),
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
               items: items,
               onChanged: onChanged,
             ),

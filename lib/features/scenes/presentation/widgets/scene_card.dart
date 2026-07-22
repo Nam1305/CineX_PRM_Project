@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
@@ -19,34 +20,38 @@ class SceneCard extends StatelessWidget {
     this.onStatusChanged,
   });
 
-  Color _statusColor(SceneStatus s, ColorScheme cs) {
+  Color _statusColor(SceneStatus s, ColorScheme cs, AppColors appColors) {
     switch (s) {
       case SceneStatus.todo:
         return cs.outline;
       case SceneStatus.inProgress:
         return cs.primary;
       case SceneStatus.done:
-        return Colors.green;
+        return appColors.success;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appColors = context.appColors;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _statusColor(scene.status, theme.colorScheme)
-              .withValues(alpha: 0.15),
+          backgroundColor:
+              _statusColor(scene.status, theme.colorScheme, appColors)
+                  .withValues(alpha: 0.15),
           child: Text('${scene.sceneNumber}',
               style: TextStyle(
-                  color: _statusColor(scene.status, theme.colorScheme),
+                  color:
+                      _statusColor(scene.status, theme.colorScheme, appColors),
                   fontWeight: FontWeight.bold)),
         ),
         title: Text(scene.fullFormattedTitle,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFFFF571A))),
+            style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -88,11 +93,13 @@ class SceneCard extends StatelessWidget {
                   scene.status.label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: _statusColor(scene.status, theme.colorScheme),
+                    color: _statusColor(
+                        scene.status, theme.colorScheme, appColors),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                backgroundColor: _statusColor(scene.status, theme.colorScheme)
+                backgroundColor: _statusColor(
+                        scene.status, theme.colorScheme, appColors)
                     .withValues(alpha: 0.12),
                 side: BorderSide.none,
                 padding: EdgeInsets.zero,
@@ -127,6 +134,7 @@ class _InlineStatusSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appColors = context.appColors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: SceneStatus.values.map((status) {
@@ -140,7 +148,7 @@ class _InlineStatusSelector extends StatelessWidget {
             color = theme.colorScheme.primary;
             break;
           case SceneStatus.done:
-            color = Colors.green;
+            color = appColors.success;
             break;
         }
         return Padding(
@@ -156,7 +164,7 @@ class _InlineStatusSelector extends StatelessWidget {
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? color : Colors.grey.shade700,
+                  color: isSelected ? color : appColors.textFaint,
                   width: isSelected ? 1.5 : 0.8,
                 ),
               ),
@@ -165,7 +173,7 @@ class _InlineStatusSelector extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? color : Colors.grey,
+                  color: isSelected ? color : appColors.textFaint,
                 ),
               ),
             ),

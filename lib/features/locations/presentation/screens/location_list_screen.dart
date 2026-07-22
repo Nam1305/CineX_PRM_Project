@@ -6,6 +6,7 @@ import 'package:cinex_application/core/widgets/app_header.dart';
 import 'package:cinex_application/core/widgets/status_badge.dart';
 import 'package:cinex_application/core/widgets/image_card.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'add_location_screen.dart';
 import 'location_detail_screen.dart';
 
@@ -180,14 +181,16 @@ class _FilterChip extends StatelessWidget {
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : const Color(0xFF393939),
+                : theme.colorScheme.outline,
           ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
-            color: isSelected ? Colors.black : Colors.white70,
+            color: isSelected
+                ? theme.colorScheme.onPrimary
+                : context.appColors.textMuted,
             fontWeight: FontWeight.bold,
           ),
         ),

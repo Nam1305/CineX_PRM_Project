@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 enum StatusType { active, completed, pending, approved }
 
@@ -12,22 +13,23 @@ class StatusBadge extends StatelessWidget {
     required this.label,
   });
 
-  Color _getColor() {
+  Color _getColor(BuildContext context) {
+    final appColors = context.appColors;
     switch (status) {
       case StatusType.active:
-        return const Color(0xFFFF6B6B);
+        return appColors.danger;
       case StatusType.completed:
-        return const Color(0xFF51CF66);
+        return appColors.success;
       case StatusType.pending:
-        return const Color(0xFFFFD43B);
+        return appColors.warning;
       case StatusType.approved:
-        return const Color(0xFF4C6EF5);
+        return appColors.info;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _getColor();
+    final color = _getColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

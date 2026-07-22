@@ -12,12 +12,14 @@ import 'features/auth/providers/auth_provider.dart';
 
 import 'features/notifications/providers/notification_provider.dart';
 import 'core/connectivity/network_status_provider.dart';
+import 'core/theme/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => ActProvider()),

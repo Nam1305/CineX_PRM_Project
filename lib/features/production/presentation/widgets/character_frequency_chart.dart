@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cinex_application/features/scenes/data/models/scene.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class CharacterFrequencyChart extends StatelessWidget {
   final List<Scene> scenes;
@@ -8,6 +9,8 @@ class CharacterFrequencyChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appColors = context.appColors;
     final freq = <String, int>{};
     for (final scene in scenes) {
       for (final c in scene.characters) {
@@ -18,12 +21,15 @@ class CharacterFrequencyChart extends StatelessWidget {
       return Container(
         height: 220,
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF2C2C2C)),
+          border: Border.all(color: appColors.surfaceElevated),
         ),
-        child: const Center(
-          child: Text('Chưa có dữ liệu nhân vật', style: TextStyle(color: Colors.grey)),
+        child: Center(
+          child: Text(
+            'Chưa có dữ liệu nhân vật',
+            style: TextStyle(color: appColors.textFaint),
+          ),
         ),
       );
     }
@@ -48,9 +54,9 @@ class CharacterFrequencyChart extends StatelessWidget {
       height: 280,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2C2C2C)),
+        border: Border.all(color: appColors.surfaceElevated),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,19 +64,20 @@ class CharacterFrequencyChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Tần suất Nhân vật',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
               ),
               TextButton(
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
-                    backgroundColor: const Color(0xFF1E1E1E),
+                    backgroundColor: theme.colorScheme.surface,
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     builder: (context) {
+                      final appColors = context.appColors;
                       return Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -79,16 +86,16 @@ class CharacterFrequencyChart extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'Tần suất Xuất hiện Nhân vật',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.grey),
+                                  icon: Icon(Icons.close, color: appColors.textFaint),
                                   onPressed: () => Navigator.pop(context),
                                 ),
                               ],
@@ -97,25 +104,25 @@ class CharacterFrequencyChart extends StatelessWidget {
                             Expanded(
                               child: ListView.separated(
                                 itemCount: sorted.length,
-                                separatorBuilder: (_, __) => const Divider(color: Color(0xFF2C2C2C)),
+                                separatorBuilder: (_, _) => Divider(color: appColors.surfaceElevated),
                                 itemBuilder: (context, idx) {
                                   final entry = sorted[idx];
                                   return ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title: Text(
                                       entry.key,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold),
                                     ),
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFF571A).withValues(alpha: 0.15),
+                                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
                                         '${entry.value} phân cảnh',
-                                        style: const TextStyle(
-                                          color: Color(0xFFFF571A),
+                                        style: TextStyle(
+                                          color: theme.colorScheme.primary,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
@@ -131,7 +138,7 @@ class CharacterFrequencyChart extends StatelessWidget {
                     },
                   );
                 },
-                child: const Text('XEM TẤT CẢ', style: TextStyle(color: Color(0xFFFF571A), fontSize: 10, fontFamily: 'JetBrains Mono')),
+                child: Text('XEM TẤT CẢ', style: TextStyle(color: theme.colorScheme.primary, fontSize: 10, fontFamily: 'JetBrains Mono')),
               ),
             ],
           ),
@@ -152,7 +159,7 @@ class CharacterFrequencyChart extends StatelessWidget {
                       backDrawRodData: BackgroundBarChartRodData(
                         show: true,
                         toY: maxY,
-                        color: const Color(0xFF2A2A2A),
+                        color: appColors.surfaceElevated,
                       ),
                     ),
                   ]);
@@ -170,7 +177,7 @@ class CharacterFrequencyChart extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             name,
-                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            style: TextStyle(fontSize: 10, color: appColors.textFaint),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -187,7 +194,7 @@ class CharacterFrequencyChart extends StatelessWidget {
                         if (value == value.roundToDouble() && value >= 0) {
                           return Text(
                             value.toInt().toString(),
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            style: TextStyle(fontSize: 11, color: appColors.textFaint),
                           );
                         }
                         return const SizedBox();
@@ -201,7 +208,7 @@ class CharacterFrequencyChart extends StatelessWidget {
                   show: true,
                   horizontalInterval: 1,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFF2A2A2A),
+                    color: appColors.surfaceElevated,
                     strokeWidth: 0.5,
                   ),
                   drawVerticalLine: false,
@@ -209,15 +216,15 @@ class CharacterFrequencyChart extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => const Color(0xFF2A2A2A),
+                    getTooltipColor: (_) => appColors.surfaceElevated,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         '${top[groupIndex].key}\n',
-                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 12),
                         children: [
                           TextSpan(
                             text: '${rod.toY.toInt()} cảnh',
-                            style: const TextStyle(color: Color(0xFFFF571A), fontSize: 10),
+                            style: TextStyle(color: theme.colorScheme.primary, fontSize: 10),
                           ),
                         ],
                       );

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/features/projects/providers/project_provider.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import '../widgets/project_card.dart';
 import 'project_form_screen.dart';
 import 'package:cinex_application/features/notifications/providers/notification_provider.dart';
@@ -45,7 +46,10 @@ class _ProjectLauncherScreenState extends State<ProjectLauncherScreen> {
             const Text('CineX Launcher'),
             Text(
               'Xin chào, ${auth.fullName} (${auth.role == 'SCREENWRITER' ? 'Biên kịch' : 'Nhà sản xuất'})',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 11,
+                color: context.appColors.textFaint,
+              ),
             ),
           ],
         ),

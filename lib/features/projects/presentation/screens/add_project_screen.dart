@@ -53,7 +53,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
             Container(
               height: 240,
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF393939), width: 2),
+                border: Border.all(color: theme.colorScheme.outline, width: 2),
                 borderRadius: BorderRadius.circular(12),
                 color: theme.colorScheme.surface,
               ),

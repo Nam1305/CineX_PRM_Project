@@ -5,6 +5,7 @@ import 'package:cinex_application/core/services/api_service.dart';
 import 'package:cinex_application/core/utils/enums.dart';
 import 'package:cinex_application/core/widgets/adaptive_image.dart';
 import 'package:cinex_application/core/storage/local_cache_service.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class CharacterDetailScreen extends StatefulWidget {
   final Character character;
@@ -156,10 +157,10 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                               Chip(
                                 label: Text(
                                   roleLabel,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
                                 backgroundColor: theme.colorScheme.primary,
@@ -175,8 +176,8 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                                   ),
                                 ),
                                 backgroundColor: Colors.transparent,
-                                side: const BorderSide(
-                                  color: Color(0xFF393939),
+                                side: BorderSide(
+                                  color: theme.colorScheme.outline,
                                 ),
                                 padding: EdgeInsets.zero,
                               ),
@@ -353,13 +354,16 @@ class _SceneListSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF2C2C2C)),
+              border: Border.all(color: context.appColors.surfaceElevated),
             ),
-            child: const Text(
+            child: Text(
               'Chưa có cảnh quay nào phân công cho nhân vật này.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(
+                color: context.appColors.textFaint,
+                fontSize: 13,
+              ),
               textAlign: TextAlign.center,
             ),
           )
@@ -444,19 +448,17 @@ class _SceneListSection extends StatelessWidget {
   Widget _buildTag(String tag, ThemeData theme) {
     final isInt = tag.toUpperCase() == 'INT' || tag.toUpperCase() == 'NỘI';
     final isExt = tag.toUpperCase() == 'EXT' || tag.toUpperCase() == 'NGOẠI';
+    final appColors = theme.extension<AppColors>()!;
+    final statusColor = isInt
+        ? appColors.info
+        : (isExt ? appColors.warning : null);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isInt
-            ? Colors.blue.shade900.withValues(alpha: 0.3)
-            : (isExt
-                  ? Colors.orange.shade900.withValues(alpha: 0.3)
-                  : const Color(0xFF2C2C2C)),
+        color: statusColor?.withValues(alpha: 0.3) ?? appColors.surfaceElevated,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isInt
-              ? Colors.blue.shade700
-              : (isExt ? Colors.orange.shade700 : const Color(0xFF3C3C3C)),
+          color: statusColor ?? theme.colorScheme.outline,
           width: 0.5,
         ),
       ),
@@ -465,9 +467,7 @@ class _SceneListSection extends StatelessWidget {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w600,
-          color: isInt
-              ? Colors.blue.shade200
-              : (isExt ? Colors.orange.shade200 : Colors.white70),
+          color: statusColor ?? appColors.textMuted,
         ),
       ),
     );

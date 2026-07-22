@@ -7,6 +7,7 @@ import 'package:cinex_application/features/acts/providers/act_provider.dart';
 import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
 import 'package:cinex_application/shared/widgets/empty_state_widget.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class TrashBinScreen extends StatefulWidget {
   final int projectId;
@@ -92,12 +93,13 @@ class _TrashBinScreenState extends State<TrashBinScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thùng rác'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFFFF571A),
+          indicatorColor: theme.colorScheme.primary,
           tabs: const [
             Tab(text: 'Hồi đã xoá'),
             Tab(text: 'Phân cảnh đã xoá'),
@@ -120,6 +122,11 @@ class _TrashBinScreenState extends State<TrashBinScreen>
         message: 'Thùng rác trống',
       );
     }
+    final success = context.appColors.success;
+    final onSuccess = ThemeData.estimateBrightnessForColor(success) ==
+            Brightness.dark
+        ? Colors.white
+        : Colors.black;
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _deletedActs.length,
@@ -135,8 +142,8 @@ class _TrashBinScreenState extends State<TrashBinScreen>
             subtitle: Text(act.summary ?? 'Không có tóm tắt'),
             trailing: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade800,
-                foregroundColor: Colors.white,
+                backgroundColor: success,
+                foregroundColor: onSuccess,
               ),
               onPressed: () => _restoreAct(act),
               icon: const Icon(Icons.restore, size: 16),
@@ -155,6 +162,12 @@ class _TrashBinScreenState extends State<TrashBinScreen>
         message: 'Thùng rác trống',
       );
     }
+    final theme = Theme.of(context);
+    final success = context.appColors.success;
+    final onSuccess = ThemeData.estimateBrightnessForColor(success) ==
+            Brightness.dark
+        ? Colors.white
+        : Colors.black;
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _deletedScenes.length,
@@ -164,11 +177,13 @@ class _TrashBinScreenState extends State<TrashBinScreen>
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.grey.withValues(alpha: 0.15),
+              backgroundColor: context.appColors.textFaint.withValues(
+                alpha: 0.15,
+              ),
               child: Text(
                 '${scene.sceneNumber}',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -182,8 +197,8 @@ class _TrashBinScreenState extends State<TrashBinScreen>
             ),
             trailing: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade800,
-                foregroundColor: Colors.white,
+                backgroundColor: success,
+                foregroundColor: onSuccess,
               ),
               onPressed: () => _restoreScene(scene),
               icon: const Icon(Icons.restore, size: 16),

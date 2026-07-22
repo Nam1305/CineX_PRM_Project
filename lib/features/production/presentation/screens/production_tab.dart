@@ -7,6 +7,7 @@ import 'package:cinex_application/features/scenes/providers/scene_provider.dart'
 import 'package:cinex_application/features/locations/providers/location_provider.dart';
 import 'production_schedule_view.dart';
 import 'production_analytics_view.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class ProductionTab extends StatefulWidget {
   final int projectId;
@@ -79,18 +80,19 @@ class _ProductionTabState extends State<ProductionTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return DefaultTabController(
       length: 2,
       initialIndex: widget.initialTab,
       child: Column(
         children: [
           Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: const TabBar(
-              indicatorColor: Color(0xFFFF571A),
-              labelColor: Color(0xFFFF571A),
-              unselectedLabelColor: Colors.grey,
-              tabs: [
+            color: theme.scaffoldBackgroundColor,
+            child: TabBar(
+              indicatorColor: theme.colorScheme.primary,
+              labelColor: theme.colorScheme.primary,
+              unselectedLabelColor: context.appColors.textFaint,
+              tabs: const [
                 Tab(text: 'LỊCH QUAY'),
                 Tab(text: 'THỐNG KÊ'),
               ],
@@ -101,8 +103,10 @@ class _ProductionTabState extends State<ProductionTab> {
               builder: (context, provider, _) {
                 // Hiển thị loading indicator toàn màn hình chỉ khi lần đầu load
                 if (provider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFFF571A)),
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: theme.colorScheme.primary,
+                    ),
                   );
                 }
                 // Luôn hiển thị TabBarView, empty state nằm trong từng view

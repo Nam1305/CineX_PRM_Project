@@ -8,6 +8,7 @@ import 'package:cinex_application/core/utils/file_saver.dart';
 import '../widgets/scene_filter_bar.dart';
 import '../widgets/shooting_day_group.dart';
 import 'package:cinex_application/core/utils/enums.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 
 class ProductionScheduleView extends StatelessWidget {
   final ProductionProvider provider;
@@ -41,10 +42,11 @@ class ProductionScheduleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final groupEntries = provider.groupedByLocation.entries.toList();
 
     return Container(
-      color: const Color(0xFF131313),
+      color: theme.scaffoldBackgroundColor,
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -55,13 +57,13 @@ class ProductionScheduleView extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Flexible(
+                      Flexible(
                         child: Text(
                           'Lịch sản xuất',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: theme.colorScheme.onSurface,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -70,8 +72,8 @@ class ProductionScheduleView extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: () => _exportSchedule(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF571A),
-                          foregroundColor: Colors.white,
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onSurface,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
@@ -92,7 +94,7 @@ class ProductionScheduleView extends StatelessWidget {
             ),
           ),
           if (groupEntries.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -100,17 +102,23 @@ class ProductionScheduleView extends StatelessWidget {
                     Icon(
                       Icons.movie_creation_outlined,
                       size: 64,
-                      color: Colors.grey,
+                      color: context.appColors.textFaint,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
                       'Chưa có phân cảnh nào',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: TextStyle(
+                        color: context.appColors.textFaint,
+                        fontSize: 16,
+                      ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Thêm Scene trong tab Storyboard để xem lịch quay',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        color: context.appColors.textFaint,
+                        fontSize: 12,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -206,7 +214,7 @@ class ProductionScheduleView extends StatelessWidget {
                     ? 'Đã tải xuống lịch quay thành công!'
                     : 'Đã lưu Excel tại: $savedPath',
               ),
-              backgroundColor: const Color(0xFF51CF66),
+              backgroundColor: context.appColors.success,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -217,7 +225,7 @@ class ProductionScheduleView extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi xuất file: $e'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: context.appColors.danger,
           ),
         );
       }

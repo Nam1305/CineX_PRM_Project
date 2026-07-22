@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/core/utils/validators.dart';
 import 'package:cinex_application/features/auth/providers/auth_provider.dart';
 import 'package:cinex_application/shared/widgets/app_snackbar.dart';
@@ -57,12 +58,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -73,12 +74,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2E2E2E), width: 1.5),
+              border: Border.all(color: context.appColors.surfaceElevated, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFF571A).withValues(alpha: 0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   blurRadius: 30,
                   spreadRadius: 2,
                 ),
@@ -95,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: theme.colorScheme.onSurface,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -104,7 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     'Tạo hồ sơ làm phim mới của bạn',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: Colors.grey.shade500,
+                      color: context.appColors.textFaint,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -115,29 +116,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: Colors.grey.shade400,
+                      color: context.appColors.textFaint,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _fullNameCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Nhập họ và tên...',
-                      hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(
+                      hintStyle: TextStyle(color: context.appColors.textFaint),
+                      prefixIcon: Icon(
                         Icons.badge_outlined,
-                        color: Colors.grey,
+                        color: context.appColors.textFaint,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF121212),
+                      fillColor: theme.scaffoldBackgroundColor,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
+                        borderSide: BorderSide(color: context.appColors.surfaceElevated),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFFF571A)),
+                        borderSide: BorderSide(color: theme.colorScheme.primary),
                       ),
                     ),
                     validator: (v) => AppValidators.text(
@@ -155,29 +156,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: Colors.grey.shade400,
+                      color: context.appColors.textFaint,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _usernameCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Nhập username...',
-                      hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(
+                      hintStyle: TextStyle(color: context.appColors.textFaint),
+                      prefixIcon: Icon(
                         Icons.person_outline,
-                        color: Colors.grey,
+                        color: context.appColors.textFaint,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF121212),
+                      fillColor: theme.scaffoldBackgroundColor,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
+                        borderSide: BorderSide(color: context.appColors.surfaceElevated),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFFF571A)),
+                        borderSide: BorderSide(color: theme.colorScheme.primary),
                       ),
                     ),
                     validator: (v) => AppValidators.username(v),
@@ -190,40 +191,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: Colors.grey.shade400,
+                      color: context.appColors.textFaint,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscureText,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Nhập mật khẩu (từ 6 kí tự)...',
-                      hintStyle: TextStyle(color: Colors.grey.shade600),
-                      prefixIcon: const Icon(
+                      hintStyle: TextStyle(color: context.appColors.textFaint),
+                      prefixIcon: Icon(
                         Icons.lock_outline,
-                        color: Colors.grey,
+                        color: context.appColors.textFaint,
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureText
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
-                          color: Colors.grey,
+                          color: context.appColors.textFaint,
                         ),
                         onPressed: () =>
                             setState(() => _obscureText = !_obscureText),
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF121212),
+                      fillColor: theme.scaffoldBackgroundColor,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
+                        borderSide: BorderSide(color: context.appColors.surfaceElevated),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFFF571A)),
+                        borderSide: BorderSide(color: theme.colorScheme.primary),
                       ),
                     ),
                     validator: (v) {
@@ -245,28 +246,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: Colors.grey.shade400,
+                      color: context.appColors.textFaint,
                     ),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: _selectedRole,
-                    dropdownColor: const Color(0xFF1E1E1E),
-                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: theme.colorScheme.surface,
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.work_outline,
-                        color: Colors.grey,
+                        color: context.appColors.textFaint,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF121212),
+                      fillColor: theme.scaffoldBackgroundColor,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2C2C2C)),
+                        borderSide: BorderSide(color: context.appColors.surfaceElevated),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFFF571A)),
+                        borderSide: BorderSide(color: theme.colorScheme.primary),
                       ),
                     ),
                     items: const [
@@ -293,20 +294,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return FilledButton(
                         onPressed: auth.isLoading ? null : _submit,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF571A),
-                          foregroundColor: Colors.black,
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         child: auth.isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.black,
+                                  color: theme.colorScheme.onPrimary,
                                 ),
                               )
                             : const Text(

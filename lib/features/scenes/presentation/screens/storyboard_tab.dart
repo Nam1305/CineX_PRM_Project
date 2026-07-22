@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cinex_application/core/theme/app_colors.dart';
 import 'package:cinex_application/features/acts/providers/act_provider.dart';
 import 'package:cinex_application/features/scenes/providers/scene_provider.dart';
 import 'package:cinex_application/features/characters/providers/character_provider.dart';
@@ -163,7 +164,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                               content: Text(
                                 'Đã cập nhật trạng thái cảnh sang ${newStatus.label}',
                               ),
-                              backgroundColor: Colors.green.shade700,
+                              backgroundColor: context.appColors.success,
                               behavior: SnackBarBehavior.floating,
                               duration: const Duration(seconds: 1),
                             ),
@@ -190,6 +191,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                       onDeleteScene: (scene) async {
                         final sceneProvider = context.read<SceneProvider>();
                         final messenger = ScaffoldMessenger.of(context);
+                        final successColor = context.appColors.success;
                         final confirmed = await ConfirmDialog.show(
                           context,
                           title: 'Xoá cảnh',
@@ -211,7 +213,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: const Text('Đã xoá cảnh'),
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: successColor,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -228,6 +230,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                       onDeleteAct: () async {
                         final actProvider = context.read<ActProvider>();
                         final messenger = ScaffoldMessenger.of(context);
+                        final successColor = context.appColors.success;
                         final confirmed = await ConfirmDialog.show(
                           context,
                           title: 'Xoá hồi',
@@ -251,7 +254,7 @@ class _StoryboardTabState extends State<StoryboardTab> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: const Text('Đã xoá hồi'),
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: successColor,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
